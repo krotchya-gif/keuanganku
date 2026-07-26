@@ -126,6 +126,11 @@ CREATE TABLE kpr_simulations (
   bank_fee_1 DECIMAL(18,2) DEFAULT 0,
   bank_fee_2 DECIMAL(18,2) DEFAULT 0,
   bank_fee_3 DECIMAL(18,2) DEFAULT 0,
+  -- Bunga berjenjang & hasil kalkulasi (dari migration 003)
+  floating_phases JSONB DEFAULT NULL,
+  monthly_installment_min DECIMAL(18,2) DEFAULT 0,
+  monthly_installment_max DECIMAL(18,2) DEFAULT 0,
+  total_interest DECIMAL(18,2) DEFAULT 0,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -147,18 +152,7 @@ CREATE TABLE budget_items (
 );
 CREATE INDEX idx_budget_items_user ON budget_items(user_id, category);
 
--- ===== BUDGET PLANS (Rencana Bulanan) =====
-CREATE TABLE budget_plans (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID REFERENCES public.users(id) ON DELETE CASCADE NOT NULL,
-  month INTEGER NOT NULL CHECK (month BETWEEN 1 AND 12),
-  year INTEGER NOT NULL,
-  budget_item_id UUID REFERENCES budget_items(id) ON DELETE CASCADE NOT NULL,
-  planned_amount DECIMAL(18,2) DEFAULT 0,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  UNIQUE(user_id, month, year, budget_item_id)
-);
-CREATE INDEX idx_budget_plans_user_month ON budget_plans(user_id, year, month);
+-- Budget plans inline di budget_items.amount (tidak pakai tabel terpisah)
 
 -- ===== TRANSACTIONS (Budget Tracking Harian) =====
 CREATE TABLE transactions (
@@ -195,47 +189,11 @@ CREATE TABLE savings_goals (
 );
 CREATE INDEX idx_savings_user ON savings_goals(user_id);
 
--- ===== DEBT DETAILS (Rincian Hutang) =====
-CREATE TABLE debt_details (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID REFERENCES public.users(id) ON DELETE CASCADE NOT NULL,
-  name TEXT NOT NULL,
-  total_amount DECIMAL(18,2) NOT NULL,
-  monthly_minimum DECIMAL(18,2) DEFAULT 0,
-  interest_rate_monthly DECIMAL(6,4) DEFAULT 0,
-  category TEXT,
-  start_date DATE,
-  extra_monthly_payment DECIMAL(18,2) DEFAULT 0,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
-);
+-- Debt details menumpang di tabel debts (tidak pakai tabel terpisah)
 
--- ===== PAYMENTS (Tracker Pembayaran 12 Bulan) =====
-CREATE TABLE payments (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID REFERENCES public.users(id) ON DELETE CASCADE NOT NULL,
-  budget_item_id UUID REFERENCES budget_items(id) ON DELETE CASCADE,
-  month INTEGER NOT NULL CHECK (month BETWEEN 1 AND 12),
-  year INTEGER NOT NULL,
-  planned_amount DECIMAL(18,2) DEFAULT 0,
-  actual_amount DECIMAL(18,2) DEFAULT 0,
-  is_paid BOOLEAN DEFAULT FALSE,
-  paid_date DATE,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  UNIQUE(user_id, budget_item_id, month, year)
-);
-CREATE INDEX idx_payments_user_month ON payments(user_id, year, month);
+-- Payment tracking via transactions table (tidak pakai tabel terpisah)
 
--- ===== ANNUAL GOALS =====
-CREATE TABLE annual_goals (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID REFERENCES public.users(id) ON DELETE CASCADE NOT NULL,
-  year INTEGER NOT NULL,
-  goal_text TEXT NOT NULL,
-  is_completed BOOLEAN DEFAULT FALSE,
-  sort_order INTEGER DEFAULT 0,
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
+-- Annual goals inline di savings_goals atau catatan terpisah (tidak pakai tabel terpisah)
 
 -- ===== ROW LEVEL SECURITY =====
 ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
@@ -245,12 +203,8 @@ ALTER TABLE net_worth_snapshots ENABLE ROW LEVEL SECURITY;
 ALTER TABLE cashflow_items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE kpr_simulations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE budget_items ENABLE ROW LEVEL SECURITY;
-ALTER TABLE budget_plans ENABLE ROW LEVEL SECURITY;
 ALTER TABLE transactions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE savings_goals ENABLE ROW LEVEL SECURITY;
-ALTER TABLE debt_details ENABLE ROW LEVEL SECURITY;
-ALTER TABLE payments ENABLE ROW LEVEL SECURITY;
-ALTER TABLE annual_goals ENABLE ROW LEVEL SECURITY;
 
 -- Policies
 CREATE POLICY "user_own_data" ON public.users FOR ALL USING (auth.uid() = id);
@@ -260,12 +214,8 @@ CREATE POLICY "user_own_snapshots" ON net_worth_snapshots FOR ALL USING (auth.ui
 CREATE POLICY "user_own_cashflow" ON cashflow_items FOR ALL USING (auth.uid() = user_id);
 CREATE POLICY "user_own_kpr" ON kpr_simulations FOR ALL USING (auth.uid() = user_id);
 CREATE POLICY "user_own_budget_items" ON budget_items FOR ALL USING (auth.uid() = user_id);
-CREATE POLICY "user_own_budget_plans" ON budget_plans FOR ALL USING (auth.uid() = user_id);
 CREATE POLICY "user_own_transactions" ON transactions FOR ALL USING (auth.uid() = user_id);
 CREATE POLICY "user_own_savings" ON savings_goals FOR ALL USING (auth.uid() = user_id);
-CREATE POLICY "user_own_debt_details" ON debt_details FOR ALL USING (auth.uid() = user_id);
-CREATE POLICY "user_own_payments" ON payments FOR ALL USING (auth.uid() = user_id);
-CREATE POLICY "user_own_annual_goals" ON annual_goals FOR ALL USING (auth.uid() = user_id);
 
 -- ===== UPDATED_AT TRIGGER =====
 CREATE OR REPLACE FUNCTION update_updated_at()
@@ -280,5 +230,4 @@ CREATE TRIGGER set_updated_at BEFORE UPDATE ON kpr_simulations FOR EACH ROW EXEC
 CREATE TRIGGER set_updated_at BEFORE UPDATE ON budget_items FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 CREATE TRIGGER set_updated_at BEFORE UPDATE ON transactions FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 CREATE TRIGGER set_updated_at BEFORE UPDATE ON savings_goals FOR EACH ROW EXECUTE FUNCTION update_updated_at();
-CREATE TRIGGER set_updated_at BEFORE UPDATE ON debt_details FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 CREATE TRIGGER set_updated_at BEFORE UPDATE ON public.users FOR EACH ROW EXECUTE FUNCTION update_updated_at();

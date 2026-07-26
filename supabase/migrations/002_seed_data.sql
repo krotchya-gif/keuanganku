@@ -44,10 +44,6 @@ DECLARE
   sg2 UUID := gen_random_uuid();
   sg3 UUID := gen_random_uuid();
 
-  g1 UUID := gen_random_uuid();
-  g2 UUID := gen_random_uuid();
-  g3 UUID := gen_random_uuid();
-
 BEGIN
 
 -- ===== 1. ASSETS =====
@@ -107,18 +103,7 @@ INSERT INTO budget_items (id, user_id, name, category, amount, frequency, due_da
   -- Hutang
   (bi8, v_user_id, 'Cicilan Motor', 'HUTANG', 1500000, 'bulanan', 5, 1);
 
--- ===== 6. BUDGET PLANS (April 2026) =====
-INSERT INTO budget_plans (user_id, month, year, budget_item_id, planned_amount) VALUES
-  (v_user_id, 4, 2026, bi1, 9500000),
-  (v_user_id, 4, 2026, bi2, 1500000),
-  (v_user_id, 4, 2026, bi3, 1000000),
-  (v_user_id, 4, 2026, bi4, 500000),
-  (v_user_id, 4, 2026, bi5, 350000),
-  (v_user_id, 4, 2026, bi6, 250000),
-  (v_user_id, 4, 2026, bi7, 150000),
-  (v_user_id, 4, 2026, bi8, 1500000);
-
--- ===== 7. TRANSACTIONS (Beberapa bulan terakhir) =====
+-- ===== 6. TRANSACTIONS (Beberapa bulan terakhir) =====
 INSERT INTO transactions (user_id, transaction_date, amount, category, subcategory, description) VALUES
   -- April 2026
   (v_user_id, '2026-04-01', 9500000, 'PENDAPATAN', 'Gaji', 'Gaji Bulanan April'),
@@ -140,28 +125,15 @@ INSERT INTO transactions (user_id, transaction_date, amount, category, subcatego
   (v_user_id, '2026-02-05', 1500000, 'HUTANG', 'Cicilan', 'Cicilan Motor Februari'),
   (v_user_id, '2026-02-14', 450000, 'BIAYA_OPERASIONAL', 'Makan', 'Valentine dinner');
 
--- ===== 8. PAYMENTS (April 2026) =====
-INSERT INTO payments (user_id, budget_item_id, month, year, planned_amount, actual_amount, is_paid, paid_date) VALUES
-  (v_user_id, bi8, 4, 2026, 1500000, 1500000, TRUE,  '2026-04-05'),
-  (v_user_id, bi7, 4, 2026, 150000,  150000,  TRUE,  '2026-04-01'),
-  (v_user_id, bi6, 4, 2026, 250000,  0,       FALSE, NULL),
-  (v_user_id, bi5, 4, 2026, 350000,  0,       FALSE, NULL);
-
--- ===== 9. SAVINGS GOALS =====
+-- ===== 7. SAVINGS GOALS =====
 INSERT INTO savings_goals (id, user_id, name, target_amount, initial_amount, current_amount, monthly_contribution, start_date, target_date, icon, color) VALUES
   (sg1, v_user_id, 'Dana Darurat 6x', 96000000, 10000000, 49920000, 500000, '2024-01-01', '2027-01-01', '🛡️', '#6366f1'),
   (sg2, v_user_id, 'DP Rumah', 200000000, 5000000, 60000000, 2000000, '2024-06-01', '2028-12-01', '🏠', '#10b981'),
   (sg3, v_user_id, 'Liburan Japan', 30000000, 0, 19500000, 1500000, '2025-07-01', '2026-10-01', '✈️', '#f59e0b');
 
--- ===== 10. KPR SIMULATION (Contoh) =====
+-- ===== 8. KPR SIMULATION (Contoh) =====
 INSERT INTO kpr_simulations (user_id, name, property_price, down_payment, loan_principal, loan_period_years, fixed_rate, fixed_period_years, floating_rate, start_date, monthly_income) VALUES
   (v_user_id, 'Simulasi Rumah Subsidi Bekasi', 450000000, 90000000, 360000000, 20, 0.0750, 3, 0.1100, '2026-07-01', 11000000);
-
--- ===== 11. ANNUAL GOALS (2026) =====
-INSERT INTO annual_goals (id, user_id, year, goal_text, is_completed, sort_order) VALUES
-  (g1, v_user_id, 2026, 'Lunasi kartu kredit BNI sebelum Juni 2026', FALSE, 1),
-  (g2, v_user_id, 2026, 'Capai 60% target dana darurat', FALSE, 2),
-  (g3, v_user_id, 2026, 'Investasi minimal Rp 1 juta per bulan konsisten', FALSE, 3);
 
 RAISE NOTICE '✅ Seed data berhasil dimasukkan untuk user: %', v_user_id;
 

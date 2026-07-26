@@ -22,24 +22,47 @@ build
 # turborepo
 .turbo
 
-# misc
-.DS_Store
-*.pem
-
-# debug
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-
-# local env files
+# env files (keep local, never commit)
 .env
 .env*.local
 .env.production
 .env.development
 .env.test
 
-# explicitly allow example
+# allow example env
 !.env.example
 
 # vercel
 .vercel
+
+# local documentation & notes (keep local, do not commit)
+CLAUDE.md
+update.md
+doc/
+
+# dev tooling
+.playwright-mcp/
+.expo/
+*.tsbuildinfo
+
+# macOS
+.DS_Store
+*/.DS_Store
+
+# windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# IDE
+.vscode/settings.json
+.idea/
+*.swp
+*.swo
+*~
+
+# supabase local dev
+supabase/.temp/
+
+# misc
+*.pem
