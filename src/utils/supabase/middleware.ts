@@ -32,30 +32,18 @@ export async function updateSession(request: NextRequest) {
     },
   );
 
-  // refreshing the auth token
-  const {
-    data: { user },
-    error
-  } = await supabase.auth.getUser();
-
-  console.log('MIDDLEWARE REACHED', {
-    url: request.url,
-    user: user?.id || null,
-    error: error?.message,
-    cookiesCount: request.cookies.getAll().length,
-    cookiesFound: request.cookies.getAll().map(c => c.name).join(', '),
-    tokenCookie: request.cookies.get('sb-drwthdmgvmuxcbakzmxw-auth-token')?.value?.substring(0, 20) + '...'
-  });
+  // refreshing the auth token (local JWT verify — faster than getUser)
+  const claims = (await supabase.auth.getClaims()).data?.claims ?? null;
 
   const isPublicRoute = request.nextUrl.pathname.startsWith('/login') || request.nextUrl.pathname.startsWith('/register') || request.nextUrl.pathname.startsWith('/_next') || request.nextUrl.pathname.includes('.');
 
-  if (!user && !isPublicRoute) {
+  if (!claims && !isPublicRoute) {
     const url = request.nextUrl.clone();
     url.pathname = '/login';
     return NextResponse.redirect(url);
   }
 
-  if (user && (request.nextUrl.pathname === '/login' || request.nextUrl.pathname === '/register' || request.nextUrl.pathname === '/')) {
+  if (claims && (request.nextUrl.pathname === '/login' || request.nextUrl.pathname === '/register' || request.nextUrl.pathname === '/')) {
     const url = request.nextUrl.clone();
     url.pathname = '/dashboard';
     return NextResponse.redirect(url);
