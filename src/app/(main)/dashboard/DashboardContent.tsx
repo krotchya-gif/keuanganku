@@ -12,11 +12,19 @@ import {
   AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer,
   BarChart, Bar, RadarChart, Radar, PolarGrid, PolarAngleAxis,
 } from 'recharts';
-import { createClient } from '@/utils/supabase/client';
+import { getCurrentUserId } from '@/lib/queries/users';
+import { fetchAssets } from '@/lib/queries/assets';
+import { fetchDebts } from '@/lib/queries/debts';
+import { fetchCashflowItems } from '@/lib/queries/cashflow';
+import { fetchSnapshots } from '@/lib/queries/snapshots';
+import { fetchTransactions } from '@/lib/queries/transactions';
+import { fetchSavingsGoals } from '@/lib/queries/savings';
+import { fetchBudgetItems } from '@/lib/queries/budget';
 import { ChartTooltip } from '@/components/charts/ChartTooltip';
 import { ChartGradients, chartGridStyle, chartAxisStyle, formatChartRupiah } from '@/components/charts/ChartTheme';
 import type { Asset, Debt, CashflowItem, SavingsGoal, Transaction } from '@/shared';
 import { getDanaDarurat } from '@/shared';
+import { Skeleton, CardSkeleton, ChartSkeleton, KPISkeleton } from '@/components/ui/Skeleton';
 
 const statusColors = { sehat: '#3ecf8e', warning: '#f5a623', bahaya: '#ef4444' };
 
@@ -37,29 +45,28 @@ export function DashboardContent() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const supabase = createClient();
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
+        const userId = await getCurrentUserId();
+        if (!userId) return;
 
         const startDate = `${currentYear}-${String(currentMonth).padStart(2, '0')}-01`;
         const endDate = new Date(currentYear, currentMonth, 0).toISOString().split('T')[0];
 
         const [
-          snapRes, cashRes, savingRes, txRes,
-          assetRes, debtRes, budgetRes
+          snapData, cashData, savingData, txData,
+          assetData, debtData, budgetData
         ] = await Promise.all([
-          supabase.from('net_worth_snapshots').select('*').eq('user_id', user.id).order('snapshot_date', { ascending: true }).limit(12),
-          supabase.from('cashflow_items').select('*').eq('user_id', user.id),
-          supabase.from('savings_goals').select('*').eq('user_id', user.id),
-          supabase.from('transactions').select('*').eq('user_id', user.id).gte('transaction_date', startDate).lte('transaction_date', endDate).order('transaction_date', { ascending: false }).limit(10),
-          supabase.from('assets').select('*').eq('user_id', user.id),
-          supabase.from('debts').select('*').eq('user_id', user.id),
-          supabase.from('budget_items').select('*').eq('user_id', user.id),
+          fetchSnapshots(userId, 12),
+          fetchCashflowItems(userId),
+          fetchSavingsGoals(userId),
+          fetchTransactions(userId, startDate, endDate),
+          fetchAssets(userId),
+          fetchDebts(userId),
+          fetchBudgetItems(userId),
         ]);
 
-        if (snapRes.data && snapRes.data.length > 0) {
-          const latest = snapRes.data[snapRes.data.length - 1];
-          const prev = snapRes.data.length > 1 ? snapRes.data[snapRes.data.length - 2] : latest;
+        if (snapData.length > 0) {
+          const latest = snapData[snapData.length - 1];
+          const prev = snapData.length > 1 ? snapData[snapData.length - 2] : latest;
           const prevNW = Number(prev.net_worth);
           setNetWorth({
             current: Number(latest.net_worth),
@@ -68,7 +75,7 @@ export function DashboardContent() {
             totalAssets: Number(latest.total_assets),
             totalDebts: Number(latest.total_debts),
           });
-          setNetWorthHistory(snapRes.data.map((s: any) => ({
+          setNetWorthHistory(snapData.map((s: any) => ({
             bulan: new Date(s.snapshot_date).toLocaleDateString('id-ID', { month: 'short', year: '2-digit' }),
             aset: Number(s.total_assets),
             utang: Number(s.total_debts),
@@ -76,23 +83,23 @@ export function DashboardContent() {
           })));
         }
 
-        if (cashRes.data) {
-          const masuk = cashRes.data.filter((c: any) => c.direction === 'masuk').reduce((s: number, c: any) => s + Number(c.amount), 0);
-          const keluar = cashRes.data.filter((c: any) => c.direction === 'keluar').reduce((s: number, c: any) => s + Number(c.amount), 0);
+        if (cashData.length > 0) {
+          const masuk = cashData.filter((c: any) => c.direction === 'masuk').reduce((s: number, c: any) => s + Number(c.amount), 0);
+          const keluar = cashData.filter((c: any) => c.direction === 'keluar').reduce((s: number, c: any) => s + Number(c.amount), 0);
           setCashFlow({ totalMasuk: masuk, totalKeluar: keluar, surplus: masuk - keluar });
         }
 
-        if (savingRes.data) setSavingsGoals(savingRes.data.slice(0, 4));
+        if (savingData.length > 0) setSavingsGoals(savingData.slice(0, 4));
 
-        if (assetRes.data && debtRes.data && cashRes.data) {
-          const totalAset = assetRes.data.reduce((s: number, a: Asset) => s + Number(a.amount), 0);
-          const totalUtang = debtRes.data.reduce((s: number, d: Debt) => s + Number(d.total_amount), 0);
-          const danaDarurat = getDanaDarurat(assetRes.data);
-          const pengeluaran = cashRes.data.filter((c: CashflowItem) => c.direction === 'keluar').reduce((s: number, c: CashflowItem) => s + Number(c.amount), 0);
-          const cicilan = cashRes.data.filter((c: CashflowItem) => c.category === 'kewajiban_cicilan').reduce((s: number, c: CashflowItem) => s + Number(c.amount), 0);
-          const pendapatan = cashRes.data.filter((c: CashflowItem) => c.direction === 'masuk').reduce((s: number, c: CashflowItem) => s + Number(c.amount), 0);
-          const tabInvest = cashRes.data.filter((c: CashflowItem) => c.category === 'masa_depan_investasi').reduce((s: number, c: CashflowItem) => s + Number(c.amount), 0);
-          const biayaHidup = cashRes.data.filter((c: CashflowItem) => c.category === 'kebutuhan_sehari_hari').reduce((s: number, c: CashflowItem) => s + Number(c.amount), 0);
+        if (assetData.length > 0 || debtData.length > 0 || cashData.length > 0) {
+          const totalAset = assetData.reduce((s: number, a: Asset) => s + Number(a.amount), 0);
+          const totalUtang = debtData.reduce((s: number, d: Debt) => s + Number(d.total_amount), 0);
+          const danaDarurat = getDanaDarurat(assetData);
+          const pengeluaran = cashData.filter((c: CashflowItem) => c.direction === 'keluar').reduce((s: number, c: CashflowItem) => s + Number(c.amount), 0);
+          const cicilan = cashData.filter((c: CashflowItem) => c.category === 'kewajiban_cicilan').reduce((s: number, c: CashflowItem) => s + Number(c.amount), 0);
+          const pendapatan = cashData.filter((c: CashflowItem) => c.direction === 'masuk').reduce((s: number, c: CashflowItem) => s + Number(c.amount), 0);
+          const tabInvest = cashData.filter((c: CashflowItem) => c.category === 'masa_depan_investasi').reduce((s: number, c: CashflowItem) => s + Number(c.amount), 0);
+          const biayaHidup = cashData.filter((c: CashflowItem) => c.category === 'kebutuhan_sehari_hari').reduce((s: number, c: CashflowItem) => s + Number(c.amount), 0);
 
           const rasioDarurat = pengeluaran > 0 ? danaDarurat / pengeluaran : 0;
           const rasioCicilan = pendapatan > 0 ? cicilan / pendapatan : 0;
@@ -110,9 +117,8 @@ export function DashboardContent() {
           ]);
         }
 
-        if (txRes.data) setTransactions(txRes.data);
-
-        if (budgetRes.data) {
+        setTransactions(txData);
+        setBudgetData(() => {
           const cats = ['PENDAPATAN', 'TABUNGAN_INVESTASI', 'TAGIHAN', 'BIAYA_OPERASIONAL', 'HUTANG'];
           const catsLabel: Record<string, string> = {
             PENDAPATAN: 'Pendapatan', TABUNGAN_INVESTASI: 'Tabungan',
@@ -122,13 +128,12 @@ export function DashboardContent() {
             PENDAPATAN: '#3ecf8e', TABUNGAN_INVESTASI: '#635bff',
             TAGIHAN: '#f5a623', BIAYA_OPERASIONAL: '#06b6d4', HUTANG: '#ef4444',
           };
-          const txs = txRes.data || [];
-          setBudgetData(cats.map((cat) => {
-            const planned = budgetRes.data!.filter((b: any) => b.category === cat).reduce((s: number, b: any) => s + Number(b.amount), 0);
-            const actual = txs.filter((t: any) => t.category === cat).reduce((s: number, t: any) => s + Number(t.amount), 0);
+          return cats.map((cat) => {
+            const planned = budgetData.filter((b: any) => b.category === cat).reduce((s: number, b: any) => s + Number(b.amount), 0);
+            const actual = txData.filter((t: any) => t.category === cat).reduce((s: number, t: any) => s + Number(t.amount), 0);
             return { category: catsLabel[cat], planned, actual, color: catsColor[cat] };
-          }));
-        }
+          });
+        });
       } catch (err) {
         console.error(err);
       } finally {
@@ -143,10 +148,12 @@ export function DashboardContent() {
 
   if (loading) {
     return (
-      <div className="flex h-[60vh] w-full items-center justify-center">
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-10 h-10 rounded-full border-2 border-primary-500 border-t-transparent animate-spin" />
-          <p className="text-sm text-muted-foreground animate-pulse">Memuat dashboard...</p>
+      <div className="space-y-6 p-3 sm:p-6 animate-pulse">
+        <Skeleton className="h-8 w-48" />
+        <KPISkeleton />
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-3 sm:gap-4">
+          <ChartSkeleton />
+          <CardSkeleton />
         </div>
       </div>
     );

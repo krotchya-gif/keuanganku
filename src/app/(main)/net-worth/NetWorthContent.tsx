@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Plus, TrendingUp, TrendingDown, Edit2, Trash2, X, Loader2, Save } from 'lucide-react';
+import { Skeleton, KPISkeleton, ChartSkeleton, TableSkeleton } from '@/components/ui/Skeleton';
 import { formatRupiah, formatRupiahCompact, formatPercent } from '@/lib/utils';
 import { calculateNetWorth, calculateGrowth } from '@/shared';
 import type { Asset, Debt } from '@/shared';
@@ -10,6 +11,10 @@ import {
   PieChart, Pie, Cell,
 } from 'recharts';
 import { createClient } from '@/utils/supabase/client';
+import { getCurrentUserId } from '@/lib/queries/users';
+import { fetchAssets } from '@/lib/queries/assets';
+import { fetchDebts } from '@/lib/queries/debts';
+import { fetchSnapshots } from '@/lib/queries/snapshots';
 import { ChartTooltip } from '@/components/charts/ChartTooltip';
 import { ChartGradients, chartGridStyle, chartAxisStyle, formatChartRupiah } from '@/components/charts/ChartTheme';
 
@@ -47,22 +52,21 @@ export function NetWorthContent() {
 
   const fetchData = async () => {
     try {
-      const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      setUserId(user.id);
+      const userId = await getCurrentUserId();
+      if (!userId) return;
+      setUserId(userId);
 
-      const [aRes, dRes, sRes] = await Promise.all([
-        supabase.from('assets').select('*').order('created_at'),
-        supabase.from('debts').select('*').order('created_at'),
-        supabase.from('net_worth_snapshots').select('*').order('snapshot_date', { ascending: true })
+      const [assetData, debtData, snapData] = await Promise.all([
+        fetchAssets(userId),
+        fetchDebts(userId),
+        fetchSnapshots(userId),
       ]);
 
-      if (aRes.data) setAssets(aRes.data as Asset[]);
-      if (dRes.data) setDebts(dRes.data as Debt[]);
+      setAssets(assetData);
+      setDebts(debtData);
       
-      if (sRes.data) {
-        setHistory(sRes.data.map(s => ({
+      if (snapData.length > 0) {
+        setHistory(snapData.map(s => ({
           bulan: new Date(s.snapshot_date).toLocaleDateString('id-ID', { month: 'short' }),
           aset: Number(s.total_assets),
           utang: Number(s.total_debts),
@@ -173,7 +177,16 @@ export function NetWorthContent() {
   };
 
   if (loading) {
-     return <div className="flex h-96 items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-primary-500" /></div>;
+    return (
+      <div className="space-y-6 p-3 sm:p-6 animate-pulse">
+        <Skeleton className="h-8 w-48" />
+        <KPISkeleton />
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <ChartSkeleton />
+          <TableSkeleton rows={4} />
+        </div>
+      </div>
+    );
   }
 
   const result = calculateNetWorth(assets, debts);

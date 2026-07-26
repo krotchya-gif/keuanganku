@@ -3,6 +3,7 @@
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { Sidebar } from '@/components/layout/Sidebar';
+import { InstallPrompt } from '@/components/layout/InstallPrompt';
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -55,6 +56,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           })}
         </div>
       </nav>
+
+      <InstallPrompt />
     </div>
   );
 }

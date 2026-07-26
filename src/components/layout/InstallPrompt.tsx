@@ -1,0 +1,54 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import { X, Download } from 'lucide-react';
+
+export function InstallPrompt() {
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [show, setShow] = useState(false);
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      setShow(true);
+    };
+    window.addEventListener('beforeinstallprompt', handler);
+    return () => window.removeEventListener('beforeinstallprompt', handler);
+  }, []);
+
+  const handleInstall = async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const result = await deferredPrompt.userChoice;
+    if (result.outcome === 'accepted') setShow(false);
+    setDeferredPrompt(null);
+  };
+
+  if (!show) return null;
+
+  return (
+    <div className="fixed bottom-20 md:bottom-4 left-4 right-4 md:left-auto md:right-4 md:w-80 z-50 animate-in slide-in-from-bottom-4">
+      <div className="bg-card border border-border rounded-xl shadow-xl p-4 flex items-start gap-3">
+        <div className="w-10 h-10 rounded-xl bg-primary-500/10 flex items-center justify-center shrink-0">
+          <Download className="w-5 h-5 text-primary-500" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold text-foreground">Install Aplikasi</p>
+          <p className="text-xs text-muted-foreground mt-0.5">Pasang di layar utama untuk akses lebih cepat</p>
+          <div className="flex items-center gap-2 mt-3">
+            <button onClick={handleInstall} className="bg-primary-500 hover:bg-primary-600 text-white text-xs font-medium px-4 py-1.5 rounded-lg transition-colors">
+              Install
+            </button>
+            <button onClick={() => setShow(false)} className="text-xs text-muted-foreground hover:text-foreground px-2 py-1.5">
+              Nanti
+            </button>
+          </div>
+        </div>
+        <button onClick={() => setShow(false)} className="text-muted-foreground hover:text-foreground p-1">
+          <X className="w-4 h-4" />
+        </button>
+      </div>
+    </div>
+  );
+}

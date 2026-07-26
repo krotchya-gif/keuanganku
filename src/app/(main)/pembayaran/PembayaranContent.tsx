@@ -1,8 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { createClient } from '@/utils/supabase/client';
+import { getCurrentUserId } from '@/lib/queries/users';
+import { fetchBudgetItemsByCategory } from '@/lib/queries/budget';
+import { fetchTransactionsByCategory } from '@/lib/queries/transactions';
 import { Loader2, CalendarHeart, CheckCircle2, XCircle } from 'lucide-react';
+import { Skeleton, ListSkeleton } from '@/components/ui/Skeleton';
 import { formatRupiah } from '@/lib/utils';
 
 export function PembayaranContent() {
@@ -16,32 +19,25 @@ export function PembayaranContent() {
     async function fetchData() {
       try {
         setLoading(true);
-        const supabase = createClient();
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
+        const userId = await getCurrentUserId();
+        if (!userId) return;
 
         // Fetch master envelopes for Bills and Debts
-        const { data: envs } = await supabase
-          .from('budget_items')
-          .select('*')
-          .eq('user_id', user.id)
-          .in('category', ['TAGIHAN', 'HUTANG']);
-
-        if (envs) setItems(envs);
+        const [tagihanItems, hutangItems] = await Promise.all([
+          fetchBudgetItemsByCategory(userId, 'TAGIHAN'),
+          fetchBudgetItemsByCategory(userId, 'HUTANG'),
+        ]);
+        setItems([...tagihanItems, ...hutangItems]);
 
         // Fetch transactions for the selected month to check if paid
         const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
         const endDate = new Date(year, month, 0).toISOString().split('T')[0];
         
-        const { data: txs } = await supabase
-          .from('transactions')
-          .select('*')
-          .eq('user_id', user.id)
-          .in('category', ['TAGIHAN', 'HUTANG'])
-          .gte('transaction_date', startDate)
-          .lte('transaction_date', endDate);
-
-        if (txs) setTransactions(txs);
+        const [tagihanTxs, hutangTxs] = await Promise.all([
+          fetchTransactionsByCategory(userId, 'TAGIHAN', startDate, endDate),
+          fetchTransactionsByCategory(userId, 'HUTANG', startDate, endDate),
+        ]);
+        setTransactions([...tagihanTxs, ...hutangTxs]);
       } catch (err) {
         console.error(err);
       } finally {
@@ -52,7 +48,12 @@ export function PembayaranContent() {
   }, [year, month]);
 
   if (loading && items.length === 0) {
-    return <div className="flex h-64 items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-primary-500" /></div>;
+    return (
+      <div className="space-y-6 p-3 sm:p-6 animate-pulse">
+        <Skeleton className="h-8 w-48" />
+        <ListSkeleton items={4} />
+      </div>
+    );
   }
 
   const bills = items.filter(i => i.category === 'TAGIHAN');

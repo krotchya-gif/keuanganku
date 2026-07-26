@@ -15,7 +15,7 @@ Mengonversi perhitungan dari 3 file Excel (Financial Checkup, Simulasi KPR, Budg
 - **Tabungan & Investasi** — Progress tracker per target
 - **Kalender Pembayaran** — Ceklis tagihan & cicilan
 - **Evaluasi Tahunan** — Laporan komprehensif per bulan
-- **PWA** — Install sebagai aplikasi desktop/mobile, offline-ready
+- **PWA** — Install prompt, offline fallback, service worker cache strategy
 
 ---
 
@@ -61,7 +61,12 @@ app-keuangan/
 │   │   └── auth/callback/
 │   ├── components/
 │   │   ├── charts/           # ChartTooltip, ChartTheme
-│   │   └── layout/           # Sidebar
+│   │   ├── layout/           # Sidebar, InstallPrompt
+│   │   └── ui/               # Skeleton
+│   ├── lib/
+│   │   ├── utils.ts          # formatRupiah, formatPercent, dll
+│   │   ├── export.ts         # exportCSV, exportPDF
+│   │   └── queries/          # assets, debts, cashflow, transactions, dll
 │   ├── shared/
 │   │   ├── formulas/         # networth, cashflow, checkup, kpr, budgeting
 │   │   ├── types/            # Semua TypeScript interfaces
@@ -70,10 +75,12 @@ app-keuangan/
 │   └── lib/utils.ts          # formatRupiah, formatPercent, dll
 ├── supabase/
 │   ├── migrations/
-│   │   └── 001_initial_schema.sql
-│   │   └── 002_seed_data.sql
+│   │   ├── 001_initial_schema.sql
+│   │   ├── 002_seed_data.sql
+│   │   ├── 003_cron_snapshot.sql
+│   │   └── 004_dana_darat_flag.sql
 │   └── functions/
-│       └── snapshot-networth/ # Auto-snapshot (Deno)
+│       └── snapshot/           # Auto-snapshot (Deno)
 ├── sw.ts                     # Service worker (serwist)
 ├── next.config.mjs
 └── package.json

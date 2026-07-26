@@ -6,8 +6,12 @@ import { formatRupiah, formatPercent, getStatusColor, getStatusLabel } from '@/l
 import {
   RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Tooltip,
 } from 'recharts';
-import { createClient } from '@/utils/supabase/client';
+import { getCurrentUserId } from '@/lib/queries/users';
+import { fetchAssets } from '@/lib/queries/assets';
+import { fetchDebts } from '@/lib/queries/debts';
+import { fetchCashflowItems } from '@/lib/queries/cashflow';
 import { Loader2, AlertCircle, ShieldCheck, ShieldAlert, Activity } from 'lucide-react';
+import { Skeleton, KPISkeleton, ChartSkeleton, ListSkeleton } from '@/components/ui/Skeleton';
 
 const scoreColors: Record<string, string> = { sehat: '#3ecf8e', warning: '#f5a623', bahaya: '#ef4444' };
 
@@ -18,19 +22,14 @@ export function CheckupContent() {
   useEffect(() => {
     async function fetchData() {
       try {
-        const supabase = createClient();
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
+        const userId = await getCurrentUserId();
+        if (!userId) return;
 
-        const [aRes, dRes, cRes] = await Promise.all([
-          supabase.from('assets').select('*'),
-          supabase.from('debts').select('*'),
-          supabase.from('cashflow_items').select('*'),
+        const [assets, debts, cashflows] = await Promise.all([
+          fetchAssets(userId),
+          fetchDebts(userId),
+          fetchCashflowItems(userId),
         ]);
-
-        const assets = aRes.data || [];
-        const debts = dRes.data || [];
-        const cashflows = cRes.data || [];
 
         const danaDarurat = getDanaDarurat(assets);
         const totalAset = assets.reduce((s: number, a: any) => s + Number(a.amount), 0);
@@ -58,10 +57,12 @@ export function CheckupContent() {
 
   if (loading) {
     return (
-      <div className="flex h-64 items-center justify-center">
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-8 h-8 rounded-full border-2 border-primary-500 border-t-transparent animate-spin" />
-          <p className="text-sm text-muted-foreground animate-pulse">Menganalisa keuangan...</p>
+      <div className="space-y-6 p-3 sm:p-6 animate-pulse">
+        <Skeleton className="h-8 w-48" />
+        <KPISkeleton />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <ChartSkeleton />  
+          <ListSkeleton items={6} />
         </div>
       </div>
     );

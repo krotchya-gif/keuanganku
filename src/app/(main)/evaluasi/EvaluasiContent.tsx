@@ -1,8 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { createClient } from '@/utils/supabase/client';
+import { getCurrentUserId } from '@/lib/queries/users';
+import { fetchTransactions } from '@/lib/queries/transactions';
+import { fetchSnapshots } from '@/lib/queries/snapshots';
 import { Loader2, TrendingUp, TrendingDown, Target } from 'lucide-react';
+import { Skeleton, KPISkeleton, ChartSkeleton } from '@/components/ui/Skeleton';
 import { formatRupiah, formatRupiahCompact } from '@/lib/utils';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend,
@@ -21,22 +24,16 @@ export function EvaluasiContent() {
     async function fetchData() {
       try {
         setLoading(true);
-        const supabase = createClient();
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
+        const userId = await getCurrentUserId();
+        if (!userId) return;
 
         // Fetch all transactions for the year
-        const { data: txs } = await supabase
-          .from('transactions')
-          .select('*')
-          .eq('user_id', user.id)
-          .gte('transaction_date', `${year}-01-01`)
-          .lte('transaction_date', `${year}-12-31`);
+        const txs = await fetchTransactions(userId, `${year}-01-01`, `${year}-12-31`);
 
         // Group transactions by month
         const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
         const grouped = months.map((m, idx) => {
-          const mtxs = (txs || []).filter(t => new Date(t.transaction_date).getMonth() === idx);
+          const mtxs = txs.filter(t => new Date(t.transaction_date).getMonth() === idx);
           const income = mtxs.filter(t => t.category === 'PENDAPATAN').reduce((s, t) => s + Number(t.amount), 0);
           const expense = mtxs.filter(t => t.category !== 'PENDAPATAN').reduce((s, t) => s + Number(t.amount), 0);
           return {
@@ -49,16 +46,10 @@ export function EvaluasiContent() {
         setMonthlyData(grouped);
 
         // Fetch Net Worth Snapshots
-        const { data: nw } = await supabase
-          .from('net_worth_snapshots')
-          .select('*')
-          .eq('user_id', user.id)
-          .gte('snapshot_date', `${year}-01-01`)
-          .lte('snapshot_date', `${year}-12-31`)
-          .order('snapshot_date', { ascending: true });
+        const nw = await fetchSnapshots(userId, 12);
 
         const nwGrouped = months.map((m, idx) => {
-          const snap = (nw || []).find(n => {
+          const snap = nw.find(n => {
              const dt = new Date(n.snapshot_date);
              return dt.getMonth() === idx;
           });
@@ -78,7 +69,13 @@ export function EvaluasiContent() {
     fetchData();
   }, [year]);
 
-  if (loading) return <div className="flex h-64 items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-primary-500" /></div>;
+  if (loading) return (
+    <div className="space-y-6 p-3 sm:p-6 animate-pulse">
+      <Skeleton className="h-8 w-48" />
+      <KPISkeleton />
+      <ChartSkeleton />
+    </div>
+  );
 
   const totalIncome = monthlyData.reduce((s, d) => s + d.Pemasukan, 0);
   const totalExpense = monthlyData.reduce((s, d) => s + d.Pengeluaran, 0);

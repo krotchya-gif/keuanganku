@@ -1,9 +1,17 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, X, Loader2, ArrowRightLeft, Target, Wallet, CalendarDays } from 'lucide-react';
+import { Plus, Edit2, Trash2, X, Loader2, ArrowRightLeft, Target, Wallet, CalendarDays, Download } from 'lucide-react';
+import { Skeleton, TableSkeleton } from '@/components/ui/Skeleton';
 import { formatRupiah, formatRupiahCompact, formatPercent } from '@/lib/utils';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import { ChartTooltip } from '@/components/charts/ChartTooltip';
+import { chartGridStyle, chartAxisStyle, formatChartRupiah } from '@/components/charts/ChartTheme';
 import { createClient } from '@/utils/supabase/client';
+import { getCurrentUserId } from '@/lib/queries/users';
+import { fetchBudgetItems } from '@/lib/queries/budget';
+import { fetchTransactions } from '@/lib/queries/transactions';
+import { exportCSV } from '@/lib/export';
 
 const CATEGORY_LABELS: Record<string, string> = {
   PENDAPATAN: 'Pendapatan',
@@ -45,27 +53,20 @@ export function BudgetingContent() {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      setUserId(user.id);
+      const userId = await getCurrentUserId();
+      if (!userId) return;
+      setUserId(userId);
 
       // Fetch budget items (master envelopes)
-      const { data: itemsData } = await supabase.from('budget_items').select('*').order('created_at', { ascending: true });
-      if (itemsData) setBudgetItems(itemsData);
+      const itemsData = await fetchBudgetItems(userId);
+      setBudgetItems(itemsData);
 
       // Fetch transactions for selected month/year
       const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
       const endDate = new Date(year, month, 0).toISOString().split('T')[0]; // last day of month
       
-      const { data: txData } = await supabase
-        .from('transactions')
-        .select('*')
-        .gte('transaction_date', startDate)
-        .lte('transaction_date', endDate)
-        .order('transaction_date', { ascending: false });
-        
-      if (txData) setTransactions(txData);
+      const txData = await fetchTransactions(userId, startDate, endDate);
+      setTransactions(txData);
     } catch (err) {
       console.error(err);
     } finally {
@@ -171,7 +172,12 @@ export function BudgetingContent() {
   const isOverbudget = totalExpenseActual > totalExpensePlanned;
 
   if (loading && budgetItems.length === 0) {
-    return <div className="flex h-64 items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-primary-500" /></div>;
+    return (
+      <div className="space-y-6 p-3 sm:p-6 animate-pulse">
+        <Skeleton className="h-8 w-64" />
+        <TableSkeleton rows={4} />
+      </div>
+    );
   }
 
   return (
@@ -244,8 +250,26 @@ export function BudgetingContent() {
                  </div>
                </div>
 
-               {/* Envelope Bars */}
-               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+                {/* Budget vs Actual Chart */}
+                {summaryByCategory.filter(g => g.totalPlanned > 0 || g.totalActual > 0).length > 0 && (
+                  <div className="card-premium p-4 sm:p-5">
+                    <h3 className="text-sm font-bold text-foreground mb-4">Budget vs Realisasi per Kategori</h3>
+                    <div className="h-64">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={summaryByCategory.filter(g => g.totalPlanned > 0 || g.totalActual > 0)} barGap={4} barCategoryGap="20%">
+                          <XAxis dataKey="label" {...chartAxisStyle} />
+                          <YAxis {...chartAxisStyle} tickFormatter={formatChartRupiah} width={70} />
+                          <Tooltip content={<ChartTooltip />} />
+                          <Bar dataKey="totalPlanned" name="Anggaran" fill="#635bff" radius={[4, 4, 0, 0]} />
+                          <Bar dataKey="totalActual" name="Realisasi" fill="#3ecf8e" radius={[4, 4, 0, 0]} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
+                )}
+
+                {/* Envelope Bars */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
                  {summaryByCategory.map((group) => {
                    if (group.plannedItems.length === 0 && group.totalActual === 0) return null; // Skip empty groups
                    return (
@@ -304,12 +328,16 @@ export function BudgetingContent() {
           {activeTab === 'transaksi' && (
              <div className="space-y-3 sm:space-y-4 p-3 sm:p-0">
                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4 sm:mb-6">
-                 <div>
-                   <h2 className="text-base font-bold text-foreground">Buku Jurnal</h2>
-                   <p className="text-xs text-muted-foreground">Catat setiap uang yang masuk atau keluar di bulan ini.</p>
-                 </div>
-                 <button 
-                   onClick={() => {
+                  <div>
+                    <h2 className="text-base font-bold text-foreground">Buku Jurnal</h2>
+                    <p className="text-xs text-muted-foreground">Catat setiap uang yang masuk atau keluar di bulan ini.</p>
+                  </div>
+                  <div className="flex items-center gap-2 w-full sm:w-auto">
+                    <button onClick={() => exportCSV(`transaksi-${month}-${year}`, ['Tanggal', 'Kategori', 'Amplop', 'Keterangan', 'Jumlah'], transactions.map(t => [new Date(t.transaction_date).toLocaleDateString('id-ID'), CATEGORY_LABELS[t.category], t.subcategory || '-', t.description || '-', t.amount]))} className="flex items-center gap-1.5 bg-card border border-border hover:bg-muted text-foreground px-3 py-2.5 sm:py-2 rounded-xl sm:rounded-lg text-xs sm:text-sm font-medium transition-colors">
+                      <Download className="w-4 h-4" /> Export CSV
+                    </button>
+                    <button 
+                    onClick={() => {
                      setEditingTx(null);
                      setTxForm({ transaction_date: new Date().toISOString().split('T')[0], category: 'BIAYA_OPERASIONAL', subcategory: budgetItems.find(i => i.category === 'BIAYA_OPERASIONAL')?.name || '', amount: 0, description: '' });
                      setShowTxModal(true);
@@ -318,9 +346,10 @@ export function BudgetingContent() {
                  >
                    <Plus className="w-4 h-4" /> Catat Transaksi
                  </button>
-               </div>
+                </div>
+              </div>
 
-               {transactions.length === 0 ? (
+                {transactions.length === 0 ? (
                  <div className="flex flex-col items-center justify-center p-8 sm:p-12 text-center border-2 border-dashed border-border rounded-xl bg-muted/20">
                    <CalendarDays className="w-10 h-10 sm:w-12 sm:h-12 text-muted-foreground mb-3 opacity-20" />
                    <p className="text-sm font-medium text-foreground">Belum ada transaksi di bulan ini.</p>

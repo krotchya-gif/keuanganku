@@ -10,7 +10,10 @@ import {
 import { ChartTooltip } from '@/components/charts/ChartTooltip';
 import { ChartGradients, chartGridStyle, chartAxisStyle, formatChartRupiah } from '@/components/charts/ChartTheme';
 import { Calculator, Save, X, Bookmark, Loader2, Trash2, PlusCircle, ChevronDown, ChevronUp, Layers, Eye, Calendar, Home, Wallet, Percent, Clock, TrendingUp, DollarSign, Receipt } from 'lucide-react';
+import { Skeleton, CardSkeleton } from '@/components/ui/Skeleton';
 import { createClient } from '@/utils/supabase/client';
+import { getCurrentUserId } from '@/lib/queries/users';
+import { fetchKPRSimulations } from '@/lib/queries/kpr';
 
 const statusColors: Record<string, string> = { sehat: '#3ecf8e', warning: '#f5a623', bahaya: '#ef4444' };
 const statusLabels: Record<string, string> = { sehat: '✅ Rasio Sehat', warning: '⚠️ Perlu Waspada', bahaya: '🔴 Tidak Sehat' };
@@ -91,13 +94,12 @@ export function KPRContent() {
   const fetchSimulations = async () => {
     try {
       setLoading(true);
-      const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      setUserId(user.id);
+      const userId = await getCurrentUserId();
+      if (!userId) return;
+      setUserId(userId);
 
-      const { data } = await supabase.from('kpr_simulations').select('*').order('created_at', { ascending: false });
-      if (data) setSimulations(data);
+      const data = await fetchKPRSimulations(userId);
+      setSimulations(data);
     } catch (err) {
       console.error(err);
     } finally {
@@ -264,7 +266,15 @@ export function KPRContent() {
   ).sort((a, b) => (a[0] ?? 0) - (b[0] ?? 0));
 
   if (loading) {
-    return <div className="flex h-64 items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-primary-500" /></div>;
+    return (
+      <div className="space-y-6 p-3 sm:p-6 animate-pulse">
+        <Skeleton className="h-8 w-48" />
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <div className="lg:col-span-2"><CardSkeleton /></div>
+          <CardSkeleton />
+        </div>
+      </div>
+    );
   }
 
   return (

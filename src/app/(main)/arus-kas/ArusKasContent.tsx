@@ -2,8 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import { Plus, TrendingUp, TrendingDown, Edit2, Trash2, X, Loader2, ArrowUpRight, ArrowDownRight } from 'lucide-react';
+import { Skeleton, ListSkeleton, KPISkeleton } from '@/components/ui/Skeleton';
 import { formatRupiah, formatPercent } from '@/lib/utils';
 import { createClient } from '@/utils/supabase/client';
+import { getCurrentUserId } from '@/lib/queries/users';
+import { fetchCashflowItems } from '@/lib/queries/cashflow';
 
 const CATEGORY_LABELS: Record<string, string> = {
   pendapatan: 'Pendapatan',
@@ -32,13 +35,12 @@ export function ArusKasContent() {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      setUserId(user.id);
+      const userId = await getCurrentUserId();
+      if (!userId) return;
+      setUserId(userId);
 
-      const { data } = await supabase.from('cashflow_items').select('*').order('created_at', { ascending: false });
-      if (data) setItems(data);
+      const data = await fetchCashflowItems(userId);
+      setItems(data);
     } catch (err) {
       console.error(err);
     } finally {
@@ -113,7 +115,16 @@ export function ArusKasContent() {
   ];
 
   if (loading) {
-    return <div className="flex justify-center items-center h-64"><Loader2 className="w-8 h-8 animate-spin text-primary-500" /></div>;
+    return (
+      <div className="space-y-6 p-3 sm:p-6 animate-pulse">
+        <Skeleton className="h-8 w-48" />
+        <KPISkeleton />
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <ListSkeleton items={4} />
+          <ListSkeleton items={6} />
+        </div>
+      </div>
+    );
   }
 
   return (

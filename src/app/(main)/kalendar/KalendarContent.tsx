@@ -1,8 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { createClient } from '@/utils/supabase/client';
+import { getCurrentUserId } from '@/lib/queries/users';
+import { fetchTransactions } from '@/lib/queries/transactions';
 import { Loader2, CalendarHeart } from 'lucide-react';
+import { Skeleton, ListSkeleton } from '@/components/ui/Skeleton';
 import { formatRupiah } from '@/lib/utils';
 
 export function KalendarContent() {
@@ -15,22 +17,14 @@ export function KalendarContent() {
     async function fetchData() {
       try {
         setLoading(true);
-        const supabase = createClient();
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
+        const userId = await getCurrentUserId();
+        if (!userId) return;
 
         const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
         const endDate = new Date(year, month, 0).toISOString().split('T')[0];
 
-        const { data: txs } = await supabase
-          .from('transactions')
-          .select('*')
-          .eq('user_id', user.id)
-          .gte('transaction_date', startDate)
-          .lte('transaction_date', endDate)
-          .order('transaction_date', { ascending: false });
-
-        if (txs) setTransactions(txs);
+        const txs = await fetchTransactions(userId, startDate, endDate);
+        setTransactions(txs);
       } catch (err) {
         console.error(err);
       } finally {
@@ -40,7 +34,12 @@ export function KalendarContent() {
     fetchData();
   }, [year, month]);
 
-  if (loading) return <div className="flex h-64 items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-primary-500" /></div>;
+  if (loading) return (
+    <div className="space-y-6 p-3 sm:p-6 animate-pulse">
+      <Skeleton className="h-8 w-48" />
+      <ListSkeleton items={5} />
+    </div>
+  );
 
   // Group by exact date
   const grouped: Record<string, any[]> = {};
