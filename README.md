@@ -107,6 +107,7 @@ NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY=your-anon-key
    - `supabase/migrations/001_initial_schema.sql` — wajib
    - `supabase/migrations/002_seed_data.sql` — opsional (data contoh)
    - `supabase/migrations/003_cron_snapshot.sql` — opsional (auto-snapshot, butuh Pro plan)
+   - `supabase/migrations/004_dana_darat_flag.sql` — opsional (is_emergency_fund untuk dana darurat)
 
 ### 4. Run
 ```bash

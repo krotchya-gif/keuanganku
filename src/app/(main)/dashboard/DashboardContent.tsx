@@ -15,6 +15,8 @@ import {
 import { createClient } from '@/utils/supabase/client';
 import { ChartTooltip } from '@/components/charts/ChartTooltip';
 import { ChartGradients, chartGridStyle, chartAxisStyle, formatChartRupiah } from '@/components/charts/ChartTheme';
+import type { Asset, Debt, CashflowItem, SavingsGoal, Transaction } from '@/shared';
+import { getDanaDarurat } from '@/shared';
 
 const statusColors = { sehat: '#3ecf8e', warning: '#f5a623', bahaya: '#ef4444' };
 
@@ -83,14 +85,14 @@ export function DashboardContent() {
         if (savingRes.data) setSavingsGoals(savingRes.data.slice(0, 4));
 
         if (assetRes.data && debtRes.data && cashRes.data) {
-          const totalAset = assetRes.data.reduce((s: number, a: any) => s + Number(a.amount), 0);
-          const totalUtang = debtRes.data.reduce((s: number, d: any) => s + Number(d.total_amount), 0);
-          const danaDarurat = assetRes.data.filter((a: any) => a.category === 'kas_setara_kas').reduce((s: number, a: any) => s + Number(a.amount), 0);
-          const pengeluaran = cashRes.data.filter((c: any) => c.direction === 'keluar').reduce((s: number, c: any) => s + Number(c.amount), 0);
-          const cicilan = cashRes.data.filter((c: any) => c.category === 'kewajiban_cicilan').reduce((s: number, c: any) => s + Number(c.amount), 0);
-          const pendapatan = cashRes.data.filter((c: any) => c.direction === 'masuk').reduce((s: number, c: any) => s + Number(c.amount), 0);
-          const tabInvest = cashRes.data.filter((c: any) => c.category === 'masa_depan_investasi').reduce((s: number, c: any) => s + Number(c.amount), 0);
-          const biayaHidup = cashRes.data.filter((c: any) => c.category === 'kebutuhan_sehari_hari').reduce((s: number, c: any) => s + Number(c.amount), 0);
+          const totalAset = assetRes.data.reduce((s: number, a: Asset) => s + Number(a.amount), 0);
+          const totalUtang = debtRes.data.reduce((s: number, d: Debt) => s + Number(d.total_amount), 0);
+          const danaDarurat = getDanaDarurat(assetRes.data);
+          const pengeluaran = cashRes.data.filter((c: CashflowItem) => c.direction === 'keluar').reduce((s: number, c: CashflowItem) => s + Number(c.amount), 0);
+          const cicilan = cashRes.data.filter((c: CashflowItem) => c.category === 'kewajiban_cicilan').reduce((s: number, c: CashflowItem) => s + Number(c.amount), 0);
+          const pendapatan = cashRes.data.filter((c: CashflowItem) => c.direction === 'masuk').reduce((s: number, c: CashflowItem) => s + Number(c.amount), 0);
+          const tabInvest = cashRes.data.filter((c: CashflowItem) => c.category === 'masa_depan_investasi').reduce((s: number, c: CashflowItem) => s + Number(c.amount), 0);
+          const biayaHidup = cashRes.data.filter((c: CashflowItem) => c.category === 'kebutuhan_sehari_hari').reduce((s: number, c: CashflowItem) => s + Number(c.amount), 0);
 
           const rasioDarurat = pengeluaran > 0 ? danaDarurat / pengeluaran : 0;
           const rasioCicilan = pendapatan > 0 ? cicilan / pendapatan : 0;

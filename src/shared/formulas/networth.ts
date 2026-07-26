@@ -49,13 +49,15 @@ export function calculateGrowth(current: number, previous: number): number | nul
 }
 
 export function getDanaDarurat(assets: Asset[]): number {
-  // Dana Darurat = aset kas yang bernama "Dana Darurat" (RDPU/RDPT)
+  // Dana Darurat = aset kas yang ditandai is_emergency_fund
+  // Fallback: aset kas yang namanya mengandung "dana darurat" (untuk data lama)
   // Rumus Excel: D9 di sheet "01 Net Worth"
   return assets
     .filter(
       (a) =>
         a.category === 'kas_setara_kas' &&
-        a.name.toLowerCase().includes('dana darurat')
+        (a.is_emergency_fund === true ||
+         a.name.toLowerCase().includes('dana darurat'))
     )
     .reduce((sum, a) => sum + Number(a.amount), 0);
 }

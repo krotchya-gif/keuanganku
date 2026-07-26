@@ -17,6 +17,7 @@ export interface Asset {
   category: AssetCategory;
   amount: number;
   notes?: string;
+  is_emergency_fund?: boolean;
   created_at: string;
   updated_at: string;
 }
