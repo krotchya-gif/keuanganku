@@ -1,6 +1,6 @@
 {
-  "name": "Keuangan — Manajemen Keuangan Personal",
-  "short_name": "Keuangan",
+  "name": "Keuanganku — Manajemen Keuangan Personal",
+  "short_name": "Keuanganku",
   "description": "Aplikasi manajemen keuangan personal lengkap: Net Worth, Arus Kas, Checkup Keuangan, Simulasi KPR, Budgeting, dan Tabungan.",
   "start_url": "/dashboard",
   "display": "standalone",

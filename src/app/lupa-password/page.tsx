@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState } from 'react';
 import Link from 'next/link';
@@ -41,7 +41,7 @@ export default function LupaPasswordPage() {
             <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm">
               <TrendingUp className="w-5 h-5 text-white" />
             </div>
-            <span className="text-white text-xl font-bold">Keuangan</span>
+            <span className="text-white text-xl font-bold">Keuanganku</span>
           </div>
           <h1 className="text-4xl font-bold text-white leading-tight mb-4">Akses Kembali <br/>Akun Anda</h1>
           <p className="text-white/70 text-lg leading-relaxed">Jangan khawatir, kami akan membantu mereset kata sandi Anda dengan aman.</p>

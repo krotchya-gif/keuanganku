@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -52,7 +52,7 @@ export default function ResetPasswordPage() {
             <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm">
               <TrendingUp className="w-5 h-5 text-white" />
             </div>
-            <span className="text-white text-xl font-bold">Keuangan</span>
+            <span className="text-white text-xl font-bold">Keuanganku</span>
           </div>
           <h1 className="text-4xl font-bold text-white leading-tight mb-4">Sandi Baru <br/>Telah Siap</h1>
           <p className="text-white/70 text-lg leading-relaxed">Silakan masukkan kombinasi kata sandi baru Anda untuk kembali aman.</p>
@@ -79,7 +79,7 @@ export default function ResetPasswordPage() {
                    <label className="block text-sm font-medium text-foreground mb-1.5">Sandi Baru</label>
                    <div className="relative">
                       <Key className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
-                      <input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} disabled={loading} className="w-full pl-9 pr-4 py-2.5 bg-background border border-border rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="••••••••" />
+                      <input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} disabled={loading} className="w-full pl-9 pr-4 py-2.5 bg-background border border-border rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢" />
                    </div>
                  </div>
 
@@ -87,7 +87,7 @@ export default function ResetPasswordPage() {
                    <label className="block text-sm font-medium text-foreground mb-1.5">Konfirmasi Sandi Baru</label>
                    <div className="relative">
                       <Key className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
-                      <input type="password" required value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} disabled={loading} className="w-full pl-9 pr-4 py-2.5 bg-background border border-border rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="••••••••" />
+                      <input type="password" required value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} disabled={loading} className="w-full pl-9 pr-4 py-2.5 bg-background border border-border rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢" />
                    </div>
                  </div>
 

@@ -82,7 +82,7 @@ export function Sidebar() {
             <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center shadow-glow">
               <Wallet className="w-4 h-4 text-white" />
             </div>
-            <p className="font-bold text-foreground text-base leading-none">Keuangan</p>
+            <p className="font-bold text-foreground text-base leading-none">Keuanganku</p>
          </div>
          <button onClick={() => setIsOpen(true)} className="p-2 text-muted-foreground hover:bg-muted rounded-lg transition-colors">
             <Menu className="w-5 h-5" />
@@ -110,7 +110,7 @@ export function Sidebar() {
               <Wallet className="w-5 h-5 text-white" />
             </div>
             <div>
-              <p className="font-bold text-foreground text-sm leading-none">Keuangan</p>
+              <p className="font-bold text-foreground text-sm leading-none">Keuanganku</p>
               <p className="text-muted-foreground text-xs mt-0.5">Manajemen Finansial</p>
             </div>
           </Link>

@@ -5,8 +5,8 @@ import { Analytics } from '@vercel/analytics/react';
 
 export const metadata: Metadata = {
   title: {
-    default: 'Keuangan — Manajemen Keuangan Personal',
-    template: '%s | Keuangan',
+    default: 'Keuanganku — Manajemen Keuangan Personal',
+    template: '%s | Keuanganku',
   },
   description:
     'Aplikasi manajemen keuangan personal lengkap: Net Worth, Arus Kas, Checkup Keuangan, Simulasi KPR, Budgeting, dan Tabungan.',
@@ -15,7 +15,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
-    title: 'Keuangan',
+    title: 'Keuanganku',
   },
   icons: {
     icon: '/icon.png',

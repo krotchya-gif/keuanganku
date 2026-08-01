@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState } from 'react';
 import Link from 'next/link';
@@ -76,7 +76,7 @@ export default function RegisterPage() {
 
   return (
     <div className="min-h-screen flex">
-      {/* Left Panel — Branding */}
+      {/* Left Panel â€” Branding */}
       <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-violet-600 via-indigo-600 to-blue-700 p-12 flex-col justify-between relative overflow-hidden">
         <div className="absolute -top-20 -right-20 w-80 h-80 bg-white/10 rounded-full blur-3xl" />
         <div className="absolute -bottom-20 -left-20 w-80 h-80 bg-white/10 rounded-full blur-3xl" />
@@ -86,7 +86,7 @@ export default function RegisterPage() {
             <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm">
               <TrendingUp className="w-5 h-5 text-white" />
             </div>
-            <span className="text-white text-xl font-bold">Keuangan</span>
+            <span className="text-white text-xl font-bold">Keuanganku</span>
           </div>
 
           <h1 className="text-4xl font-bold text-white leading-tight mb-4">
@@ -112,7 +112,7 @@ export default function RegisterPage() {
         </div>
       </div>
 
-      {/* Right Panel — Register Form */}
+      {/* Right Panel â€” Register Form */}
       <div className="flex-1 flex items-center justify-center p-8 bg-background">
         <div className="w-full max-w-md">
           {/* Mobile logo */}
@@ -120,7 +120,7 @@ export default function RegisterPage() {
             <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center">
               <TrendingUp className="w-4 h-4 text-white" />
             </div>
-            <span className="text-lg font-bold text-foreground">Keuangan</span>
+            <span className="text-lg font-bold text-foreground">Keuanganku</span>
           </div>
 
           <div className="mb-8">
