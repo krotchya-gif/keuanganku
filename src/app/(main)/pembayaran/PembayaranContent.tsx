@@ -4,21 +4,22 @@ import { useState, useEffect } from 'react';
 import { getCurrentUserId } from '@/lib/queries/users';
 import { fetchBudgetItemsByCategory } from '@/lib/queries/budget';
 import { fetchTransactionsByCategory } from '@/lib/queries/transactions';
-import { Loader2, CalendarHeart, CheckCircle2, XCircle } from 'lucide-react';
+import { CalendarHeart, CheckCircle2, XCircle } from 'lucide-react';
 import { Skeleton, ListSkeleton } from '@/components/ui/Skeleton';
-import { formatRupiah } from '@/lib/utils';
+import { formatRupiah, getMonthRange, getYearOptions } from '@/lib/utils';
+import type { BudgetItem, Transaction } from '@/shared';
 
 export function PembayaranContent() {
   const [loading, setLoading] = useState(true);
-  const [items, setItems] = useState<any[]>([]);
-  const [transactions, setTransactions] = useState<any[]>([]);
+  const [items, setItems] = useState<BudgetItem[]>([]);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [year, setYear] = useState(new Date().getFullYear());
   const [month, setMonth] = useState(new Date().getMonth() + 1);
 
   useEffect(() => {
     async function fetchData() {
       try {
-        setLoading(true);
+        if (items.length === 0) setLoading(true);
         const userId = await getCurrentUserId();
         if (!userId) return;
 
@@ -30,9 +31,8 @@ export function PembayaranContent() {
         setItems([...tagihanItems, ...hutangItems]);
 
         // Fetch transactions for the selected month to check if paid
-        const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
-        const endDate = new Date(year, month, 0).toISOString().split('T')[0];
-        
+        const { startDate, endDate } = getMonthRange(year, month);
+
         const [tagihanTxs, hutangTxs] = await Promise.all([
           fetchTransactionsByCategory(userId, 'TAGIHAN', startDate, endDate),
           fetchTransactionsByCategory(userId, 'HUTANG', startDate, endDate),
@@ -45,6 +45,7 @@ export function PembayaranContent() {
       }
     }
     fetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [year, month]);
 
   if (loading && items.length === 0) {
@@ -62,10 +63,11 @@ export function PembayaranContent() {
   const checkStatus = (itemName: string, target: number) => {
     const matchedTxs = transactions.filter(t => t.subcategory === itemName);
     const paid = matchedTxs.reduce((s, t) => s + Number(t.amount), 0);
-    return { paid, isFullyPaid: paid >= target, target };
+    // Target 0 (belum diisi) jangan dianggap lunas
+    return { paid, isFullyPaid: target > 0 && paid >= target, target };
   };
 
-  const renderList = (list: any[], title: string, colorClass: string, bgClass: string) => {
+  const renderList = (list: BudgetItem[], title: string, colorClass: string, bgClass: string) => {
     if (list.length === 0) return null;
     
     // Hitung status lunas / blm lunas agregat
@@ -122,7 +124,7 @@ export function PembayaranContent() {
              {Array.from({length: 12}, (_, i) => (<option key={i+1} value={i+1}>{new Date(2000, i, 1).toLocaleDateString('id-ID', { month: 'long' })}</option>))}
            </select>
            <select value={year} onChange={(e) => setYear(Number(e.target.value))} className="bg-card border border-border rounded-lg px-3 py-2 text-sm font-medium inline-block w-24 focus:ring-primary-500">
-             {[2024, 2025, 2026, 2027].map(y => <option key={y} value={y}>{y}</option>)}
+             {getYearOptions().map(y => <option key={y} value={y}>{y}</option>)}
            </select>
         </div>
       </div>

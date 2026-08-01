@@ -1,5 +1,7 @@
 'use client';
 
+import { useId } from 'react';
+
 export const CHART_COLORS = {
   primary: '#635bff',
   success: '#3ecf8e',
@@ -40,11 +42,14 @@ export const CHART_GRADIENTS = {
   },
 };
 
-export function ChartGradients() {
+export function ChartGradients({ prefix }: { prefix?: string }) {
+  // Prefix per-instance (useId) supaya id SVG tidak bentrok bila ada 2+ chart di satu halaman
+  const uid = useId().replace(/[^a-zA-Z0-9]/g, '');
+  const p = prefix ?? uid;
   return (
     <defs>
       {Object.values(CHART_GRADIENTS).map((g) => (
-        <linearGradient key={g.id} id={g.id} x1="0" y1="0" x2="0" y2="1">
+        <linearGradient key={g.id} id={`${p}-${g.id}`} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor={g.start} stopOpacity={0.35} />
           <stop offset="100%" stopColor={g.end} stopOpacity={0} />
         </linearGradient>
@@ -66,6 +71,7 @@ export const chartAxisStyle = {
 };
 
 export function formatChartRupiah(value: number): string {
+  if (!Number.isFinite(value)) return 'Rp0';
   if (Math.abs(value) >= 1_000_000_000) {
     return `Rp${(value / 1_000_000_000).toFixed(1)}M`;
   }

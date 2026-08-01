@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Plus, Edit2, Trash2, X, Loader2, ArrowRightLeft, Target, Wallet, CalendarDays, Download } from 'lucide-react';
 import { Skeleton, TableSkeleton } from '@/components/ui/Skeleton';
-import { formatRupiah, formatRupiahCompact, formatPercent } from '@/lib/utils';
+import { formatRupiah, formatRupiahCompact, formatPercent, getTodayString, getMonthRange, getYearOptions } from '@/lib/utils';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { ChartTooltip } from '@/components/charts/ChartTooltip';
 import { chartGridStyle, chartAxisStyle, formatChartRupiah } from '@/components/charts/ChartTheme';
@@ -12,43 +12,29 @@ import { getCurrentUserId } from '@/lib/queries/users';
 import { fetchBudgetItems } from '@/lib/queries/budget';
 import { fetchTransactions } from '@/lib/queries/transactions';
 import { exportCSV } from '@/lib/export';
-
-const CATEGORY_LABELS: Record<string, string> = {
-  PENDAPATAN: 'Pendapatan',
-  TABUNGAN_INVESTASI: 'Tabungan & Investasi',
-  TAGIHAN: 'Tagihan Berbayar',
-  BIAYA_OPERASIONAL: 'Biaya Operasional Harian',
-  HUTANG: 'Pelunasan Hutang',
-};
-
-const CATEGORY_COLORS: Record<string, string> = {
-  PENDAPATAN: '#3ecf8e',
-  TABUNGAN_INVESTASI: '#635bff',
-  TAGIHAN: '#f5a623',
-  BIAYA_OPERASIONAL: '#06b6d4',
-  HUTANG: '#ef4444',
-};
+import { BUDGET_CATEGORY_LABELS, BUDGET_CATEGORY_COLORS } from '@/shared';
+import type { BudgetItem, Transaction, BudgetCategory } from '@/shared';
 
 export function BudgetingContent() {
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState('');
-  
-  const [budgetItems, setBudgetItems] = useState<any[]>([]);
-  const [transactions, setTransactions] = useState<any[]>([]);
+
+  const [budgetItems, setBudgetItems] = useState<BudgetItem[]>([]);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
 
   const [activeTab, setActiveTab] = useState<'ringkasan' | 'amplop' | 'transaksi'>('ringkasan');
-  
+
   const [month, setMonth] = useState(new Date().getMonth() + 1);
   const [year, setYear] = useState(new Date().getFullYear());
 
   // Modals
   const [showItemModal, setShowItemModal] = useState(false);
-  const [editingItem, setEditingItem] = useState<any | null>(null);
-  const [itemForm, setItemForm] = useState({ name: '', category: 'BIAYA_OPERASIONAL', amount: 0 });
+  const [editingItem, setEditingItem] = useState<BudgetItem | null>(null);
+  const [itemForm, setItemForm] = useState({ name: '', category: 'BIAYA_OPERASIONAL' as BudgetCategory, amount: 0 });
 
   const [showTxModal, setShowTxModal] = useState(false);
-  const [editingTx, setEditingTx] = useState<any | null>(null);
-  const [txForm, setTxForm] = useState({ transaction_date: new Date().toISOString().split('T')[0], category: 'BIAYA_OPERASIONAL', subcategory: '', amount: 0, description: '' });
+  const [editingTx, setEditingTx] = useState<Transaction | null>(null);
+  const [txForm, setTxForm] = useState({ transaction_date: getTodayString(), category: 'BIAYA_OPERASIONAL' as BudgetCategory, subcategory: '', amount: 0, description: '' });
 
   const fetchData = async () => {
     try {
@@ -62,9 +48,8 @@ export function BudgetingContent() {
       setBudgetItems(itemsData);
 
       // Fetch transactions for selected month/year
-      const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
-      const endDate = new Date(year, month, 0).toISOString().split('T')[0]; // last day of month
-      
+      const { startDate, endDate } = getMonthRange(year, month);
+
       const txData = await fetchTransactions(userId, startDate, endDate);
       setTransactions(txData);
     } catch (err) {
@@ -76,29 +61,40 @@ export function BudgetingContent() {
 
   useEffect(() => {
     fetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [month, year]);
 
   const saveBudgetItem = async (e: React.FormEvent) => {
     e.preventDefault();
-    const supabase = createClient();
-    if (editingItem) {
-      await supabase.from('budget_items').update({
-        name: itemForm.name, category: itemForm.category, amount: itemForm.amount
-      }).eq('id', editingItem.id);
-    } else {
-      await supabase.from('budget_items').insert({
-        user_id: userId, name: itemForm.name, category: itemForm.category, amount: itemForm.amount
-      });
+    try {
+      const supabase = createClient();
+      if (editingItem) {
+        await supabase.from('budget_items').update({
+          name: itemForm.name, category: itemForm.category, amount: itemForm.amount
+        }).eq('id', editingItem.id);
+      } else {
+        await supabase.from('budget_items').insert({
+          user_id: userId, name: itemForm.name, category: itemForm.category, amount: itemForm.amount
+        });
+      }
+      setShowItemModal(false);
+      await fetchData();
+    } catch (err) {
+      console.error(err);
+      alert('Gagal menyimpan amplop. Coba lagi.');
     }
-    setShowItemModal(false);
-    fetchData();
   };
 
   const deleteBudgetItem = async (id: string) => {
     if (!confirm('Hapus Amplop Anggaran ini? Transaksi yang memakai sub-kategori ini mungkin akan kehilangan referensi nama amplopnya.')) return;
-    const supabase = createClient();
-    await supabase.from('budget_items').delete().eq('id', id);
-    fetchData();
+    try {
+      const supabase = createClient();
+      await supabase.from('budget_items').delete().eq('id', id);
+      await fetchData();
+    } catch (err) {
+      console.error(err);
+      alert('Gagal menghapus amplop. Coba lagi.');
+    }
   };
 
   const saveTransaction = async (e: React.FormEvent) => {
@@ -106,49 +102,65 @@ export function BudgetingContent() {
     const supabase = createClient();
     // In order for negative/positive signs to be correct: Tabungan/Tagihan/Biaya/Hutang are positive expenses mathematically in the input, but we might want PENDAPATAN to be income.
     // The DB `amount` is just absolute, the `category` dictates if it's income or expense.
-    if (editingTx) {
-      await supabase.from('transactions').update({
-        transaction_date: txForm.transaction_date,
-        category: txForm.category,
-        subcategory: txForm.subcategory,
-        amount: txForm.amount,
-        description: txForm.description
-      }).eq('id', editingTx.id);
-    } else {
-      await supabase.from('transactions').insert({
-        user_id: userId,
-        transaction_date: txForm.transaction_date,
-        category: txForm.category,
-        subcategory: txForm.subcategory,
-        amount: txForm.amount,
-        description: txForm.description
-      });
+    try {
+      if (editingTx) {
+        await supabase.from('transactions').update({
+          transaction_date: txForm.transaction_date,
+          category: txForm.category,
+          subcategory: txForm.subcategory,
+          amount: txForm.amount,
+          description: txForm.description
+        }).eq('id', editingTx.id);
+      } else {
+        await supabase.from('transactions').insert({
+          user_id: userId,
+          transaction_date: txForm.transaction_date,
+          category: txForm.category,
+          subcategory: txForm.subcategory,
+          amount: txForm.amount,
+          description: txForm.description
+        });
+      }
+      setShowTxModal(false);
+      await fetchData();
+    } catch (err) {
+      console.error(err);
+      alert('Gagal menyimpan transaksi. Coba lagi.');
     }
-    setShowTxModal(false);
-    fetchData();
   };
 
   const deleteTransaction = async (id: string) => {
     if (!confirm('Hapus Transaksi Harian ini?')) return;
-    const supabase = createClient();
-    await supabase.from('transactions').delete().eq('id', id);
-    fetchData();
+    try {
+      const supabase = createClient();
+      await supabase.from('transactions').delete().eq('id', id);
+      await fetchData();
+    } catch (err) {
+      console.error(err);
+      alert('Gagal menghapus transaksi. Coba lagi.');
+    }
   };
 
   // ── Calculated View Data ──
-  const summaryByCategory = Object.keys(CATEGORY_LABELS).map(catKey => {
+  const summaryByCategory = (Object.keys(BUDGET_CATEGORY_LABELS) as BudgetCategory[]).map(catKey => {
     const plannedItems = budgetItems.filter(i => i.category === catKey);
     const totalPlanned = plannedItems.reduce((s, i) => s + Number(i.amount), 0);
-    
+
     const actualTxs = transactions.filter(t => t.category === catKey);
     const totalActual = actualTxs.reduce((s, t) => s + Number(t.amount), 0);
 
+    const plannedNames = new Set(plannedItems.map(i => i.name));
+    const leakedTxs = actualTxs.filter(t => !t.subcategory || !plannedNames.has(t.subcategory));
+    const leakedTotal = leakedTxs.reduce((s, t) => s + Number(t.amount), 0);
+
     return {
       catKey,
-      label: CATEGORY_LABELS[catKey],
-      color: CATEGORY_COLORS[catKey],
+      label: BUDGET_CATEGORY_LABELS[catKey],
+      color: BUDGET_CATEGORY_COLORS[catKey],
       totalPlanned,
       totalActual,
+      leakedTotal,
+      leakedTxs,
       plannedItems: plannedItems.map(pi => {
         const matchingTxs = actualTxs.filter(t => t.subcategory === pi.name);
         const actual = matchingTxs.reduce((s, t) => s + Number(t.amount), 0);
@@ -193,7 +205,7 @@ export function BudgetingContent() {
              {Array.from({length: 12}, (_, i) => (<option key={i+1} value={i+1}>{new Date(2000, i, 1).toLocaleDateString('id-ID', { month: 'long' })}</option>))}
            </select>
            <select value={year} onChange={(e) => setYear(Number(e.target.value))} className="bg-card border border-border rounded-lg px-3 py-2 text-sm font-medium inline-block w-24 focus:ring-primary-500">
-             {[2024, 2025, 2026, 2027].map(y => <option key={y} value={y}>{y}</option>)}
+             {getYearOptions().map(y => <option key={y} value={y}>{y}</option>)}
            </select>
         </div>
       </div>
@@ -208,7 +220,7 @@ export function BudgetingContent() {
           ].map((t) => (
             <button
               key={t.key}
-              onClick={() => setActiveTab(t.key as any)}
+              onClick={() => setActiveTab(t.key as 'ringkasan' | 'amplop' | 'transaksi')}
               className={`flex items-center gap-2 px-4 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm font-medium transition-colors whitespace-nowrap ${activeTab === t.key ? 'text-primary-500 border-b-2 border-primary-500 bg-primary-500/5' : 'text-muted-foreground hover:text-foreground'}`}
             >
               {t.icon} <span className="hidden sm:inline">{t.label}</span><span className="sm:hidden">{t.mobileLabel}</span>
@@ -309,13 +321,13 @@ export function BudgetingContent() {
                              </div>
                            );
                          })}
-                         {/* Show unmapped transactions if any */}
-                         {transactions.filter(t => t.category === group.catKey && !group.plannedItems.find(p => p.name === t.subcategory)).length > 0 && (
-                           <div className="mt-3 bg-red-50/50 p-2 rounded border border-red-100 border-dashed">
-                             <p className="text-xs text-red-600 font-medium mb-1">⚠️ Transaksi Tanpa Amplop Induk (Bocor)</p>
-                               <p className="text-lg font-bold text-red-600 font-numeric">{group.catKey === 'PENDAPATAN' ? '+' : '-'}{formatRupiahCompact(transactions.filter(t => t.category === group.catKey && !group.plannedItems.find(p => p.name === t.subcategory)).reduce((s,t) => s + Number(t.amount), 0))}</p>
-                           </div>
-                         )}
+                          {/* Show unmapped transactions if any */}
+                          {group.leakedTxs.length > 0 && (
+                            <div className="mt-3 bg-red-50/50 p-2 rounded border border-red-100 border-dashed">
+                              <p className="text-xs text-red-600 font-medium mb-1">⚠️ Transaksi Tanpa Amplop Induk (Bocor)</p>
+                                <p className="text-lg font-bold text-red-600 font-numeric">{group.catKey === 'PENDAPATAN' ? '+' : '-'}{formatRupiahCompact(group.leakedTotal)}</p>
+                            </div>
+                          )}
                        </div>
                      </div>
                    );
@@ -333,13 +345,13 @@ export function BudgetingContent() {
                     <p className="text-xs text-muted-foreground">Catat setiap uang yang masuk atau keluar di bulan ini.</p>
                   </div>
                   <div className="flex items-center gap-2 w-full sm:w-auto">
-                    <button onClick={() => exportCSV(`transaksi-${month}-${year}`, ['Tanggal', 'Kategori', 'Amplop', 'Keterangan', 'Jumlah'], transactions.map(t => [new Date(t.transaction_date).toLocaleDateString('id-ID'), CATEGORY_LABELS[t.category], t.subcategory || '-', t.description || '-', t.amount]))} className="flex items-center gap-1.5 bg-card border border-border hover:bg-muted text-foreground px-3 py-2.5 sm:py-2 rounded-xl sm:rounded-lg text-xs sm:text-sm font-medium transition-colors">
+                    <button onClick={() => exportCSV(`transaksi-${month}-${year}`, ['Tanggal', 'Kategori', 'Amplop', 'Keterangan', 'Jumlah'], transactions.map(t => [new Date(t.transaction_date).toLocaleDateString('id-ID'), BUDGET_CATEGORY_LABELS[t.category], t.subcategory || '-', t.description || '-', t.amount]))} className="flex items-center gap-1.5 bg-card border border-border hover:bg-muted text-foreground px-3 py-2.5 sm:py-2 rounded-xl sm:rounded-lg text-xs sm:text-sm font-medium transition-colors">
                       <Download className="w-4 h-4" /> Export CSV
                     </button>
                     <button 
                     onClick={() => {
                      setEditingTx(null);
-                     setTxForm({ transaction_date: new Date().toISOString().split('T')[0], category: 'BIAYA_OPERASIONAL', subcategory: budgetItems.find(i => i.category === 'BIAYA_OPERASIONAL')?.name || '', amount: 0, description: '' });
+                     setTxForm({ transaction_date: getTodayString(), category: 'BIAYA_OPERASIONAL', subcategory: budgetItems.find(i => i.category === 'BIAYA_OPERASIONAL')?.name || '', amount: 0, description: '' });
                      setShowTxModal(true);
                    }} 
                    className="flex items-center gap-2 bg-primary-500 hover:bg-primary-600 text-white px-4 py-2.5 sm:py-2 rounded-xl sm:rounded-lg text-sm font-medium shadow-glow w-full sm:w-auto justify-center"
@@ -364,7 +376,7 @@ export function BudgetingContent() {
                          <div className="flex-1 min-w-0">
                            <div className="flex items-center gap-2 mb-1">
                              <span className="text-xs text-muted-foreground tabular-nums">{new Date(t.transaction_date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short' })}</span>
-                             <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">{CATEGORY_LABELS[t.category]}</span>
+                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">{BUDGET_CATEGORY_LABELS[t.category]}</span>
                            </div>
                            <p className="font-medium text-foreground text-sm">{t.subcategory || '-'}</p>
                            <p className="text-xs text-muted-foreground mt-0.5 truncate">{t.description || '-'}</p>
@@ -373,10 +385,10 @@ export function BudgetingContent() {
                            <p className={`text-sm font-numeric font-semibold ${t.category === 'PENDAPATAN' ? 'text-emerald-500' : 'text-foreground'}`}>
                              {t.category === 'PENDAPATAN' ? '+' : '-'}{formatRupiah(t.amount)}
                            </p>
-                           <div className="flex gap-1 justify-end mt-2">
-                             <button onClick={() => { setEditingTx(t); setTxForm({ ...t, transaction_date: t.transaction_date.split('T')[0] }); setShowTxModal(true); }} className="p-1.5 text-muted-foreground hover:bg-muted rounded"><Edit2 className="w-3.5 h-3.5" /></button>
-                             <button onClick={() => deleteTransaction(t.id)} className="p-1.5 text-muted-foreground hover:bg-red-50 hover:text-red-500 rounded"><Trash2 className="w-3.5 h-3.5" /></button>
-                           </div>
+                            <div className="flex gap-1 justify-end mt-2">
+                              <button onClick={() => { setEditingTx(t); setTxForm({ transaction_date: String(t.transaction_date).slice(0, 10), category: t.category, subcategory: t.subcategory || '', amount: Number(t.amount), description: t.description || '' }); setShowTxModal(true); }} className="p-1.5 text-muted-foreground hover:bg-muted rounded"><Edit2 className="w-3.5 h-3.5" /></button>
+                              <button onClick={() => deleteTransaction(t.id)} className="p-1.5 text-muted-foreground hover:bg-red-50 hover:text-red-500 rounded"><Trash2 className="w-3.5 h-3.5" /></button>
+                            </div>
                          </div>
                        </div>
                      </div>
@@ -402,8 +414,8 @@ export function BudgetingContent() {
                            <td className="py-3 px-4 tabular-nums text-foreground/80">{new Date(t.transaction_date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short' })}</td>
                            <td className="py-3 px-4">
                              <div className="flex flex-col">
-                               <span className="font-medium text-foreground">{t.subcategory || '-'}</span>
-                               <span className="text-[10px] text-muted-foreground">{CATEGORY_LABELS[t.category]}</span>
+                                <span className="font-medium text-foreground">{t.subcategory || '-'}</span>
+                                <span className="text-[10px] text-muted-foreground">{BUDGET_CATEGORY_LABELS[t.category]}</span>
                              </div>
                            </td>
                            <td className="py-3 px-4 text-foreground/80 break-words max-w-[200px]">{t.description || '-'}</td>
@@ -411,10 +423,10 @@ export function BudgetingContent() {
                              {t.category === 'PENDAPATAN' ? '+' : '-'}{formatRupiah(t.amount)}
                            </td>
                            <td className="py-3 px-4">
-                              <div className="flex gap-1 justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                <button onClick={() => { setEditingTx(t); setTxForm({ ...t, transaction_date: t.transaction_date.split('T')[0] }); setShowTxModal(true); }} className="p-1.5 text-muted-foreground hover:bg-muted rounded"><Edit2 className="w-3.5 h-3.5" /></button>
-                                <button onClick={() => deleteTransaction(t.id)} className="p-1.5 text-muted-foreground hover:bg-red-50 hover:text-red-500 rounded"><Trash2 className="w-3.5 h-3.5" /></button>
-                              </div>
+                               <div className="flex gap-1 justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                 <button onClick={() => { setEditingTx(t); setTxForm({ transaction_date: String(t.transaction_date).slice(0, 10), category: t.category, subcategory: t.subcategory || '', amount: Number(t.amount), description: t.description || '' }); setShowTxModal(true); }} className="p-1.5 text-muted-foreground hover:bg-muted rounded"><Edit2 className="w-3.5 h-3.5" /></button>
+                                 <button onClick={() => deleteTransaction(t.id)} className="p-1.5 text-muted-foreground hover:bg-red-50 hover:text-red-500 rounded"><Trash2 className="w-3.5 h-3.5" /></button>
+                               </div>
                            </td>
                          </tr>
                        ))}
@@ -446,14 +458,14 @@ export function BudgetingContent() {
                </div>
 
                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-                 {Object.keys(CATEGORY_LABELS).map(catKey => {
+                 {(Object.keys(BUDGET_CATEGORY_LABELS) as BudgetCategory[]).map(catKey => {
                    const items = budgetItems.filter(i => i.category === catKey);
                    if (items.length === 0) return null;
                    
                    return (
                      <div key={catKey} className="card-premium overflow-hidden border border-border/60">
                        <div className="bg-muted/40 px-4 py-3 flex justify-between items-center border-b border-border">
-                         <h3 className="text-xs font-bold uppercase" style={{ color: CATEGORY_COLORS[catKey] }}>{CATEGORY_LABELS[catKey]}</h3>
+                         <h3 className="text-xs font-bold uppercase" style={{ color: BUDGET_CATEGORY_COLORS[catKey] }}>{BUDGET_CATEGORY_LABELS[catKey]}</h3>
                          <p className="text-xs font-numeric font-bold bg-background px-2 py-0.5 rounded border border-border">{formatRupiahCompact(items.reduce((s, i) => s + Number(i.amount), 0))}</p>
                        </div>
                        <ul className="divide-y divide-border/60">
@@ -464,7 +476,7 @@ export function BudgetingContent() {
                                <p className="text-[10px] text-muted-foreground font-numeric tracking-wide mt-0.5">TARGET: {formatRupiah(item.amount)}</p>
                              </div>
                              <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <button onClick={() => { setEditingItem(item); setItemForm(item); setShowItemModal(true); }} className="text-muted-foreground hover:text-primary-500"><Edit2 className="w-3.5 h-3.5" /></button>
+                                 <button onClick={() => { setEditingItem(item); setItemForm({ name: item.name, category: item.category, amount: Number(item.amount) }); setShowItemModal(true); }} className="text-muted-foreground hover:text-primary-500"><Edit2 className="w-3.5 h-3.5" /></button>
                                 <button onClick={() => deleteBudgetItem(item.id)} className="text-muted-foreground hover:text-red-500"><Trash2 className="w-3.5 h-3.5" /></button>
                              </div>
                            </li>
@@ -503,8 +515,8 @@ export function BudgetingContent() {
               </div>
               <div>
                 <label className="block text-xs font-semibold text-foreground mb-1.5 uppercase tracking-wide">Kategori Induk</label>
-                <select value={itemForm.category} onChange={e => setItemForm({...itemForm, category: e.target.value})} className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500">
-                  {Object.entries(CATEGORY_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                <select value={itemForm.category} onChange={e => setItemForm({...itemForm, category: e.target.value as BudgetCategory})} className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500">
+                  {Object.entries(BUDGET_CATEGORY_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
                 </select>
               </div>
               <div>
@@ -546,12 +558,12 @@ export function BudgetingContent() {
                     onChange={e => {
                        const selectedName = e.target.value;
                        const matchedItem = budgetItems.find(i => i.name === selectedName);
-                       setTxForm({...txForm, subcategory: selectedName, category: matchedItem ? matchedItem.category : 'BIAYA_OPERASIONAL' });
+                       setTxForm({...txForm, subcategory: selectedName, category: matchedItem ? matchedItem.category : 'BIAYA_OPERASIONAL' as BudgetCategory });
                     }} 
                     className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm font-medium focus:ring-2 focus:ring-primary-500"
                   >
                     <option value="" disabled>-- Pilih Amplop --</option>
-                    {Object.entries(CATEGORY_LABELS).map(([catKey, catLabel]) => {
+                    {Object.entries(BUDGET_CATEGORY_LABELS).map(([catKey, catLabel]) => {
                        const options = budgetItems.filter(i => i.category === catKey);
                        if (options.length === 0) return null;
                        return (

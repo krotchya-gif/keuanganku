@@ -123,6 +123,20 @@ export const ASSET_CATEGORY_LABELS: Record<AssetCategory, string> = {
   tetap: 'Aset Tetap',
 };
 
+export const CASHFLOW_CATEGORY_LABELS: Record<CashflowCategory, string> = {
+  pendapatan: 'Pendapatan',
+  kewajiban_cicilan: 'Kewajiban & Cicilan',
+  masa_depan_investasi: 'Masa Depan & Investasi',
+  kebutuhan_sehari_hari: 'Kebutuhan Sehari-hari',
+};
+
+export const CASHFLOW_CATEGORY_COLORS: Record<CashflowCategory, string> = {
+  pendapatan: '#3ecf8e',
+  kewajiban_cicilan: '#f5a623',
+  masa_depan_investasi: '#635bff',
+  kebutuhan_sehari_hari: '#06b6d4',
+};
+
 export const DEBT_TERM_LABELS: Record<DebtTerm, string> = {
   jangka_pendek: 'Jangka Pendek',
   jangka_panjang: 'Jangka Panjang',

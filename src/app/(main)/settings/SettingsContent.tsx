@@ -15,6 +15,8 @@ export function SettingsContent() {
          const supabase = createClient();
          const { data: { user } } = await supabase.auth.getUser();
          if (user && user.email) setEmail(user.email);
+      } catch (err) {
+         console.error(err);
       } finally {
          setLoading(false);
       }
@@ -23,29 +25,36 @@ export function SettingsContent() {
   }, []);
 
   const handleReset = async () => {
-     if (!confirm('PERINGATAN KERAS!\n\nApakah Anda yakin ingin menghapus SEMUA data keuangan Anda? (Aset, Utang, KPR, Jurnal Transaksi, Amplop Budget). Aksi ini TIDAK BISA dibatalkan.')) return;
+     if (!confirm('PERINGATAN KERAS!\n\nApakah Anda yakin ingin menghapus SEMUA data keuangan Anda? (Aset, Utang, KPR, Jurnal Transaksi, Amplop Budget, Target Tabungan). Aksi ini TIDAK BISA dibatalkan.')) return;
      if (!confirm('Apakah Anda BENAR-BENAR YAKIN? Sekali lagi, semua data akan lenyap untuk selamanya.')) return;
-     
+
      setReseting(true);
      try {
        const supabase = createClient();
        const { data: { user } } = await supabase.auth.getUser();
        if (!user) { setReseting(false); return alert('Unauthorized'); }
 
-       // Hapus data yang cuma milik user ini
-       await supabase.from('transactions').delete().eq('user_id', user.id);
-       await supabase.from('budget_items').delete().eq('user_id', user.id);
-       await supabase.from('cashflow_items').delete().eq('user_id', user.id);
-       await supabase.from('assets').delete().eq('user_id', user.id);
-       await supabase.from('debts').delete().eq('user_id', user.id);
-       await supabase.from('net_worth_snapshots').delete().eq('user_id', user.id);
-       await supabase.from('kpr_simulations').delete().eq('user_id', user.id);
-       
+       // Hapus data yang cuma milik user ini — jalankan paralel (mendekati atomik)
+       const results = await Promise.all([
+         supabase.from('transactions').delete().eq('user_id', user.id),
+         supabase.from('budget_items').delete().eq('user_id', user.id),
+         supabase.from('cashflow_items').delete().eq('user_id', user.id),
+         supabase.from('assets').delete().eq('user_id', user.id),
+         supabase.from('debts').delete().eq('user_id', user.id),
+         supabase.from('net_worth_snapshots').delete().eq('user_id', user.id),
+         supabase.from('kpr_simulations').delete().eq('user_id', user.id),
+         supabase.from('savings_goals').delete().eq('user_id', user.id),
+       ]);
+
+       if (results.some(r => r.error)) {
+         throw new Error('Salah satu tabel gagal dihapus');
+       }
+
        alert('Seluruh data berhasil dihapus. Aplikasi kembali bersih layaknya baru saja diinstall.');
        window.location.href = '/dashboard';
      } catch (err) {
        console.error(err);
-       alert('Terjadi kesalahan saat mereset data.');
+       alert('Terjadi kesalahan saat mereset data. Sebagian data mungkin masih tersisa, silakan coba lagi.');
      } finally {
        setReseting(false);
      }
@@ -92,11 +101,17 @@ export function SettingsContent() {
             </p>
             <button 
               onClick={async () => {
-                 const supabase = createClient();
-                 await supabase.auth.resetPasswordForEmail(email, {
-                    redirectTo: `${window.location.origin}/auth/callback?type=recovery`,
-                 });
-                 alert('Tautan reset kata sandi telah dikirim ke: ' + email + '\nSilakan periksa kotak masuk Anda.');
+                 try {
+                   const supabase = createClient();
+                   const { error } = await supabase.auth.resetPasswordForEmail(email, {
+                      redirectTo: `${window.location.origin}/auth/callback?type=recovery`,
+                   });
+                   if (error) throw error;
+                   alert('Tautan reset kata sandi telah dikirim ke: ' + email + '\nSilakan periksa kotak masuk Anda.');
+                 } catch (err) {
+                   console.error(err);
+                   alert('Gagal mengirim tautan reset. Periksa email Anda atau coba lagi.');
+                 }
               }}
               className="bg-primary-50 text-primary-600 hover:bg-primary-100 hover:text-primary-700 px-4 py-2 rounded-lg text-sm font-bold transition-colors"
             >

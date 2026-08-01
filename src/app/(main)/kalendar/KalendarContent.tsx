@@ -3,25 +3,25 @@
 import { useState, useEffect } from 'react';
 import { getCurrentUserId } from '@/lib/queries/users';
 import { fetchTransactions } from '@/lib/queries/transactions';
-import { Loader2, CalendarHeart } from 'lucide-react';
+import { CalendarHeart } from 'lucide-react';
 import { Skeleton, ListSkeleton } from '@/components/ui/Skeleton';
-import { formatRupiah } from '@/lib/utils';
+import { formatRupiah, getMonthRange, getYearOptions } from '@/lib/utils';
+import type { Transaction } from '@/shared';
 
 export function KalendarContent() {
   const [loading, setLoading] = useState(true);
-  const [transactions, setTransactions] = useState<any[]>([]);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [month, setMonth] = useState(new Date().getMonth() + 1);
   const [year, setYear] = useState(new Date().getFullYear());
 
   useEffect(() => {
     async function fetchData() {
       try {
-        setLoading(true);
+        if (transactions.length === 0) setLoading(true);
         const userId = await getCurrentUserId();
         if (!userId) return;
 
-        const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
-        const endDate = new Date(year, month, 0).toISOString().split('T')[0];
+        const { startDate, endDate } = getMonthRange(year, month);
 
         const txs = await fetchTransactions(userId, startDate, endDate);
         setTransactions(txs);
@@ -32,6 +32,7 @@ export function KalendarContent() {
       }
     }
     fetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [year, month]);
 
   if (loading) return (
@@ -41,10 +42,11 @@ export function KalendarContent() {
     </div>
   );
 
-  // Group by exact date
-  const grouped: Record<string, any[]> = {};
+  // Group by exact date (guard null/format tanggal ISO)
+  const grouped: Record<string, Transaction[]> = {};
   transactions.forEach(t => {
-     const dateStr = t.transaction_date.split('T')[0];
+     const dateStr = String(t.transaction_date).slice(0, 10);
+     if (!dateStr) return;
      if (!grouped[dateStr]) grouped[dateStr] = [];
      grouped[dateStr].push(t);
   });
@@ -63,7 +65,7 @@ export function KalendarContent() {
              {Array.from({length: 12}, (_, i) => (<option key={i+1} value={i+1}>{new Date(2000, i, 1).toLocaleDateString('id-ID', { month: 'long' })}</option>))}
            </select>
            <select value={year} onChange={(e) => setYear(Number(e.target.value))} className="bg-card border border-border rounded-lg px-3 py-2 text-sm font-medium inline-block w-24 focus:ring-primary-500">
-             {[2024, 2025, 2026, 2027].map(y => <option key={y} value={y}>{y}</option>)}
+             {getYearOptions().map(y => <option key={y} value={y}>{y}</option>)}
            </select>
         </div>
       </div>

@@ -7,10 +7,10 @@ import {
   Plus, Wallet, PiggyBank, Activity, LayoutDashboard,
   ChevronRight, CalendarDays, ArrowRight
 } from 'lucide-react';
-import { formatRupiah, formatRupiahCompact, formatPercent, getStatusColor, getMonthName } from '@/lib/utils';
+import { formatRupiah, formatRupiahCompact, formatPercent, getStatusColor, getMonthName, getMonthRange } from '@/lib/utils';
 import {
   AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer,
-  BarChart, Bar, RadarChart, Radar, PolarGrid, PolarAngleAxis,
+  RadarChart, Radar, PolarGrid, PolarAngleAxis,
 } from 'recharts';
 import { getCurrentUserId } from '@/lib/queries/users';
 import { fetchAssets } from '@/lib/queries/assets';
@@ -22,11 +22,40 @@ import { fetchSavingsGoals } from '@/lib/queries/savings';
 import { fetchBudgetItems } from '@/lib/queries/budget';
 import { ChartTooltip } from '@/components/charts/ChartTooltip';
 import { ChartGradients, chartGridStyle, chartAxisStyle, formatChartRupiah } from '@/components/charts/ChartTheme';
-import type { Asset, Debt, CashflowItem, SavingsGoal, Transaction } from '@/shared';
-import { getDanaDarurat } from '@/shared';
+import type { Asset, Debt, CashflowItem, SavingsGoal, Transaction, FinancialCheckupItem } from '@/shared';
+import { getDanaDarurat, calculateNetWorth, calculateCashFlow, calculateFinancialCheckup, BUDGET_CATEGORY_LABELS, BUDGET_CATEGORY_COLORS } from '@/shared';
 import { Skeleton, CardSkeleton, ChartSkeleton, KPISkeleton } from '@/components/ui/Skeleton';
 
-const statusColors = { sehat: '#3ecf8e', warning: '#f5a623', bahaya: '#ef4444' };
+interface NetWorthHistoryPoint {
+  bulan: string;
+  aset: number;
+  utang: number;
+  netWorth: number;
+}
+
+interface BudgetPreview {
+  category: string;
+  planned: number;
+  actual: number;
+  color: string;
+}
+
+interface CheckupRadarPoint {
+  name: string;
+  value: number;
+  status: 'sehat' | 'warning' | 'bahaya';
+}
+
+function normalizeRadarValue(index: number, raw: number, pendapatan: number): number {
+  switch (index) {
+    case 0: return Math.min(1, raw / 6);                                    // Dana Darurat (≥6x)
+    case 1: return Math.min(1, Math.max(0, raw / (pendapatan || 1)));       // Arus Kas (surplus)
+    case 2: return Math.min(1, raw / 0.3);                                  // Cicilan (<30%)
+    case 3: return Math.min(1, raw / 0.2);                                  // Investasi (10-20%)
+    case 4: return Math.min(1, raw / 0.6);                                  // Biaya Hidup (<60%)
+    default: return Number.isFinite(raw) && raw > 0 ? Math.min(1, 1 / raw) : 1; // Solvabilitas (>100%)
+  }
+}
 
 export function DashboardContent() {
   const [loading, setLoading] = useState(true);
@@ -35,12 +64,12 @@ export function DashboardContent() {
   const currentYear = now.getFullYear();
 
   const [netWorth, setNetWorth] = useState({ current: 0, previous: 0, growth: 0, totalAssets: 0, totalDebts: 0 });
-  const [netWorthHistory, setNetWorthHistory] = useState<any[]>([]);
+  const [netWorthHistory, setNetWorthHistory] = useState<NetWorthHistoryPoint[]>([]);
   const [cashFlow, setCashFlow] = useState({ totalMasuk: 0, totalKeluar: 0, surplus: 0 });
-  const [savingsGoals, setSavingsGoals] = useState<any[]>([]);
-  const [budgetData, setBudgetData] = useState<any[]>([]);
-  const [transactions, setTransactions] = useState<any[]>([]);
-  const [checkupData, setCheckupData] = useState<any[]>([]);
+  const [savingsGoals, setSavingsGoals] = useState<SavingsGoal[]>([]);
+  const [budgetData, setBudgetData] = useState<BudgetPreview[]>([]);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [checkupData, setCheckupData] = useState<CheckupRadarPoint[]>([]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -48,12 +77,11 @@ export function DashboardContent() {
         const userId = await getCurrentUserId();
         if (!userId) return;
 
-        const startDate = `${currentYear}-${String(currentMonth).padStart(2, '0')}-01`;
-        const endDate = new Date(currentYear, currentMonth, 0).toISOString().split('T')[0];
+        const { startDate, endDate } = getMonthRange(currentYear, currentMonth);
 
         const [
           snapData, cashData, savingData, txData,
-          assetData, debtData, budgetData
+          assetData, debtData, budgetRows
         ] = await Promise.all([
           fetchSnapshots(userId, 12),
           fetchCashflowItems(userId),
@@ -75,63 +103,66 @@ export function DashboardContent() {
             totalAssets: Number(latest.total_assets),
             totalDebts: Number(latest.total_debts),
           });
-          setNetWorthHistory(snapData.map((s: any) => ({
+          setNetWorthHistory(snapData.map((s) => ({
             bulan: new Date(s.snapshot_date).toLocaleDateString('id-ID', { month: 'short', year: '2-digit' }),
             aset: Number(s.total_assets),
             utang: Number(s.total_debts),
             netWorth: Number(s.net_worth),
           })));
+        } else if (assetData.length > 0 || debtData.length > 0) {
+          const live = calculateNetWorth(assetData, debtData);
+          setNetWorth({
+            current: live.netWorth,
+            previous: 0,
+            growth: 0,
+            totalAssets: live.totalAssets,
+            totalDebts: live.totalDebts,
+          });
         }
 
-        if (cashData.length > 0) {
-          const masuk = cashData.filter((c: any) => c.direction === 'masuk').reduce((s: number, c: any) => s + Number(c.amount), 0);
-          const keluar = cashData.filter((c: any) => c.direction === 'keluar').reduce((s: number, c: any) => s + Number(c.amount), 0);
-          setCashFlow({ totalMasuk: masuk, totalKeluar: keluar, surplus: masuk - keluar });
-        }
+        const cashFlowResult = calculateCashFlow(cashData);
+        setCashFlow({
+          totalMasuk: cashFlowResult.totalKasMasuk,
+          totalKeluar: cashFlowResult.totalKasKeluar,
+          surplus: cashFlowResult.surplusDefisit,
+        });
 
         if (savingData.length > 0) setSavingsGoals(savingData.slice(0, 4));
 
         if (assetData.length > 0 || debtData.length > 0 || cashData.length > 0) {
-          const totalAset = assetData.reduce((s: number, a: Asset) => s + Number(a.amount), 0);
-          const totalUtang = debtData.reduce((s: number, d: Debt) => s + Number(d.total_amount), 0);
+          const nw = calculateNetWorth(assetData, debtData);
           const danaDarurat = getDanaDarurat(assetData);
-          const pengeluaran = cashData.filter((c: CashflowItem) => c.direction === 'keluar').reduce((s: number, c: CashflowItem) => s + Number(c.amount), 0);
-          const cicilan = cashData.filter((c: CashflowItem) => c.category === 'kewajiban_cicilan').reduce((s: number, c: CashflowItem) => s + Number(c.amount), 0);
-          const pendapatan = cashData.filter((c: CashflowItem) => c.direction === 'masuk').reduce((s: number, c: CashflowItem) => s + Number(c.amount), 0);
-          const tabInvest = cashData.filter((c: CashflowItem) => c.category === 'masa_depan_investasi').reduce((s: number, c: CashflowItem) => s + Number(c.amount), 0);
-          const biayaHidup = cashData.filter((c: CashflowItem) => c.category === 'kebutuhan_sehari_hari').reduce((s: number, c: CashflowItem) => s + Number(c.amount), 0);
+          const checkup = calculateFinancialCheckup({
+            danaDarurat,
+            pengeluaranBulanan: cashFlowResult.totalKasKeluar,
+            totalCicilan: cashFlowResult.totalKewajiban,
+            pendapatan: cashFlowResult.totalKasMasuk,
+            tabunganInvestasi: cashFlowResult.totalMasaDepan,
+            biayaHidup: cashFlowResult.totalKebutuhan,
+            totalAset: nw.totalAssets,
+            totalUtang: nw.totalDebts,
+          });
 
-          const rasioDarurat = pengeluaran > 0 ? danaDarurat / pengeluaran : 0;
-          const rasioCicilan = pendapatan > 0 ? cicilan / pendapatan : 0;
-          const rasioInvestasi = pendapatan > 0 ? tabInvest / pendapatan : 0;
-          const rasioBiayaHidup = pendapatan > 0 ? biayaHidup / pendapatan : 0;
-          const rasioSolvabilitas = totalUtang > 0 ? totalAset / totalUtang : Infinity;
-
-          setCheckupData([
-            { name: 'Dana Darurat', value: Math.min(1, rasioDarurat / 6), status: rasioDarurat >= 6 ? 'sehat' : rasioDarurat >= 3 ? 'warning' : 'bahaya' },
-            { name: 'Arus Kas', value: pendapatan > 0 ? Math.min(1, Math.max(0, (pendapatan - pengeluaran) / pendapatan)) : 0, status: (pendapatan - pengeluaran) > 0 ? 'sehat' : 'bahaya' },
-            { name: 'Rasio Cicilan', value: Math.min(1, rasioCicilan / 0.3), status: rasioCicilan < 0.3 ? 'sehat' : rasioCicilan < 0.5 ? 'warning' : 'bahaya' },
-            { name: 'Investasi', value: Math.min(1, rasioInvestasi / 0.2), status: rasioInvestasi >= 0.1 ? 'sehat' : rasioInvestasi >= 0.05 ? 'warning' : 'bahaya' },
-            { name: 'Biaya Hidup', value: Math.min(1, rasioBiayaHidup / 0.6), status: rasioBiayaHidup < 0.6 ? 'sehat' : rasioBiayaHidup < 0.8 ? 'warning' : 'bahaya' },
-            { name: 'Solvabilitas', value: Math.min(1, 1 / (rasioSolvabilitas || 1)), status: rasioSolvabilitas > 1 ? 'sehat' : 'bahaya' },
-          ]);
+          const radarNames = ['Dana Darurat', 'Arus Kas', 'Cicilan', 'Investasi', 'Biaya Hidup', 'Solvabilitas'];
+          setCheckupData(checkup.map((item: FinancialCheckupItem, i: number) => ({
+            name: radarNames[i],
+            value: normalizeRadarValue(i, item.value, cashFlowResult.totalKasMasuk),
+            status: item.status,
+          })));
         }
 
         setTransactions(txData);
         setBudgetData(() => {
-          const cats = ['PENDAPATAN', 'TABUNGAN_INVESTASI', 'TAGIHAN', 'BIAYA_OPERASIONAL', 'HUTANG'];
-          const catsLabel: Record<string, string> = {
-            PENDAPATAN: 'Pendapatan', TABUNGAN_INVESTASI: 'Tabungan',
-            TAGIHAN: 'Tagihan', BIAYA_OPERASIONAL: 'Operasional', HUTANG: 'Hutang',
-          };
-          const catsColor: Record<string, string> = {
-            PENDAPATAN: '#3ecf8e', TABUNGAN_INVESTASI: '#635bff',
-            TAGIHAN: '#f5a623', BIAYA_OPERASIONAL: '#06b6d4', HUTANG: '#ef4444',
-          };
+          const cats = Object.keys(BUDGET_CATEGORY_LABELS);
           return cats.map((cat) => {
-            const planned = budgetData.filter((b: any) => b.category === cat).reduce((s: number, b: any) => s + Number(b.amount), 0);
-            const actual = txData.filter((t: any) => t.category === cat).reduce((s: number, t: any) => s + Number(t.amount), 0);
-            return { category: catsLabel[cat], planned, actual, color: catsColor[cat] };
+            const planned = budgetRows.filter((b) => b.category === cat).reduce((s: number, b) => s + Number(b.amount), 0);
+            const actual = txData.filter((t) => t.category === cat).reduce((s: number, t) => s + Number(t.amount), 0);
+            return {
+              category: BUDGET_CATEGORY_LABELS[cat as keyof typeof BUDGET_CATEGORY_LABELS],
+              planned,
+              actual,
+              color: BUDGET_CATEGORY_COLORS[cat as keyof typeof BUDGET_CATEGORY_COLORS],
+            };
           });
         });
       } catch (err) {
@@ -142,6 +173,13 @@ export function DashboardContent() {
     };
     fetchData();
   }, [currentMonth, currentYear]);
+
+  const worstStatus: 'sehat' | 'warning' | 'bahaya' = checkupData.some(d => d.status === 'bahaya')
+    ? 'bahaya'
+    : checkupData.some(d => d.status === 'warning')
+      ? 'warning'
+      : 'sehat';
+  const radarColor = getStatusColor(worstStatus);
 
   const isPositiveCF = cashFlow.surplus >= 0;
   const isPositiveNW = netWorth.growth >= 0;
@@ -307,9 +345,15 @@ export function DashboardContent() {
                 <RadarChart data={checkupData} cx="50%" cy="50%" outerRadius="70%">
                   <PolarGrid stroke="hsl(var(--border))" strokeOpacity={0.4} />
                   <PolarAngleAxis dataKey="name" tick={{ fontSize: 8.5, fill: 'hsl(var(--muted-foreground))' }} />
-                  {checkupData.map((d, i) => (
-                    <Radar key={i} name={d.name} dataKey="value" stroke={statusColors[d.status as keyof typeof statusColors]} fill={statusColors[d.status as keyof typeof statusColors]} fillOpacity={0.15} strokeWidth={2} dot={false} />
-                  ))}
+                  <Radar
+                    name="Skor"
+                    dataKey="value"
+                    stroke={radarColor}
+                    fill={radarColor}
+                    fillOpacity={0.2}
+                    strokeWidth={2}
+                    dot={{ r: 2.5, fill: radarColor, strokeWidth: 0 }}
+                  />
                 </RadarChart>
               </ResponsiveContainer>
             ) : (
@@ -321,7 +365,7 @@ export function DashboardContent() {
           <div className="flex items-center justify-center gap-3 mt-1 pt-2 border-t border-border/40">
             {(['sehat', 'warning', 'bahaya'] as const).map((s) => (
               <span key={s} className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                <span className="w-2 h-2 rounded-full" style={{ background: statusColors[s] }} />
+                <span className="w-2 h-2 rounded-full" style={{ background: getStatusColor(s) }} />
                 {s === 'sehat' ? 'Sehat' : s === 'warning' ? 'Waspada' : 'Bahaya'}
               </span>
             ))}
@@ -343,13 +387,13 @@ export function DashboardContent() {
             {netWorthHistory.length > 1 ? (
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={netWorthHistory} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
-                  <ChartGradients />
+                  <ChartGradients prefix="dash" />
                   <XAxis dataKey="bulan" {...chartAxisStyle} />
                   <YAxis {...chartAxisStyle} tickFormatter={formatChartRupiah} width={65} />
                   <Tooltip content={<ChartTooltip />} />
-                  <Area type="monotone" dataKey="aset" stroke="#3ecf8e" strokeWidth={2} fill="url(#gradSuccess)" stackId="1" dot={false} />
-                  <Area type="monotone" dataKey="utang" stroke="#ef4444" strokeWidth={2} fill="url(#gradDanger)" stackId="2" dot={false} />
-                  <Area type="monotone" dataKey="netWorth" stroke="#635bff" strokeWidth={3} fill="url(#gradPrimary)" dot={{ r: 3, strokeWidth: 2, fill: '#fff' }} />
+                  <Area type="monotone" dataKey="aset" stroke="#3ecf8e" strokeWidth={2} fill="url(#dash-gradSuccess)" stackId="1" dot={false} />
+                  <Area type="monotone" dataKey="utang" stroke="#ef4444" strokeWidth={2} fill="url(#dash-gradDanger)" stackId="2" dot={false} />
+                  <Area type="monotone" dataKey="netWorth" stroke="#635bff" strokeWidth={3} fill="url(#dash-gradPrimary)" dot={{ r: 3, strokeWidth: 2, fill: '#fff' }} />
                 </AreaChart>
               </ResponsiveContainer>
             ) : (
@@ -419,7 +463,7 @@ export function DashboardContent() {
             </Link>
           </div>
           <div className="space-y-4">
-            {savingsGoals.length > 0 ? savingsGoals.map((goal: any) => {
+            {savingsGoals.length > 0 ? savingsGoals.map((goal) => {
               const saved = Number(goal.initial_amount || 0) + Number(goal.current_amount || 0);
               const target = Number(goal.target_amount || 1);
               const pct = Math.min(100, (saved / target) * 100);
@@ -468,7 +512,7 @@ export function DashboardContent() {
             </div>
             {transactions.length > 0 ? (
               <div className="space-y-1">
-                {transactions.slice(0, 5).map((tx: any, i: number) => {
+                {transactions.slice(0, 5).map((tx, i) => {
                   const isIncome = tx.category === 'PENDAPATAN';
                   return (
                     <div key={tx.id || i} className="flex items-center justify-between px-3 py-2.5 rounded-lg hover:bg-muted/50 transition-colors">

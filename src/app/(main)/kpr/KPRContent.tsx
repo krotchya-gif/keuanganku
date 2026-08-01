@@ -8,12 +8,12 @@ import {
   CartesianGrid, Legend,
 } from 'recharts';
 import { ChartTooltip } from '@/components/charts/ChartTooltip';
-import { ChartGradients, chartGridStyle, chartAxisStyle, formatChartRupiah } from '@/components/charts/ChartTheme';
-import { Calculator, Save, X, Bookmark, Loader2, Trash2, PlusCircle, ChevronDown, ChevronUp, Layers, Eye, Calendar, Home, Wallet, Percent, Clock, TrendingUp, DollarSign, Receipt } from 'lucide-react';
+import { chartGridStyle, chartAxisStyle, formatChartRupiah } from '@/components/charts/ChartTheme';
+import { Calculator, Save, X, Bookmark, Loader2, Trash2, PlusCircle, Layers, Eye, Calendar, Home, Wallet, Percent, TrendingUp } from 'lucide-react';
 import { Skeleton, CardSkeleton } from '@/components/ui/Skeleton';
 import { createClient } from '@/utils/supabase/client';
 import { getCurrentUserId } from '@/lib/queries/users';
-import { fetchKPRSimulations } from '@/lib/queries/kpr';
+import { fetchKPRSimulations, type SavedSimulation } from '@/lib/queries/kpr';
 
 const statusColors: Record<string, string> = { sehat: '#3ecf8e', warning: '#f5a623', bahaya: '#ef4444' };
 const statusLabels: Record<string, string> = { sehat: '✅ Rasio Sehat', warning: '⚠️ Perlu Waspada', bahaya: '🔴 Tidak Sehat' };
@@ -49,6 +49,29 @@ interface FloatingPhase {
   rateAnnual: number;
 }
 
+// floating_phases bisa berupa JSONB (objek) atau teks JSON — tangani keduanya
+function parseFloatingPhases(value: string | object | null | undefined): FloatingPhase[] | null {
+  if (!value) return null;
+  let parsed: unknown = value;
+  if (typeof value === 'string') {
+    try {
+      parsed = JSON.parse(value);
+    } catch {
+      return null;
+    }
+  }
+  if (Array.isArray(parsed)) {
+    const valid = parsed.filter(
+      (p): p is FloatingPhase =>
+        typeof p === 'object' && p !== null &&
+        typeof (p as FloatingPhase).durationYears === 'number' &&
+        typeof (p as FloatingPhase).rateAnnual === 'number'
+    );
+    return valid.length > 0 ? valid : null;
+  }
+  return null;
+}
+
 export function KPRContent() {
   const [form, setForm] = useState({
     propertyPrice: 900_000_000,
@@ -80,18 +103,14 @@ export function KPRContent() {
   // DB States
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState('');
-  const [simulations, setSimulations] = useState<any[]>([]);
+  const [simulations, setSimulations] = useState<SavedSimulation[]>([]);
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
-  const [selectedSim, setSelectedSim] = useState<any>(null);
+  const [selectedSim, setSelectedSim] = useState<SavedSimulation | null>(null);
   const [simName, setSimName] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
-  useEffect(() => {
-    fetchSimulations();
-  }, []);
-
-  const fetchSimulations = async () => {
+  const fetchSimulations = useCallback(async () => {
     try {
       setLoading(true);
       const userId = await getCurrentUserId();
@@ -105,9 +124,13 @@ export function KPRContent() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const loadSimulation = (sim: any) => {
+  useEffect(() => {
+    fetchSimulations();
+  }, [fetchSimulations]);
+
+  const loadSimulation = (sim: SavedSimulation) => {
     setForm({
       propertyPrice: Number(sim.property_price),
       downPayment: Number(sim.down_payment),
@@ -125,19 +148,11 @@ export function KPRContent() {
       bankFee2: Number(sim.bank_fee_2),
       bankFee3: Number(sim.bank_fee_3),
     });
-    // Load bunga berjenjang jika ada
-    if (sim.floating_phases) {
-      try {
-        const phases = JSON.parse(sim.floating_phases);
-        if (Array.isArray(phases) && phases.length > 0) {
-          setBerjenjang(true);
-          setFloatingPhases(phases);
-        } else {
-          setBerjenjang(false);
-        }
-      } catch {
-        setBerjenjang(false);
-      }
+    // Load bunga berjenjang jika ada (guard: JSONB object ATAU teks JSON)
+    const phases = parseFloatingPhases(sim.floating_phases);
+    if (phases) {
+      setBerjenjang(true);
+      setFloatingPhases(phases);
     } else {
       setBerjenjang(false);
     }
@@ -457,32 +472,39 @@ export function KPRContent() {
 
                 {/* Visualisasi timeline */}
                 <div className="flex items-center gap-0.5 h-6 rounded-md overflow-hidden text-[10px] font-bold">
-                  <div
-                    className="flex items-center justify-center bg-blue-500 text-white overflow-hidden shrink-0 h-full"
-                    style={{ width: `${(form.fixedPeriodYears / form.loanPeriodYears) * 100}%`, minWidth: 4 }}
-                    title={`Fix: ${form.fixedPeriodYears}th`}
-                  >
-                    {form.fixedPeriodYears >= 1 ? `${form.fixedPeriodYears}t` : ''}
-                  </div>
-                  {floatingPhases.map((p, i) => (
-                    <div
-                      key={i}
-                      className="flex items-center justify-center text-white overflow-hidden shrink-0 h-full"
-                      style={{ width: `${(p.durationYears / form.loanPeriodYears) * 100}%`, minWidth: 4, background: PHASE_COLORS[i + 1]?.hex ?? '#a855f7' }}
-                      title={`Transisi ${i + 1}: ${p.durationYears}th`}
-                    >
-                      {p.durationYears >= 1 ? `${p.durationYears}t` : ''}
-                    </div>
-                  ))}
-                  {remainingFloatingYears > 0 && (
-                    <div
-                      className="flex items-center justify-center bg-orange-500 text-white overflow-hidden shrink-0 h-full"
-                      style={{ width: `${(remainingFloatingYears / form.loanPeriodYears) * 100}%`, minWidth: 4 }}
-                      title={`Floating: ${remainingFloatingYears}th`}
-                    >
-                      {remainingFloatingYears >= 1 ? `${remainingFloatingYears}t` : ''}
-                    </div>
-                  )}
+                  {(() => {
+                    const tenorYears = Math.max(1, form.loanPeriodYears);
+                    return (
+                      <>
+                        <div
+                          className="flex items-center justify-center bg-blue-500 text-white overflow-hidden shrink-0 h-full"
+                          style={{ width: `${(form.fixedPeriodYears / tenorYears) * 100}%`, minWidth: 4 }}
+                          title={`Fix: ${form.fixedPeriodYears}th`}
+                        >
+                          {form.fixedPeriodYears >= 1 ? `${form.fixedPeriodYears}t` : ''}
+                        </div>
+                        {floatingPhases.map((p, i) => (
+                          <div
+                            key={i}
+                            className="flex items-center justify-center text-white overflow-hidden shrink-0 h-full"
+                            style={{ width: `${(p.durationYears / tenorYears) * 100}%`, minWidth: 4, background: PHASE_COLORS[i + 1]?.hex ?? '#a855f7' }}
+                            title={`Transisi ${i + 1}: ${p.durationYears}th`}
+                          >
+                            {p.durationYears >= 1 ? `${p.durationYears}t` : ''}
+                          </div>
+                        ))}
+                        {remainingFloatingYears > 0 && (
+                          <div
+                            className="flex items-center justify-center bg-orange-500 text-white overflow-hidden shrink-0 h-full"
+                            style={{ width: `${(remainingFloatingYears / tenorYears) * 100}%`, minWidth: 4 }}
+                            title={`Floating: ${remainingFloatingYears}th`}
+                          >
+                            {remainingFloatingYears >= 1 ? `${remainingFloatingYears}t` : ''}
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()}
                 </div>
 
                 {!isDurationValid && (
@@ -772,15 +794,15 @@ export function KPRContent() {
                     <div className="grid grid-cols-3 gap-3">
                       <div>
                         <label className="block text-[10px] text-muted-foreground mb-1">Biaya Provisi/Admin</label>
-                        <input type="number" value={form.bankFee1 || ''} onChange={e => handleChange('bankFee1', Number(e.target.value))} className="w-full bg-background border border-border rounded-md px-2 py-1.5 text-xs font-numeric focus:outline-none focus:border-primary-500" />
+                        <input type="number" value={form.bankFee1 || ''} onChange={e => handleChange('bankFee1', parseFloat(e.target.value) || 0)} className="w-full bg-background border border-border rounded-md px-2 py-1.5 text-xs font-numeric focus:outline-none focus:border-primary-500" />
                       </div>
                       <div>
                         <label className="block text-[10px] text-muted-foreground mb-1">Asuransi Jiwa</label>
-                        <input type="number" value={form.bankFee2 || ''} onChange={e => handleChange('bankFee2', Number(e.target.value))} className="w-full bg-background border border-border rounded-md px-2 py-1.5 text-xs font-numeric focus:outline-none focus:border-primary-500" />
+                        <input type="number" value={form.bankFee2 || ''} onChange={e => handleChange('bankFee2', parseFloat(e.target.value) || 0)} className="w-full bg-background border border-border rounded-md px-2 py-1.5 text-xs font-numeric focus:outline-none focus:border-primary-500" />
                       </div>
                       <div>
                         <label className="block text-[10px] text-muted-foreground mb-1">Asuransi Kebakaran</label>
-                        <input type="number" value={form.bankFee3 || ''} onChange={e => handleChange('bankFee3', Number(e.target.value))} className="w-full bg-background border border-border rounded-md px-2 py-1.5 text-xs font-numeric focus:outline-none focus:border-primary-500" />
+                        <input type="number" value={form.bankFee3 || ''} onChange={e => handleChange('bankFee3', parseFloat(e.target.value) || 0)} className="w-full bg-background border border-border rounded-md px-2 py-1.5 text-xs font-numeric focus:outline-none focus:border-primary-500" />
                       </div>
                     </div>
                   </div>
@@ -851,17 +873,15 @@ export function KPRContent() {
                     <span className="font-numeric font-medium">{(Number(selectedSim.fixed_rate) * 100).toFixed(2)}%</span>
                   </div>
                   {selectedSim.floating_phases && (() => {
-                    try {
-                      const phases = JSON.parse(selectedSim.floating_phases);
-                      if (Array.isArray(phases) && phases.length > 0) {
-                        return phases.map((p: any, i: number) => (
-                          <div key={i} className="flex justify-between text-sm">
-                            <span className="text-muted-foreground">Transisi {i + 1} ({p.durationYears} thn)</span>
-                            <span className="font-numeric font-medium">{(p.rateAnnual * 100).toFixed(2)}%</span>
-                          </div>
-                        ));
-                      }
-                    } catch {}
+                    const phases = parseFloatingPhases(selectedSim.floating_phases);
+                    if (phases) {
+                      return phases.map((p, i) => (
+                        <div key={i} className="flex justify-between text-sm">
+                          <span className="text-muted-foreground">Transisi {i + 1} ({p.durationYears} thn)</span>
+                          <span className="font-numeric font-medium">{(p.rateAnnual * 100).toFixed(2)}%</span>
+                        </div>
+                      ));
+                    }
                     return null;
                   })()}
                   <div className="flex justify-between text-sm pt-2 border-t border-border/60">
@@ -904,7 +924,7 @@ export function KPRContent() {
                     <span className="text-muted-foreground">Pendapatan Bulanan</span>
                     <span className="font-numeric font-medium">{formatRupiah(Number(selectedSim.monthly_income || 0))}</span>
                   </div>
-                  {selectedSim.monthly_income > 0 && selectedSim.monthly_installment_min > 0 && (
+                  {Number(selectedSim.monthly_income || 0) > 0 && Number(selectedSim.monthly_installment_min || 0) > 0 && (
                     <>
                       <div className="flex justify-between text-sm">
                         <span className="text-muted-foreground">Rasio Min</span>

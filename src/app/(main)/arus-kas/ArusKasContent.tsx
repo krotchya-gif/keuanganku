@@ -1,40 +1,29 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Plus, TrendingUp, TrendingDown, Edit2, Trash2, X, Loader2, ArrowUpRight, ArrowDownRight } from 'lucide-react';
+import { Edit2, Trash2, X, ArrowUpRight, ArrowDownRight } from 'lucide-react';
 import { Skeleton, ListSkeleton, KPISkeleton } from '@/components/ui/Skeleton';
 import { formatRupiah, formatPercent } from '@/lib/utils';
 import { createClient } from '@/utils/supabase/client';
 import { getCurrentUserId } from '@/lib/queries/users';
 import { fetchCashflowItems } from '@/lib/queries/cashflow';
-
-const CATEGORY_LABELS: Record<string, string> = {
-  pendapatan: 'Pendapatan',
-  kewajiban_cicilan: 'Kewajiban & Cicilan',
-  masa_depan_investasi: 'Masa Depan & Investasi',
-  kebutuhan_sehari_hari: 'Kebutuhan Sehari-hari',
-};
-
-const CATEGORY_COLORS: Record<string, string> = {
-  pendapatan: '#3ecf8e',
-  kewajiban_cicilan: '#f5a623',
-  masa_depan_investasi: '#635bff',
-  kebutuhan_sehari_hari: '#06b6d4',
-};
+import { calculateCashFlow } from '@/shared';
+import { CASHFLOW_CATEGORY_LABELS, CASHFLOW_CATEGORY_COLORS } from '@/shared';
+import type { CashflowItem, CashflowCategory } from '@/shared';
 
 export function ArusKasContent() {
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState('');
-  const [items, setItems] = useState<any[]>([]);
+  const [items, setItems] = useState<CashflowItem[]>([]);
 
   // Modal forms
   const [showModal, setShowModal] = useState(false);
-  const [editingItem, setEditingItem] = useState<any | null>(null);
-  const [form, setForm] = useState({ name: '', direction: 'masuk', category: 'pendapatan', amount: 0, is_recurring: true });
+  const [editingItem, setEditingItem] = useState<CashflowItem | null>(null);
+  const [form, setForm] = useState({ name: '', direction: 'masuk' as CashflowItem['direction'], category: 'pendapatan' as CashflowItem['category'], amount: 0, is_recurring: true });
 
   const fetchData = async () => {
     try {
-      setLoading(true);
+      if (items.length === 0) setLoading(true);
       const userId = await getCurrentUserId();
       if (!userId) return;
       setUserId(userId);
@@ -50,68 +39,74 @@ export function ArusKasContent() {
 
   useEffect(() => {
     fetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     const supabase = createClient();
-    
-    // Auto category selection logic: 
-    // If direction is 'masuk', force category 'pendapatan'. Oh wait, it should be selected by user, but let's restrict it.
-    let finalCategory = form.category;
-    if (form.direction === 'masuk') finalCategory = 'pendapatan';
-    else if (form.category === 'pendapatan') finalCategory = 'kebutuhan_sehari_hari';
 
-    if (editingItem) {
-      await supabase.from('cashflow_items').update({
-        name: form.name, direction: form.direction, category: finalCategory, amount: form.amount, is_recurring: form.is_recurring
-      }).eq('id', editingItem.id);
-    } else {
-      await supabase.from('cashflow_items').insert({
-        user_id: userId, name: form.name, direction: form.direction, category: finalCategory, amount: form.amount, is_recurring: form.is_recurring
-      });
+    // Kategori hanya diverifikasi untuk kas MASUK (harus 'pendapatan').
+    // Untuk kas keluar, kategori user dipakai apa adanya (tanpa rewrite diam-diam).
+    const finalCategory = form.direction === 'masuk' ? 'pendapatan' as CashflowItem['category'] : form.category;
+
+    try {
+      if (editingItem) {
+        await supabase.from('cashflow_items').update({
+          name: form.name, direction: form.direction, category: finalCategory, amount: form.amount, is_recurring: form.is_recurring
+        }).eq('id', editingItem.id);
+      } else {
+        await supabase.from('cashflow_items').insert({
+          user_id: userId, name: form.name, direction: form.direction, category: finalCategory, amount: form.amount, is_recurring: form.is_recurring
+        });
+      }
+      setShowModal(false);
+      await fetchData();
+    } catch (err) {
+      console.error(err);
+      alert('Gagal menyimpan data. Coba lagi.');
     }
-    setShowModal(false);
-    fetchData();
   };
 
   const handleDelete = async (id: string) => {
     if (!confirm('Hapus pencatatan kas ini?')) return;
-    const supabase = createClient();
-    await supabase.from('cashflow_items').delete().eq('id', id);
-    fetchData();
+    try {
+      const supabase = createClient();
+      await supabase.from('cashflow_items').delete().eq('id', id);
+      await fetchData();
+    } catch (err) {
+      console.error(err);
+      alert('Gagal menghapus data. Coba lagi.');
+    }
   };
 
   const openAddModal = (direction: 'masuk' | 'keluar') => {
     setEditingItem(null);
-    setForm({ 
-      name: '', 
-      direction, 
-      category: direction === 'masuk' ? 'pendapatan' : 'kebutuhan_sehari_hari', 
-      amount: 0, 
-      is_recurring: true 
+    setForm({
+      name: '',
+      direction,
+      category: direction === 'masuk' ? 'pendapatan' : 'kebutuhan_sehari_hari',
+      amount: 0,
+      is_recurring: true
     });
     setShowModal(true);
   };
 
-  // Calculations
-  const kasMasuk = items.filter(i => i.direction === 'masuk');
-  const kasKeluar = items.filter(i => i.direction === 'keluar');
-  
-  const totalMasuk = kasMasuk.reduce((s, i) => s + Number(i.amount), 0);
-  const totalKeluar = kasKeluar.reduce((s, i) => s + Number(i.amount), 0);
-  const surplus = totalMasuk - totalKeluar;
+  // Calculations — pakai shared formula agar konsisten dengan Dashboard & Checkup
+  const cashFlow = calculateCashFlow(items);
+  const totalMasuk = cashFlow.totalKasMasuk;
+  const totalKeluar = cashFlow.totalKasKeluar;
+  const surplus = cashFlow.surplusDefisit;
   const isPositive = surplus >= 0;
 
-  const totalKewajiban = items.filter(i => i.category === 'kewajiban_cicilan').reduce((s, i) => s + Number(i.amount), 0);
-  const totalInvestasi = items.filter(i => i.category === 'masa_depan_investasi').reduce((s, i) => s + Number(i.amount), 0);
-  const totalKebutuhan = items.filter(i => i.category === 'kebutuhan_sehari_hari').reduce((s, i) => s + Number(i.amount), 0);
+  const kasMasuk = items.filter(i => i.direction === 'masuk');
+  const kasKeluar = items.filter(i => i.direction === 'keluar');
 
-  // Grouped outputs for display
-  const outGroups = [
-    { cat: 'kewajiban_cicilan', label: CATEGORY_LABELS['kewajiban_cicilan'], color: CATEGORY_COLORS['kewajiban_cicilan'], total: totalKewajiban, items: items.filter(i => i.category === 'kewajiban_cicilan') },
-    { cat: 'masa_depan_investasi', label: CATEGORY_LABELS['masa_depan_investasi'], color: CATEGORY_COLORS['masa_depan_investasi'], total: totalInvestasi, items: items.filter(i => i.category === 'masa_depan_investasi') },
-    { cat: 'kebutuhan_sehari_hari', label: CATEGORY_LABELS['kebutuhan_sehari_hari'], color: CATEGORY_COLORS['kebutuhan_sehari_hari'], total: totalKebutuhan, items: items.filter(i => i.category === 'kebutuhan_sehari_hari') },
+  // Grouped outputs for display (filter direction='keluar' supaya item legacy tidak terhitung)
+  const outGroups: Array<{ cat: CashflowCategory; label: string; color: string; total: number; items: CashflowItem[] }> = [
+    { cat: 'kewajiban_cicilan', label: CASHFLOW_CATEGORY_LABELS.kewajiban_cicilan, color: CASHFLOW_CATEGORY_COLORS.kewajiban_cicilan, total: cashFlow.totalKewajiban, items: kasKeluar.filter(i => i.category === 'kewajiban_cicilan') },
+    { cat: 'masa_depan_investasi', label: CASHFLOW_CATEGORY_LABELS.masa_depan_investasi, color: CASHFLOW_CATEGORY_COLORS.masa_depan_investasi, total: cashFlow.totalMasaDepan, items: kasKeluar.filter(i => i.category === 'masa_depan_investasi') },
+    { cat: 'kebutuhan_sehari_hari', label: CASHFLOW_CATEGORY_LABELS.kebutuhan_sehari_hari, color: CASHFLOW_CATEGORY_COLORS.kebutuhan_sehari_hari, total: cashFlow.totalKebutuhan, items: kasKeluar.filter(i => i.category === 'kebutuhan_sehari_hari') },
   ];
 
   if (loading) {
@@ -169,11 +164,14 @@ export function ArusKasContent() {
         <div className="card-premium p-4 sm:p-6 sm:col-span-1 lg:col-span-2">
            <p className="text-sm text-muted-foreground font-medium mb-4">Postur Alokasi Pengeluaran Bulanan</p>
            <div className="space-y-4">
-             {/* Progress Bar Container */}
+             {/* Progress Bar Container — scale ke max(masuk, keluar) supaya bar tidak overflow */}
              <div className="h-3 w-full bg-muted rounded-full flex overflow-hidden">
-               {outGroups.map(g => (
-                 <div key={g.cat} style={{ width: `${totalMasuk > 0 ? (g.total/totalMasuk)*100 : 0}%`, backgroundColor: g.color }} className="h-full" />
-               ))}
+               {(() => {
+                 const barMax = Math.max(totalMasuk, totalKeluar);
+                 return outGroups.map(g => (
+                   <div key={g.cat} style={{ width: `${barMax > 0 ? (g.total/barMax)*100 : 0}%`, backgroundColor: g.color }} className="h-full" />
+                 ));
+               })()}
              </div>
              {/* Legend */}
              <div className="grid grid-cols-3 gap-2 mt-2">
@@ -214,7 +212,7 @@ export function ArusKasContent() {
                  <div key={item.id} className="card-premium p-4 flex items-center justify-between hover:border-primary-500/30 group">
                     <div>
                       <p className="text-sm font-medium text-foreground">{item.name}</p>
-                      <p className="text-[10px] text-muted-foreground mt-0.5">{item.is_recurring ? 'Rutin / Tetap' : 'Sekali masuk'} · {CATEGORY_LABELS[item.category]}</p>
+                      <p className="text-[10px] text-muted-foreground mt-0.5">{item.is_recurring ? 'Rutin / Tetap' : 'Sekali masuk'} · {CASHFLOW_CATEGORY_LABELS[item.category]}</p>
                     </div>
                     <div className="flex items-center gap-3">
                       <span className="font-numeric font-semibold text-emerald-500">+{formatRupiah(item.amount)}</span>
@@ -289,7 +287,7 @@ export function ArusKasContent() {
               {form.direction === 'keluar' && (
                 <div>
                   <label className="block text-xs font-medium text-foreground mb-1.5">Kategori Pengeluaran</label>
-                  <select value={form.category} onChange={e => setForm({...form, category: e.target.value})} className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary-500">
+                  <select value={form.category} onChange={e => setForm({...form, category: e.target.value as CashflowItem['category']})} className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary-500">
                     <option value="kewajiban_cicilan">Kewajiban & Cicilan (Misal: KPR, Paylater)</option>
                     <option value="masa_depan_investasi">Masa Depan & Investasi (Misal: Reksadana)</option>
                     <option value="kebutuhan_sehari_hari">Kebutuhan Sehari-hari (Misal: Makan, Listrik)</option>

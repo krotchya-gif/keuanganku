@@ -13,8 +13,6 @@ import { fetchCashflowItems } from '@/lib/queries/cashflow';
 import { Loader2, AlertCircle, ShieldCheck, ShieldAlert, Activity } from 'lucide-react';
 import { Skeleton, KPISkeleton, ChartSkeleton, ListSkeleton } from '@/components/ui/Skeleton';
 
-const scoreColors: Record<string, string> = { sehat: '#3ecf8e', warning: '#f5a623', bahaya: '#ef4444' };
-
 export function CheckupContent() {
   const [loading, setLoading] = useState(true);
   const [checkupData, setCheckupData] = useState<any[]>([]);
@@ -164,7 +162,7 @@ export function CheckupContent() {
                 formatter={(v: number, _name: string, props: any) => {
                   const item = radarData[props.payloadIndex];
                   const status = item?.status || 'unknown';
-                  const color = scoreColors[status] || '#64748b';
+                  const color = getStatusColor(status as 'sehat' | 'warning' | 'bahaya') || '#64748b';
                   return [<span key="v" style={{ color }}>{v}/100 — {status === 'sehat' ? 'Sehat' : status === 'warning' ? 'Warning' : 'Bahaya'}</span>, 'Skor'];
                 }}
                 contentStyle={{

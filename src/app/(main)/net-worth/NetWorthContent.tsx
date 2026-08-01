@@ -3,8 +3,8 @@
 import { useState, useEffect } from 'react';
 import { Plus, TrendingUp, TrendingDown, Edit2, Trash2, X, Loader2, Save } from 'lucide-react';
 import { Skeleton, KPISkeleton, ChartSkeleton, TableSkeleton } from '@/components/ui/Skeleton';
-import { formatRupiah, formatRupiahCompact, formatPercent } from '@/lib/utils';
-import { calculateNetWorth, calculateGrowth } from '@/shared';
+import { formatRupiah, formatRupiahCompact, formatPercent, getLocalDateString } from '@/lib/utils';
+import { calculateNetWorth, calculateGrowth, ASSET_CATEGORY_LABELS } from '@/shared';
 import type { Asset, Debt } from '@/shared';
 import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend,
@@ -24,18 +24,20 @@ const ASSET_COLORS: Record<string, string> = {
   tetap: '#f5a623',
 };
 
-const CATEGORY_LABELS: Record<string, string> = {
-  kas_setara_kas: 'Kas & Setara Kas',
-  investasi: 'Investasi',
-  tetap: 'Aset Tetap',
-};
+interface HistoryPoint {
+  date: string;
+  bulan: string;
+  aset: number;
+  utang: number;
+  netWorth: number;
+}
 
 export function NetWorthContent() {
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState('');
   const [assets, setAssets] = useState<Asset[]>([]);
   const [debts, setDebts] = useState<Debt[]>([]);
-  const [history, setHistory] = useState<any[]>([]);
+  const [history, setHistory] = useState<HistoryPoint[]>([]);
   
   const [activeTab, setActiveTab] = useState<'aset' | 'utang'>('aset');
   
@@ -67,7 +69,8 @@ export function NetWorthContent() {
       
       if (snapData.length > 0) {
         setHistory(snapData.map(s => ({
-          bulan: new Date(s.snapshot_date).toLocaleDateString('id-ID', { month: 'short' }),
+          date: s.snapshot_date,
+          bulan: new Date(s.snapshot_date).toLocaleDateString('id-ID', { month: 'short', year: '2-digit' }),
           aset: Number(s.total_assets),
           utang: Number(s.total_debts),
           netWorth: Number(s.net_worth)
@@ -138,18 +141,20 @@ export function NetWorthContent() {
     try {
       const supabase = createClient();
       const currentResult = calculateNetWorth(assets, debts);
-      
-      const today = new Date();
-      // Snapshot date usually first of month or today
-      const snapshot_date = today.toISOString().split('T')[0];
 
-      // Growth percentage logic
+      // Snapshot bulanan: tanggal 1 bulan berjalan (zona lokal)
+      // Konsisten dengan edge function pg_cron yang memakai tanggal 1
+      const firstOfMonth = new Date();
+      firstOfMonth.setDate(1);
+      const snapshot_date = getLocalDateString(firstOfMonth);
+
+      // Growth vs snapshot BULAN SEBELUMNYA (bukan bulan berjalan,
+      // supaya save ulang di bulan yang sama tidak menghitung growth terhadap dirinya sendiri)
       let growth_percentage = 0;
-      if (history.length > 0) {
-         const lastMonth = history[history.length - 1];
-         if (lastMonth.netWorth > 0) {
-            growth_percentage = (currentResult.netWorth - lastMonth.netWorth) / lastMonth.netWorth;
-         }
+      const previousSnaps = history.filter(h => h.date !== snapshot_date);
+      const lastMonth = previousSnaps[previousSnaps.length - 1];
+      if (lastMonth && lastMonth.netWorth > 0) {
+        growth_percentage = (currentResult.netWorth - lastMonth.netWorth) / lastMonth.netWorth;
       }
 
       await supabase.from('net_worth_snapshots').upsert({
@@ -249,7 +254,7 @@ export function NetWorthContent() {
               <div key={key} className="flex justify-between text-xs">
                 <span className="flex items-center gap-1.5">
                   <span className="w-2 h-2 rounded-full" style={{ background: ASSET_COLORS[key] }} />
-                  <span className="text-muted-foreground">{CATEGORY_LABELS[key]}</span>
+                  <span className="text-muted-foreground">{ASSET_CATEGORY_LABELS[key as keyof typeof ASSET_CATEGORY_LABELS]}</span>
                 </span>
                 <span className="font-numeric font-medium">{formatRupiahCompact(val)}</span>
               </div>
@@ -298,7 +303,7 @@ export function NetWorthContent() {
               </ResponsiveContainer>
             ) : (
               <div className="flex h-full items-center justify-center text-muted-foreground text-sm">
-                Belum ada data riwayat bulanan. Klik "Simpan Snapshot" untuk menyimpan data pertama.
+                Belum ada data riwayat bulanan. Klik &quot;Simpan Snapshot&quot; untuk menyimpan data pertama.
               </div>
             )}
           </div>
@@ -382,7 +387,7 @@ export function NetWorthContent() {
                     <div className="flex items-center justify-between mb-3">
                       <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
                         <span className="w-2 h-2 rounded-full" style={{ background: ASSET_COLORS[cat] }} />
-                        {CATEGORY_LABELS[cat]}
+                        {ASSET_CATEGORY_LABELS[cat as keyof typeof ASSET_CATEGORY_LABELS]}
                       </h3>
                       <span className="text-sm font-numeric font-semibold text-foreground">
                         {formatRupiah(arr.reduce((s, a) => s + a.amount, 0))}
@@ -479,7 +484,7 @@ export function NetWorthContent() {
               </div>
               <div>
                 <label className="block text-xs font-medium text-foreground mb-1.5">Kategori</label>
-                <select value={assetForm.category} onChange={e => setAssetForm({...assetForm, category: e.target.value as any})} className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary-500">
+                <select value={assetForm.category} onChange={e => setAssetForm({...assetForm, category: e.target.value as Asset['category']})} className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary-500">
                   <option value="kas_setara_kas">Kas & Setara Kas</option>
                   <option value="investasi">Investasi (Saham, Reksadana)</option>
                   <option value="tetap">Aset Tetap (Rumah, Mobil)</option>
@@ -514,7 +519,7 @@ export function NetWorthContent() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-medium text-foreground mb-1.5">Tipe Utang</label>
-                  <select value={debtForm.term} onChange={e => setDebtForm({...debtForm, term: e.target.value as any})} className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary-500">
+                  <select value={debtForm.term} onChange={e => setDebtForm({...debtForm, term: e.target.value as Debt['term']})} className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary-500">
                     <option value="jangka_pendek">Jangka Pendek (Credit Card, Paylater)</option>
                     <option value="jangka_panjang">Jangka Panjang (KPR, Kredit Kendaraan)</option>
                   </select>

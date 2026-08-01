@@ -4,9 +4,10 @@ import { useState, useEffect } from 'react';
 import { getCurrentUserId } from '@/lib/queries/users';
 import { fetchTransactions } from '@/lib/queries/transactions';
 import { fetchSnapshots } from '@/lib/queries/snapshots';
-import { Loader2, TrendingUp, TrendingDown, Target } from 'lucide-react';
+import { TrendingUp, TrendingDown, Target } from 'lucide-react';
 import { Skeleton, KPISkeleton, ChartSkeleton } from '@/components/ui/Skeleton';
-import { formatRupiah, formatRupiahCompact } from '@/lib/utils';
+import { formatRupiahCompact, getYearOptions } from '@/lib/utils';
+import { calculateMonthlyBreakdown } from '@/shared';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend,
   LineChart, Line
@@ -14,11 +15,25 @@ import {
 import { ChartTooltip } from '@/components/charts/ChartTooltip';
 import { chartGridStyle, chartAxisStyle, formatChartRupiah } from '@/components/charts/ChartTheme';
 
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+
+interface MonthlyPoint {
+  bulan: string;
+  Pemasukan: number;
+  Pengeluaran: number;
+  Surplus: number;
+}
+
+interface NetWorthPoint {
+  bulan: string;
+  Kekayaan: number | null;
+}
+
 export function EvaluasiContent() {
   const [loading, setLoading] = useState(true);
   const [year, setYear] = useState(new Date().getFullYear());
-  const [monthlyData, setMonthlyData] = useState<any[]>([]);
-  const [netWorthData, setNetWorthData] = useState<any[]>([]);
+  const [monthlyData, setMonthlyData] = useState<MonthlyPoint[]>([]);
+  const [netWorthData, setNetWorthData] = useState<NetWorthPoint[]>([]);
 
   useEffect(() => {
     async function fetchData() {
@@ -30,35 +45,27 @@ export function EvaluasiContent() {
         // Fetch all transactions for the year
         const txs = await fetchTransactions(userId, `${year}-01-01`, `${year}-12-31`);
 
-        // Group transactions by month
-        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
-        const grouped = months.map((m, idx) => {
-          const mtxs = txs.filter(t => new Date(t.transaction_date).getMonth() === idx);
-          const income = mtxs.filter(t => t.category === 'PENDAPATAN').reduce((s, t) => s + Number(t.amount), 0);
-          const expense = mtxs.filter(t => t.category !== 'PENDAPATAN').reduce((s, t) => s + Number(t.amount), 0);
+        // Group by month via shared formula (robust terhadap zona waktu)
+        const breakdown = calculateMonthlyBreakdown(txs);
+        setMonthlyData(breakdown.map(m => {
+          const pengeluaran = m.TABUNGAN_INVESTASI + m.TAGIHAN + m.BIAYA_OPERASIONAL + m.HUTANG;
           return {
-            bulan: m,
-            Pemasukan: income,
-            Pengeluaran: expense,
-            Surplus: income - expense
+            bulan: MONTHS[m.month - 1],
+            Pemasukan: m.PENDAPATAN,
+            Pengeluaran: pengeluaran,
+            Surplus: m.PENDAPATAN - pengeluaran,
           };
-        });
-        setMonthlyData(grouped);
+        }));
 
-        // Fetch Net Worth Snapshots
-        const nw = await fetchSnapshots(userId, 12);
-
-        const nwGrouped = months.map((m, idx) => {
+        // Fetch snapshots hanya untuk tahun terpilih
+        const nw = await fetchSnapshots(userId, 12, year);
+        setNetWorthData(MONTHS.map((m, idx) => {
           const snap = nw.find(n => {
-             const dt = new Date(n.snapshot_date);
-             return dt.getMonth() === idx;
+            const monthPart = Number(String(n.snapshot_date).slice(0, 10).split('-')[1]);
+            return monthPart === idx + 1;
           });
-          return {
-            bulan: m,
-            Kekayaan: snap ? Number(snap.net_worth) : null
-          };
-        });
-        setNetWorthData(nwGrouped);
+          return { bulan: m, Kekayaan: snap ? Number(snap.net_worth) : null };
+        }));
 
       } catch (e) {
         console.error(e);
@@ -67,6 +74,7 @@ export function EvaluasiContent() {
       }
     }
     fetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [year]);
 
   if (loading) return (
@@ -82,8 +90,8 @@ export function EvaluasiContent() {
   const netSurplus = totalIncome - totalExpense;
 
   const validNw = netWorthData.filter(d => d.Kekayaan !== null);
-  const currentNw = validNw.length > 0 ? validNw[validNw.length - 1].Kekayaan : 0;
-  const initialNw = validNw.length > 0 ? validNw[0].Kekayaan : 0;
+  const currentNw = validNw.length > 0 ? validNw[validNw.length - 1].Kekayaan ?? 0 : 0;
+  const initialNw = validNw.length > 0 ? validNw[0].Kekayaan ?? 0 : 0;
   const nwGrowth = currentNw - initialNw;
 
   return (
@@ -94,7 +102,7 @@ export function EvaluasiContent() {
           <p className="text-muted-foreground text-sm mt-1">Laporan komprehensif kesehatan finansial Anda dalam setahun</p>
         </div>
         <select value={year} onChange={(e) => setYear(Number(e.target.value))} className="bg-card border border-border rounded-lg px-4 py-2 text-sm font-bold focus:ring-primary-500">
-           {[2024, 2025, 2026, 2027].map(y => <option key={y} value={y}>Tahun {y}</option>)}
+           {getYearOptions().map(y => <option key={y} value={y}>Tahun {y}</option>)}
         </select>
       </div>
 

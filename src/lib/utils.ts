@@ -56,6 +56,30 @@ export function getMonthName(month: number): string {
   return names[month - 1] ?? '';
 }
 
+// Format tanggal lokal (YYYY-MM-DD) tanpa konversi UTC.
+// toISOString() menggeser tanggal -1 hari untuk zona waktu positif (mis. UTC+7).
+export function getLocalDateString(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+export function getTodayString(): string {
+  return getLocalDateString(new Date());
+}
+
+export function getMonthRange(year: number, month: number): { startDate: string; endDate: string } {
+  return {
+    startDate: `${year}-${String(month).padStart(2, '0')}-01`,
+    endDate: getLocalDateString(new Date(year, month, 0)),
+  };
+}
+
+export function getYearOptions(current = new Date().getFullYear(), range = 5): number[] {
+  return Array.from({ length: range }, (_, i) => current - i);
+}
+
 export function getCurrentMonthYear(): { month: number; year: number } {
   const now = new Date();
   return { month: now.getMonth() + 1, year: now.getFullYear() };

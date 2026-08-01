@@ -5,29 +5,31 @@ import { createClient } from '@/utils/supabase/client';
 import { getCurrentUserId } from '@/lib/queries/users';
 import { fetchSavingsGoals } from '@/lib/queries/savings';
 import { fetchTransactionsByCategory } from '@/lib/queries/transactions';
-import { Loader2, PiggyBank, Target, ArrowUpRight, Plus, X, Edit2, Trash2 } from 'lucide-react';
+import { PiggyBank, Target, ArrowUpRight, Plus, X, Edit2, Trash2 } from 'lucide-react';
 import { Skeleton, CardSkeleton, ChartSkeleton } from '@/components/ui/Skeleton';
 import { formatRupiah, formatRupiahCompact, formatPercent } from '@/lib/utils';
+import { calculateSavingsProgress } from '@/shared';
+import type { SavingsGoal, Transaction } from '@/shared';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { ChartTooltip } from '@/components/charts/ChartTooltip';
 import { ChartGradients, chartGridStyle, chartAxisStyle, formatChartRupiah } from '@/components/charts/ChartTheme';
 
 const ICONS = ['🎯', '💰', '🏠', '🚗', '✈️', '📚', '💻', '🏥', '💍', '🎓', '🏦', '🛒'];
+const year = new Date().getFullYear();
 
 export function TabunganContent() {
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState('');
-  const [goals, setGoals] = useState<any[]>([]);
-  const [txs, setTxs] = useState<any[]>([]);
-  const [year] = useState(new Date().getFullYear());
+  const [goals, setGoals] = useState<SavingsGoal[]>([]);
+  const [txs, setTxs] = useState<Transaction[]>([]);
 
   const [showModal, setShowModal] = useState(false);
-  const [editing, setEditing] = useState<any | null>(null);
+  const [editing, setEditing] = useState<SavingsGoal | null>(null);
   const [form, setForm] = useState({ name: '', target_amount: 0, monthly_contribution: 0, icon: '🎯', color: '#635bff' });
 
   const fetchData = async () => {
     try {
-      setLoading(true);
+      if (goals.length === 0) setLoading(true);
       const userId = await getCurrentUserId();
       if (!userId) return;
       setUserId(userId);
@@ -46,7 +48,8 @@ export function TabunganContent() {
     }
   };
 
-  useEffect(() => { fetchData(); }, [year]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { fetchData(); }, []);
 
   const totalTarget = goals.reduce((s, g) => s + Number(g.target_amount), 0);
   const totalAccumulated = goals.reduce((s, g) => s + Number(g.initial_amount || 0) + Number(g.current_amount || 0), 0);
@@ -54,8 +57,36 @@ export function TabunganContent() {
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
   const chartData = months.map((m, idx) => ({
     bulan: m,
-    total: txs.filter(t => new Date(t.transaction_date).getMonth() === idx).reduce((s, t) => s + Number(t.amount), 0),
+    total: txs.filter(t => Number(String(t.transaction_date).slice(0, 10).split('-')[1]) === idx + 1).reduce((s, t) => s + Number(t.amount), 0),
   }));
+
+  const handleDelete = async (g: SavingsGoal) => {
+    if (!confirm('Hapus target ini?')) return;
+    try {
+      await createClient().from('savings_goals').delete().eq('id', g.id);
+      await fetchData();
+    } catch (err) {
+      console.error(err);
+      alert('Gagal menghapus target. Coba lagi.');
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const supabase = createClient();
+      if (editing) {
+        await supabase.from('savings_goals').update({ name: form.name, target_amount: form.target_amount, monthly_contribution: form.monthly_contribution, icon: form.icon, color: form.color }).eq('id', editing.id);
+      } else {
+        await supabase.from('savings_goals').insert({ ...form, user_id: userId, initial_amount: 0, current_amount: 0 });
+      }
+      setShowModal(false);
+      await fetchData();
+    } catch (err) {
+      console.error(err);
+      alert('Gagal menyimpan target. Coba lagi.');
+    }
+  };
 
   if (loading) return (
     <div className="space-y-6 p-3 sm:p-6 animate-pulse">
@@ -77,7 +108,7 @@ export function TabunganContent() {
       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Target Tabungan & Investasi</h1>
-          <p className="text-muted-foreground text-sm mt-1">Pantau progres menuju目标 financial Anda</p>
+          <p className="text-muted-foreground text-sm mt-1">Pantau progres menuju target finansial Anda</p>
         </div>
         <button onClick={() => { setEditing(null); setForm({ name: '', target_amount: 0, monthly_contribution: 0, icon: '🎯', color: '#635bff' }); setShowModal(true); }} className="flex items-center gap-2 bg-primary-500 hover:bg-primary-600 text-white px-4 py-2.5 rounded-xl text-sm font-medium shadow-glow">
           <Plus className="w-4 h-4" /> Target Baru
@@ -114,23 +145,22 @@ export function TabunganContent() {
               </h2>
               <div className="space-y-4">
                 {goals.map(g => {
-                  const saved = Number(g.initial_amount || 0) + Number(g.current_amount || 0);
-                  const pct = Number(g.target_amount) > 0 ? saved / Number(g.target_amount) : 0;
+                  const prog = calculateSavingsProgress(g);
                   return (
                     <div key={g.id}>
                       <div className="flex justify-between items-center mb-1">
                         <span className="text-xs font-semibold flex items-center gap-1"><span>{g.icon || '🎯'}</span> {g.name}</span>
                         <div className="flex items-center gap-1">
-                          <span className="text-[10px] font-numeric text-muted-foreground">{formatRupiahCompact(saved)} / {formatRupiahCompact(g.target_amount)}</span>
+                          <span className="text-[10px] font-numeric text-muted-foreground">{formatRupiahCompact(prog.totalSaved)} / {formatRupiahCompact(g.target_amount)}</span>
                           <button onClick={() => { setEditing(g); setForm({ name: g.name, target_amount: Number(g.target_amount), monthly_contribution: Number(g.monthly_contribution), icon: g.icon || '🎯', color: g.color || '#635bff' }); setShowModal(true); }} className="p-1 text-muted-foreground hover:text-primary-500"><Edit2 className="w-3 h-3" /></button>
-                          <button onClick={async () => { if (!confirm('Hapus target ini?')) return; await createClient().from('savings_goals').delete().eq('id', g.id); fetchData(); }} className="p-1 text-muted-foreground hover:text-red-500"><Trash2 className="w-3 h-3" /></button>
+                          <button onClick={() => handleDelete(g)} className="p-1 text-muted-foreground hover:text-red-500"><Trash2 className="w-3 h-3" /></button>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
                         <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
-                          <div className="h-full rounded-full" style={{ width: `${Math.min(100, pct * 100)}%`, background: g.color || '#635bff' }} />
+                          <div className="h-full rounded-full" style={{ width: `${Math.min(100, prog.progressPercent)}%`, background: g.color || '#635bff' }} />
                         </div>
-                        <span className="text-[9px] font-numeric font-bold w-8 text-right" style={{ color: g.color || '#635bff' }}>{formatPercent(pct)}</span>
+                        <span className="text-[9px] font-numeric font-bold w-8 text-right" style={{ color: g.color || '#635bff' }}>{prog.progressPercent.toFixed(1)}%</span>
                       </div>
                     </div>
                   );
@@ -151,8 +181,8 @@ export function TabunganContent() {
                     <XAxis dataKey="bulan" {...chartAxisStyle} />
                     <YAxis {...chartAxisStyle} tickFormatter={(v) => formatChartRupiah(v)} width={60} />
                     <Tooltip content={<ChartTooltip />} />
-                    <Area type="monotone" dataKey="total" stroke="#3ecf8e" strokeWidth={3} fill="url(#gradSuccess)" />
-                    <ChartGradients />
+                    <Area type="monotone" dataKey="total" stroke="#3ecf8e" strokeWidth={3} fill="url(#tab-gradSuccess)" />
+                    <ChartGradients prefix="tab" />
                   </AreaChart>
                 </ResponsiveContainer>
               </div>
@@ -171,19 +201,18 @@ export function TabunganContent() {
                 </thead>
                 <tbody className="divide-y divide-border/60">
                   {goals.map(g => {
-                    const saved = Number(g.initial_amount || 0) + Number(g.current_amount || 0);
-                    const pct = Number(g.target_amount) > 0 ? (saved / Number(g.target_amount)) * 100 : 0;
+                    const prog = calculateSavingsProgress(g);
                     return (
                       <tr key={g.id} className="hover:bg-muted/30">
                         <td className="py-3 px-4"><span className="mr-2">{g.icon || '🎯'}</span>{g.name}</td>
                         <td className="py-3 px-4 font-numeric">{formatRupiah(g.target_amount)}</td>
-                        <td className="py-3 px-4 font-numeric text-emerald-600">{formatRupiah(saved)}</td>
+                        <td className="py-3 px-4 font-numeric text-emerald-600">{formatRupiah(prog.totalSaved)}</td>
                         <td className="py-3 px-4">
                           <div className="flex items-center gap-2">
                             <div className="h-1.5 w-20 bg-muted rounded-full overflow-hidden">
-                              <div className="h-full rounded-full" style={{ width: `${Math.min(100, pct)}%`, background: g.color || '#635bff' }} />
+                              <div className="h-full rounded-full" style={{ width: `${Math.min(100, prog.progressPercent)}%`, background: g.color || '#635bff' }} />
                             </div>
-                            <span className="text-xs font-numeric font-medium">{pct.toFixed(0)}%</span>
+                            <span className="text-xs font-numeric font-medium">{prog.progressPercent.toFixed(0)}%</span>
                           </div>
                         </td>
                         <td className="py-3 px-4 text-muted-foreground">{g.target_date ? new Date(g.target_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '-'}</td>
@@ -204,18 +233,7 @@ export function TabunganContent() {
               <h3 className="font-semibold text-foreground">{editing ? 'Edit Target' : 'Target Baru'}</h3>
               <button onClick={() => setShowModal(false)} className="text-muted-foreground hover:bg-muted p-1 rounded-md"><X className="w-4 h-4" /></button>
             </div>
-            <form onSubmit={async (e) => {
-              e.preventDefault();
-              const supabase = createClient();
-              const payload = { ...form, user_id: userId, initial_amount: 0, current_amount: 0 };
-              if (editing) {
-                await supabase.from('savings_goals').update({ name: form.name, target_amount: form.target_amount, monthly_contribution: form.monthly_contribution, icon: form.icon, color: form.color }).eq('id', editing.id);
-              } else {
-                await supabase.from('savings_goals').insert(payload);
-              }
-              setShowModal(false);
-              fetchData();
-            }} className="p-5 space-y-4">
+            <form onSubmit={handleSubmit} className="p-5 space-y-4">
               <div>
                 <label className="block text-xs font-semibold text-foreground mb-1.5 uppercase tracking-wide">Nama Target</label>
                 <input required value={form.name} onChange={e => setForm({...form, name: e.target.value})} type="text" className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500" placeholder="e.g. Dana Darurat 6x" />

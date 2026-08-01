@@ -111,8 +111,10 @@ export function calculateMonthlyBreakdown(transactions: Transaction[]) {
   const months = Array.from({ length: 12 }, (_, i) => i + 1);
   return months.map((month) => {
     const monthTx = transactions.filter((t) => {
-      const d = new Date(t.transaction_date);
-      return d.getMonth() + 1 === month;
+      // Parse 'YYYY-MM-DD' langsung dari string untuk menghindari pergeseran zona waktu
+      const datePart = String(t.transaction_date).slice(0, 10);
+      const m = Number(datePart.split('-')[1]);
+      return m === month;
     });
     const summary = calculateAnnualSummary(monthTx);
     return { month, ...summary };
