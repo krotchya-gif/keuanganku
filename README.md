@@ -1,21 +1,22 @@
-# Keuangan — Manajemen Keuangan Personal
+# Keuanganku — Manajemen Keuangan Personal
 
 Aplikasi manajemen keuangan personal berbasis **Next.js 14** + **PWA** + **Supabase**.
-Mengonversi perhitungan dari 3 file Excel (Financial Checkup, Simulasi KPR, Budgeting Sheet) menjadi platform web terpadu.
+Mengonversi perhitungan dari 3 file Excel (Financial Checkup, Simulasi KPR, Budgeting Sheet) menjadi platform web terpadu dengan tampilan mobile-first.
 
 ---
 
 ## Fitur
 
+- **Landing Page** — Halaman pemasaran di `/` (hero, fitur, testimoni, FAQ) untuk pengunjung yang belum login
 - **Net Worth & Snapshot** — Tracking aset, utang, dan kekayaan bersih bulanan
 - **Arus Kas** — Pencatatan pemasukan & pengeluaran, surplus/defisit
-- **Financial Checkup** — 6 rasio kesehatan keuangan (Dana Darurat, Arus Kas, Cicilan, Investasi, Biaya Hidup, Solvabilitas)
-- **Simulasi KPR** — Kalkulasi amortisasi iterative, dukung bunga fix + floating berjenjang, biaya tambahan (BPHTB, PPN, AJB, BBN)
+- **Financial Checkup** — 6 rasio kesehatan keuangan (Dana Darurat, Arus Kas, Cicilan, Investasi, Biaya Hidup, Solvabilitas) dengan radar chart
+- **Simulasi KPR** — Kalkulasi amortisasi iterative, dukung bunga fix + floating berjenjang, biaya tambahan (BPHTB, PPN, AJB, BBN), tabel amortisasi 20 baris/halaman + Tampilkan Semua
 - **Budgeting (Amplop)** — Zero-based budgeting, jurnal harian, evaluasi rencana vs realisasi
 - **Tabungan & Investasi** — Progress tracker per target
 - **Kalender Pembayaran** — Ceklis tagihan & cicilan
 - **Evaluasi Tahunan** — Laporan komprehensif per bulan
-- **PWA** — Install prompt, offline fallback, service worker cache strategy
+- **PWA** — Install prompt (1×/24 jam), offline fallback, service worker cache strategy
 
 ---
 
@@ -23,12 +24,11 @@ Mengonversi perhitungan dari 3 file Excel (Financial Checkup, Simulasi KPR, Budg
 
 | Stack | Teknologi |
 |---|---|
-| Framework | Next.js 14.2 (App Router) |
+| Framework | Next.js 14.2.35 (App Router) |
 | Bahasa | TypeScript 5.9 |
-| Styling | Tailwind CSS 3 + shadcn/ui |
+| Styling | Tailwind CSS 3 (design tokens custom, tanpa shadcn/ui) |
 | Charts | Recharts 2.15 |
-| State | Zustand 4 |
-| Forms | React Hook Form + Zod |
+| Forms | Hand-rolled `useState` (tanpa library form) |
 | Database | Supabase (PostgreSQL) |
 | Auth | Supabase Auth (email) |
 | PWA | @serwist/next 9.5 |
@@ -39,7 +39,7 @@ Mengonversi perhitungan dari 3 file Excel (Financial Checkup, Simulasi KPR, Budg
 ## Struktur Project
 
 ```
-app-keuangan/
+app keuangan/
 ├── src/
 │   ├── app/
 │   │   ├── (main)/           # Protected routes + sidebar + bottom nav
@@ -54,17 +54,16 @@ app-keuangan/
 │   │   │   ├── tabungan/
 │   │   │   ├── evaluasi/
 │   │   │   └── settings/
-│   │   ├── login/
-│   │   ├── register/
-│   │   ├── lupa-password/
-│   │   ├── reset-password/
+│   │   ├── page.tsx          # Landing page (public)
+│   │   ├── login/ register/ lupa-password/ reset-password/
 │   │   └── auth/callback/
 │   ├── components/
+│   │   ├── auth/             # AuthShell (single-column app screen)
 │   │   ├── charts/           # ChartTooltip, ChartTheme
-│   │   ├── layout/           # Sidebar, InstallPrompt
-│   │   └── ui/               # Skeleton
+│   │   ├── layout/           # Sidebar (desktop), InstallPrompt
+│   │   └── ui/               # BottomSheet, StatCard, TableScroll, PageHeader, dll
 │   ├── lib/
-│   │   ├── utils.ts          # formatRupiah, formatPercent, dll
+│   │   ├── utils.ts          # formatRupiah, formatRupiahCompact, dll
 │   │   ├── export.ts         # exportCSV, exportPDF
 │   │   └── queries/          # assets, debts, cashflow, transactions, dll
 │   ├── shared/
@@ -72,7 +71,7 @@ app-keuangan/
 │   │   ├── types/            # Semua TypeScript interfaces
 │   │   └── constants/
 │   ├── utils/supabase/       # client, server, middleware
-│   └── lib/utils.ts          # formatRupiah, formatPercent, dll
+│   └── middleware.ts         # Auth middleware (getClaims)
 ├── supabase/
 │   ├── migrations/
 │   │   ├── 001_initial_schema.sql
@@ -96,7 +95,7 @@ app-keuangan/
 
 ### 1. Clone & Install
 ```bash
-git clone https://github.com/krotchya-gif/app-keuangan.git
+git clone https://github.com/krotchya-gif/keuanganku.git
 cd app-keuangan
 npm install
 ```
@@ -123,6 +122,18 @@ npm run dev          # http://localhost:3002
 
 ---
 
+## Scripts
+
+| Script | Fungsi |
+|---|---|
+| `npm run dev` | Dev server port 3002 |
+| `npm run build` | Production build (termasuk serwist SW) |
+| `npm run start` | Start production |
+| `npm run lint` | Next lint |
+| `npm run type-check` | TypeScript type check |
+
+---
+
 ## Deployment (Vercel)
 
 1. Push ke GitHub
@@ -136,7 +147,7 @@ npm run dev          # http://localhost:3002
 
 ## Auto-Snapshot Net Worth
 
-Snapshot otomatis tiap akhir bulan via pg_cron (butuh Supabase Pro plan):
+Snapshot otomatis tiap awal bulan via pg_cron (butuh Supabase Pro plan):
 
 1. Deploy edge function:
    ```bash
