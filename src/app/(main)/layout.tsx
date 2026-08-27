@@ -65,7 +65,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <Sidebar />
 
       <main className="flex-1 w-full min-w-0 mt-14 md:mt-0 md:ml-64 min-h-screen transition-transform">
-        <div className="p-3 sm:p-6 md:p-8 w-full max-w-[100vw] sm:max-w-7xl mx-auto animate-fade-in pb-36 md:pb-8 safe-bottom">
+        <div className="p-3 sm:p-6 md:p-8 w-full max-w-[100vw] sm:max-w-7xl mx-auto animate-fade-in pb-[calc(9rem+env(safe-area-inset-bottom,0px))] md:pb-[calc(2rem+env(safe-area-inset-bottom,0px))]">
           {children}
         </div>
       </main>

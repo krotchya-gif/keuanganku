@@ -118,7 +118,7 @@ export function KPRContent() {
   const [tab, setTab] = useState<'ringkasan' | 'amortisasi' | 'biaya'>('ringkasan');
   const [showAllRows, setShowAllRows] = useState(false);
   const [page, setPage] = useState(1);
-  const PER_PAGE = 24;
+  const PER_PAGE = 20;
 
   // DB States
   const [loading, setLoading] = useState(true);
