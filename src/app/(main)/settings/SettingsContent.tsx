@@ -2,20 +2,24 @@
 
 import { useState, useEffect } from 'react';
 import { createClient } from '@/utils/supabase/client';
-import { Loader2, AlertTriangle, User, RefreshCcw, Settings as SettingsIcon } from 'lucide-react';
+import { Loader2, AlertTriangle, User, RefreshCcw, Settings as SettingsIcon, LogOut } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
 
 export function SettingsContent() {
   const [loading, setLoading] = useState(true);
   const [reseting, setReseting] = useState(false);
   const [email, setEmail] = useState('');
+  const [name, setName] = useState('');
 
   useEffect(() => {
     async function fetchUser() {
       try {
          const supabase = createClient();
          const { data: { user } } = await supabase.auth.getUser();
-         if (user && user.email) setEmail(user.email);
+         if (user) {
+           if (user.email) setEmail(user.email);
+           setName(user.user_metadata?.full_name || user.email?.split('@')[0] || 'Pengguna');
+         }
       } catch (err) {
          console.error(err);
       } finally {
@@ -24,6 +28,12 @@ export function SettingsContent() {
     }
     fetchUser();
   }, []);
+
+  const handleLogout = async () => {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    window.location.href = '/login';
+  };
 
   const handleReset = async () => {
      if (!confirm('PERINGATAN KERAS!\n\nApakah Anda yakin ingin menghapus SEMUA data keuangan Anda? (Aset, Utang, KPR, Jurnal Transaksi, Amplop Budget, Target Tabungan). Aksi ini TIDAK BISA dibatalkan.')) return;
@@ -78,6 +88,10 @@ export function SettingsContent() {
         </h2>
         <div className="space-y-4">
           <div>
+            <label className="text-xs font-semibold text-muted-foreground">Nama Lengkap</label>
+            <p className="font-medium text-foreground">{name}</p>
+          </div>
+          <div>
             <label className="text-xs font-semibold text-muted-foreground">Alamat Email</label>
             <p className="font-medium text-foreground">{email}</p>
           </div>
@@ -87,6 +101,12 @@ export function SettingsContent() {
               <span className="w-2 h-2 rounded-full bg-emerald-500 block" /> Terhubung (Disinkronkan ke Supabase Cloud)
             </p>
           </div>
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-2 bg-red-50 text-red-600 hover:bg-red-100 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all active:scale-[0.98]"
+          >
+            <LogOut className="w-4 h-4" /> Keluar dari Akun
+          </button>
         </div>
       </div>
 

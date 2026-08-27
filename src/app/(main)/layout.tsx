@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
+import { useTheme } from 'next-themes';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { InstallPrompt } from '@/components/layout/InstallPrompt';
 import { BottomSheet } from '@/components/ui/BottomSheet';
@@ -19,8 +20,13 @@ import {
   BarChart3,
   Settings,
   TrendingUp,
+  Wallet,
+  Sun,
+  Moon,
+  LogOut,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { createClient } from '@/utils/supabase/client';
 
 const MORE_ITEMS = [
   { href: '/net-worth', label: 'Net Worth', icon: TrendingUp },
@@ -34,9 +40,19 @@ const MORE_ITEMS = [
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const { theme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
 
+  useEffect(() => setMounted(true), []);
+
   const isActive = (href: string) => pathname === href || pathname.startsWith(href + '/');
+
+  const handleLogout = async () => {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    window.location.href = '/login';
+  };
 
   const bottomItems = [
     { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -53,6 +69,25 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           {children}
         </div>
       </main>
+
+      {/* Mobile Top Bar (tanpa hamburger — navigasi via bottom nav) */}
+      <header className="md:hidden fixed top-0 w-full z-40 h-14 bg-card/95 backdrop-blur-lg border-b border-border/70 flex items-center justify-between px-3 safe-top">
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center shadow-glow-sm">
+            <Wallet className="w-4 h-4 text-white" />
+          </div>
+          <p className="font-bold text-foreground text-base leading-none">Keuanganku</p>
+        </div>
+        {mounted && (
+          <button
+            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+            className="p-2 text-muted-foreground hover:bg-muted rounded-xl transition-colors touch-target flex items-center justify-center"
+            aria-label="Ganti Tema"
+          >
+            {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+          </button>
+        )}
+      </header>
 
       {/* Mobile Bottom Navigation */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-card/95 backdrop-blur-lg border-t border-border/70 safe-bottom">
@@ -113,6 +148,15 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             );
           })}
         </div>
+
+        {/* Logout */}
+        <button
+          onClick={handleLogout}
+          className="mt-4 w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-red-500 hover:bg-red-50 transition-colors touch-target"
+        >
+          <LogOut className="w-4 h-4" />
+          Keluar dari Keuanganku
+        </button>
       </BottomSheet>
 
       <InstallPrompt />
