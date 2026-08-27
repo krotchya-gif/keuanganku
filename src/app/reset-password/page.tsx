@@ -3,7 +3,11 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
-import { Loader2, Key, Wallet, Eye, EyeOff } from 'lucide-react';
+import { AuthShell } from '@/components/auth/AuthShell';
+import { Loader2, Key, Eye, EyeOff } from 'lucide-react';
+
+const inputClass =
+  'w-full rounded-xl border border-input bg-background px-3.5 py-3 text-sm text-foreground placeholder:text-muted-foreground transition-shadow focus:outline-none focus:ring-2 focus:ring-emerald-500/35 focus:border-emerald-500';
 
 export default function ResetPasswordPage() {
   const [password, setPassword] = useState('');
@@ -43,74 +47,74 @@ export default function ResetPasswordPage() {
   };
 
   return (
-    <div className="min-h-screen flex">
-      {/* Left Panel */}
-      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-primary-600 via-violet-600 to-purple-700 p-12 flex-col justify-between relative overflow-hidden">
-        <div className="absolute -top-20 -right-20 w-80 h-80 bg-white/10 rounded-full blur-3xl" />
-        <div className="absolute -bottom-20 -left-20 w-80 h-80 bg-white/10 rounded-full blur-3xl" />
-        <div className="relative z-10">
-          <div className="flex items-center gap-3 mb-12">
-            <div className="w-10 h-10 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-sm">
-              <Wallet className="w-5 h-5 text-white" />
-            </div>
-            <span className="text-white text-xl font-bold">Keuanganku</span>
+    <AuthShell>
+      <div>
+        <h2 className="text-2xl font-bold tracking-tight">Buat sandi baru</h2>
+        <p className="text-muted-foreground text-sm mt-1.5">
+          Isi kolom di bawah untuk memperbarui sandi akun Anda.
+        </p>
+      </div>
+
+      <form onSubmit={handleUpdatePassword} className="mt-8 space-y-4">
+        {error && <div className="bg-red-50 text-red-600 p-3 rounded-xl text-sm border border-red-200">{error}</div>}
+        {message ? (
+          <div className="bg-emerald-50 text-emerald-700 p-6 rounded-2xl text-sm font-medium border border-emerald-200 text-center">
+            {message}
           </div>
-          <h1 className="text-4xl font-bold text-white leading-tight mb-4">Sandi Baru <br/>Telah Siap</h1>
-          <p className="text-white/70 text-lg leading-relaxed">Silakan masukkan kombinasi kata sandi baru Anda untuk kembali aman.</p>
-        </div>
-      </div>
+        ) : (
+          <>
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-1.5">Sandi Baru</label>
+              <div className="relative">
+                <Key className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  disabled={loading}
+                  autoComplete="new-password"
+                  className={`${inputClass} pl-10 pr-12`}
+                  placeholder="••••••••"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 touch-target flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+                  aria-label={showPassword ? 'Sembunyikan password' : 'Tampilkan password'}
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
 
-      {/* Right Panel */}
-      <div className="flex-1 flex items-center justify-center p-6 sm:p-8 bg-background">
-        <div className="w-full max-w-md">
-           {/* Mobile header */}
-           <div className="flex lg:hidden flex-col items-center mb-8">
-             <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center shadow-glow mb-3">
-               <Wallet className="w-7 h-7 text-white" />
-             </div>
-             <span className="text-xl font-bold text-foreground">Keuanganku</span>
-           </div>
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-1.5">Konfirmasi Sandi Baru</label>
+              <div className="relative">
+                <Key className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  required
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  disabled={loading}
+                  autoComplete="new-password"
+                  className={`${inputClass} pl-10`}
+                  placeholder="••••••••"
+                />
+              </div>
+            </div>
 
-           <div className="mb-8">
-             <h2 className="text-2xl font-bold text-foreground">Buat Sandi Baru</h2>
-             <p className="text-muted-foreground text-sm mt-1">Isi kolom di bawah untuk memperbarui sandi akun Anda.</p>
-           </div>
-
-           <form onSubmit={handleUpdatePassword} className="space-y-4">
-             {error && <div className="bg-red-50 text-red-600 p-3 rounded-xl text-sm border border-red-200">{error}</div>}
-             {message ? (
-               <div className="bg-emerald-50 text-emerald-700 p-6 rounded-2xl text-sm font-medium border border-emerald-200 text-center">
-                  {message}
-               </div>
-             ) : (
-               <>
-                 <div>
-                   <label className="block text-sm font-medium text-foreground mb-1.5">Sandi Baru</label>
-                   <div className="relative">
-                      <Key className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
-                      <input type={showPassword ? 'text' : 'password'} required value={password} onChange={(e) => setPassword(e.target.value)} disabled={loading} autoComplete="new-password" className="input-field pl-9 pr-12" placeholder="••••••••" />
-                      <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 touch-target flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors" aria-label={showPassword ? 'Sembunyikan password' : 'Tampilkan password'}>
-                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                      </button>
-                   </div>
-                 </div>
-
-                 <div>
-                   <label className="block text-sm font-medium text-foreground mb-1.5">Konfirmasi Sandi Baru</label>
-                   <div className="relative">
-                      <Key className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
-                      <input type={showPassword ? 'text' : 'password'} required value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} disabled={loading} autoComplete="new-password" className="input-field pl-9 pr-12" placeholder="••••••••" />
-                   </div>
-                 </div>
-
-                 <button type="submit" disabled={loading || !password} className="w-full btn-primary py-3 mt-2">
-                   {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Simpan Sandi Baru'}
-                 </button>
-               </>
-             )}
-           </form>
-        </div>
-      </div>
-    </div>
+            <button
+              type="submit"
+              disabled={loading || !password}
+              className="w-full flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed text-white py-3 rounded-xl font-semibold text-sm transition-all mt-2"
+            >
+              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Simpan Sandi Baru'}
+            </button>
+          </>
+        )}
+      </form>
+    </AuthShell>
   );
 }

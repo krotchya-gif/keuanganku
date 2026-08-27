@@ -3,7 +3,11 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/utils/supabase/client';
-import { Eye, EyeOff, LogIn, Loader2, TrendingUp, Shield, BarChart3, Wallet } from 'lucide-react';
+import { AuthShell } from '@/components/auth/AuthShell';
+import { Eye, EyeOff, Loader2, LogIn } from 'lucide-react';
+
+const inputClass =
+  'w-full rounded-xl border border-input bg-background px-3.5 py-3 text-sm text-foreground placeholder:text-muted-foreground transition-shadow focus:outline-none focus:ring-2 focus:ring-emerald-500/35 focus:border-emerald-500';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -52,140 +56,89 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex">
-      {/* Left Panel — Branding */}
-      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-primary-600 via-primary-500 to-violet-600 p-12 flex-col justify-between relative overflow-hidden">
-        {/* Decorative circles */}
-        <div className="absolute -top-20 -right-20 w-80 h-80 bg-white/10 rounded-full blur-3xl" />
-        <div className="absolute -bottom-20 -left-20 w-80 h-80 bg-white/10 rounded-full blur-3xl" />
-
-        <div className="relative z-10">
-          <div className="flex items-center gap-3 mb-12">
-            <div className="w-10 h-10 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-sm">
-              <Wallet className="w-5 h-5 text-white" />
-            </div>
-            <span className="text-white text-xl font-bold">Keuanganku</span>
-          </div>
-
-          <h1 className="text-4xl font-bold text-white leading-tight mb-4">
-            Kelola keuangan<br />dengan cerdas
-          </h1>
-          <p className="text-white/70 text-lg leading-relaxed">
-            Pantau net worth, arus kas, budgeting, dan kesehatan finansial Anda dalam satu platform.
-          </p>
-        </div>
-
-        <div className="relative z-10 grid grid-cols-1 gap-4">
-          {[
-            { icon: BarChart3, title: 'Net Worth Tracker', desc: 'Pantau pertumbuhan aset dan utang Anda' },
-            { icon: Shield, title: 'Checkup Keuangan', desc: '6 rasio kesehatan finansial real-time' },
-            { icon: TrendingUp, title: 'Simulasi KPR', desc: 'Hitung cicilan KPR dengan akurat' },
-          ].map((f) => (
-            <div key={f.title} className="flex items-start gap-3 bg-white/10 backdrop-blur-sm rounded-2xl p-3">
-              <div className="w-8 h-8 bg-white/20 rounded-xl flex items-center justify-center shrink-0">
-                <f.icon className="w-4 h-4 text-white" />
-              </div>
-              <div>
-                <p className="text-white font-semibold text-sm">{f.title}</p>
-                <p className="text-white/60 text-xs">{f.desc}</p>
-              </div>
-            </div>
-          ))}
-        </div>
+    <AuthShell>
+      <div>
+        <h2 className="text-2xl font-bold tracking-tight">Masuk ke akun Anda</h2>
+        <p className="text-muted-foreground text-sm mt-1.5">Lanjutkan pantauan keuangan Anda.</p>
       </div>
 
-      {/* Right Panel — Login Form */}
-      <div className="flex-1 flex items-center justify-center p-6 sm:p-8 bg-background">
-        <div className="w-full max-w-md">
-          {/* Mobile header */}
-          <div className="flex lg:hidden flex-col items-center mb-8">
-            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center shadow-glow mb-3">
-              <Wallet className="w-7 h-7 text-white" />
-            </div>
-            <span className="text-xl font-bold text-foreground">Keuanganku</span>
-          </div>
+      <form onSubmit={handleLogin} className="mt-8 space-y-5">
+        <div>
+          <label htmlFor="email" className="block text-sm font-medium text-foreground mb-1.5">
+            Email
+          </label>
+          <input
+            id="email"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="nama@email.com"
+            required
+            autoComplete="email"
+            className={inputClass}
+          />
+        </div>
 
-          <div className="mb-8">
-            <h2 className="text-2xl font-bold text-foreground">Selamat datang kembali</h2>
-            <p className="text-muted-foreground text-sm mt-1">Masuk ke akun Anda untuk melanjutkan</p>
-          </div>
-
-          <form onSubmit={handleLogin} className="space-y-5">
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-foreground mb-1.5">
-                Email
-              </label>
-              <input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="kamu@email.com"
-                required
-                autoComplete="email"
-                className="input-field"
-              />
-            </div>
-
-            <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label htmlFor="password" className="block text-sm font-medium text-foreground">
-                  Password
-                </label>
-                <Link href="/lupa-password" className="text-xs font-medium text-primary-500 hover:text-primary-600 hover:underline">
-                  Lupa password?
-                </Link>
-              </div>
-              <div className="relative">
-                <input
-                  id="password"
-                  type={showPassword ? 'text' : 'password'}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  required
-                  autoComplete="current-password"
-                  className="input-field pr-12"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 touch-target flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
-                  aria-label={showPassword ? 'Sembunyikan password' : 'Tampilkan password'}
-                >
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              </div>
-            </div>
-
-            {error && (
-              <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-4 py-3">
-                {error}
-              </div>
-            )}
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full btn-primary py-3"
+        <div>
+          <div className="flex items-center justify-between mb-1.5">
+            <label htmlFor="password" className="block text-sm font-medium text-foreground">
+              Password
+            </label>
+            <Link
+              href="/lupa-password"
+              className="text-xs font-medium text-emerald-700 hover:text-emerald-800 hover:underline"
             >
-              {loading ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <LogIn className="w-4 h-4" />
-              )}
-              {loading ? 'Memproses...' : 'Masuk'}
-            </button>
-          </form>
-
-          <p className="text-center text-sm text-muted-foreground mt-6">
-            Belum punya akun?{' '}
-            <Link href="/register" className="text-primary-500 hover:text-primary-600 font-medium hover:underline">
-              Daftar sekarang
+              Lupa password?
             </Link>
-          </p>
+          </div>
+          <div className="relative">
+            <input
+              id="password"
+              type={showPassword ? 'text' : 'password'}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="••••••••"
+              required
+              autoComplete="current-password"
+              className={`${inputClass} pr-12`}
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-2 top-1/2 -translate-y-1/2 touch-target flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+              aria-label={showPassword ? 'Sembunyikan password' : 'Tampilkan password'}
+            >
+              {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            </button>
+          </div>
         </div>
-      </div>
-    </div>
+
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-4 py-3">
+            {error}
+          </div>
+        )}
+
+        <button
+          type="submit"
+          disabled={loading}
+          className="w-full flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed text-white py-3 rounded-xl font-semibold text-sm transition-all"
+        >
+          {loading ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : (
+            <LogIn className="w-4 h-4" />
+          )}
+          {loading ? 'Memproses...' : 'Masuk'}
+        </button>
+      </form>
+
+      <p className="text-center text-sm text-muted-foreground mt-7">
+        Belum punya akun?{' '}
+        <Link href="/register" className="text-emerald-700 hover:text-emerald-800 font-semibold hover:underline">
+          Daftar gratis
+        </Link>
+      </p>
+    </AuthShell>
   );
 }
