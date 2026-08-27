@@ -117,6 +117,8 @@ export function KPRContent() {
 
   const [tab, setTab] = useState<'ringkasan' | 'amortisasi' | 'biaya'>('ringkasan');
   const [showAllRows, setShowAllRows] = useState(false);
+  const [page, setPage] = useState(1);
+  const PER_PAGE = 24;
 
   // DB States
   const [loading, setLoading] = useState(true);
@@ -302,7 +304,14 @@ export function KPRContent() {
       saldo: Math.round(row.endingBalance),
     }));
 
-  const displayRows = showAllRows ? kprResult.schedule : kprResult.schedule.slice(0, 24);
+  const totalRows = kprResult.schedule.length;
+  const totalPages = Math.max(1, Math.ceil(totalRows / PER_PAGE));
+  const safePage = Math.min(page, totalPages);
+  const displayRows = showAllRows
+    ? kprResult.schedule
+    : kprResult.schedule.slice((safePage - 1) * PER_PAGE, safePage * PER_PAGE);
+  const pageStart = totalRows === 0 ? 0 : (safePage - 1) * PER_PAGE + 1;
+  const pageEnd = Math.min(safePage * PER_PAGE, totalRows);
 
   // Buat legenda fase unik untuk ditampilkan di header tabel amortisasi
   const uniquePhases = Array.from(
@@ -800,10 +809,48 @@ export function KPRContent() {
                     </tbody>
                   </table>
                   </TableScroll>
-                  {!showAllRows && kprResult.schedule.length > 24 && (
-                    <button onClick={() => setShowAllRows(true)} className="mt-4 w-full text-xs bg-muted/50 font-medium text-primary-500 hover:text-primary-600 py-2.5 rounded-lg transition-colors">
-                      Tampilkan seluruh {kprResult.schedule.length} bulan angsuran →
-                    </button>
+                  {totalRows > PER_PAGE && (
+                    showAllRows ? (
+                      <div className="mt-4 flex justify-center">
+                        <button
+                          onClick={() => { setShowAllRows(false); setPage(1); }}
+                          className="text-xs bg-muted/50 font-medium text-primary-500 hover:text-primary-600 py-2.5 px-4 rounded-lg transition-colors"
+                        >
+                          ← Kembali ke tampilan per halaman
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="mt-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+                        <p className="text-xs text-muted-foreground font-numeric">
+                          Menampilkan {pageStart}–{pageEnd} dari {totalRows} bulan
+                        </p>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => setPage((p) => Math.max(1, p - 1))}
+                            disabled={safePage <= 1}
+                            className="btn-secondary !py-2 !px-3 text-xs disabled:opacity-40"
+                          >
+                            ← Sebelumnya
+                          </button>
+                          <span className="text-xs text-muted-foreground font-numeric">
+                            {safePage} / {totalPages}
+                          </span>
+                          <button
+                            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                            disabled={safePage >= totalPages}
+                            className="btn-secondary !py-2 !px-3 text-xs disabled:opacity-40"
+                          >
+                            Berikutnya →
+                          </button>
+                          <button
+                            onClick={() => setShowAllRows(true)}
+                            className="text-xs bg-muted/50 font-medium text-primary-500 hover:text-primary-600 py-2 px-3 rounded-lg transition-colors"
+                          >
+                            Tampilkan Semua
+                          </button>
+                        </div>
+                      </div>
+                    )
                   )}
                 </div>
               )}
