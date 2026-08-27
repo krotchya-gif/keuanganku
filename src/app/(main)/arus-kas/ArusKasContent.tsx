@@ -1,9 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Edit2, Trash2, X, ArrowUpRight, ArrowDownRight } from 'lucide-react';
+import { Edit2, Trash2, ArrowUpRight, ArrowDownRight, ArrowLeftRight } from 'lucide-react';
 import { Skeleton, ListSkeleton, KPISkeleton } from '@/components/ui/Skeleton';
-import { formatRupiah, formatPercent } from '@/lib/utils';
+import { PageHeader } from '@/components/ui/PageHeader';
+import { BottomSheet } from '@/components/ui/BottomSheet';
+import { formatRupiahCompact, formatPercent } from '@/lib/utils';
 import { createClient } from '@/utils/supabase/client';
 import { getCurrentUserId } from '@/lib/queries/users';
 import { fetchCashflowItems } from '@/lib/queries/cashflow';
@@ -124,44 +126,45 @@ export function ArusKasContent() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-foreground">Arus Kas (Cash Flow)</h1>
-          <p className="text-muted-foreground text-xs sm:text-sm mt-1">Pencatatan kas masuk & proporsi kas keluar bulanan</p>
-        </div>
-        <div className="flex gap-2">
-           <button onClick={() => openAddModal('keluar')} className="flex items-center justify-center gap-2 flex-1 sm:flex-none bg-card hover:bg-muted border border-border text-foreground px-3 sm:px-4 py-2.5 sm:py-2 rounded-xl sm:rounded-lg text-xs sm:text-sm font-medium transition-colors">
-            <ArrowDownRight className="w-4 h-4 text-red-500" /> 
-            <span className="hidden sm:inline">Tambah Kas Keluar</span>
-            <span className="sm:hidden">Kas Keluar</span>
-           </button>
-           <button onClick={() => openAddModal('masuk')} className="flex items-center justify-center gap-2 flex-1 sm:flex-none bg-primary-500 hover:bg-primary-600 text-white px-3 sm:px-4 py-2.5 sm:py-2 rounded-xl sm:rounded-lg text-xs sm:text-sm font-medium transition-colors shadow-glow">
-            <ArrowUpRight className="w-4 h-4" /> 
-            <span className="hidden sm:inline">Tambah Kas Masuk</span>
-            <span className="sm:hidden">Kas Masuk</span>
-           </button>
-        </div>
-      </div>
+      <PageHeader
+        title="Arus Kas"
+        subtitle="Pencatatan kas masuk & proporsi kas keluar bulanan"
+        icon={ArrowLeftRight}
+        gradient="from-indigo-500 to-violet-600"
+        action={
+          <div className="flex gap-2">
+            <button onClick={() => openAddModal('keluar')} className="btn-secondary flex-1 sm:flex-none">
+              <ArrowDownRight className="w-4 h-4 text-red-500" />
+              <span className="hidden sm:inline">Kas Keluar</span>
+              <span className="sm:hidden">Keluar</span>
+            </button>
+            <button onClick={() => openAddModal('masuk')} className="btn-primary flex-1 sm:flex-none">
+              <ArrowUpRight className="w-4 h-4" />
+              <span className="hidden sm:inline">Kas Masuk</span>
+              <span className="sm:hidden">Masuk</span>
+            </button>
+          </div>
+        }
+      />
 
       {/* KPI Row */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-        <div className="card-premium p-4 sm:p-6">
+        <div className="card-premium p-4 sm:p-5">
           <div className="flex items-center justify-between mb-2">
             <p className="text-sm text-muted-foreground font-medium">Surplus / Defisit</p>
             <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${isPositive ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}`}>
                {isPositive ? 'Sehat' : 'Defisit'}
             </span>
           </div>
-          <p className={`text-2xl sm:text-3xl font-bold font-numeric ${isPositive ? 'text-emerald-500' : 'text-red-500'}`}>
-            {isPositive ? '+' : ''}{formatRupiah(surplus)}
+          <p className={`kpi-value font-bold font-numeric ${isPositive ? 'text-emerald-500' : 'text-red-500'}`}>
+            {isPositive ? '+' : ''}{formatRupiahCompact(surplus)}
           </p>
           <div className="mt-4 flex items-center justify-between text-xs">
             <span className="text-muted-foreground">Persentase dari Pendapatan</span>
             <span className="font-numeric font-medium">{formatPercent(totalMasuk > 0 ? surplus / totalMasuk : 0)}</span>
           </div>
         </div>
-        <div className="card-premium p-4 sm:p-6 sm:col-span-1 lg:col-span-2">
+        <div className="card-premium p-4 sm:p-5 sm:col-span-1 lg:col-span-2">
            <p className="text-sm text-muted-foreground font-medium mb-4">Postur Alokasi Pengeluaran Bulanan</p>
            <div className="space-y-4">
              {/* Progress Bar Container — scale ke max(masuk, keluar) supaya bar tidak overflow */}
@@ -180,11 +183,11 @@ export function ArusKasContent() {
                  return (
                    <div key={g.cat}>
                      <div className="flex items-center gap-1.5 text-xs">
-                       <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: g.color }} />
-                       <span className="text-muted-foreground">{g.label}</span>
+                       <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: g.color }} />
+                       <span className="text-muted-foreground truncate">{g.label}</span>
                      </div>
                      <p className="font-numeric font-semibold text-foreground text-sm mt-1">{formatPercent(pct)}</p>
-                     <p className="text-[10px] text-muted-foreground font-numeric">{formatRupiah(g.total)}</p>
+                     <p className="text-[10px] text-muted-foreground font-numeric">{formatRupiahCompact(g.total)}</p>
                    </div>
                  );
                })}
@@ -202,23 +205,23 @@ export function ArusKasContent() {
                <ArrowUpRight className="w-5 h-5 text-emerald-500" />
                Kas Masuk
             </h2>
-            <span className="text-emerald-500 font-bold font-numeric text-sm sm:text-base">{formatRupiah(totalMasuk)}</span>
+            <span className="text-emerald-500 font-bold font-numeric text-sm sm:text-base">{formatRupiahCompact(totalMasuk)}</span>
           </div>
           <div className="space-y-2">
              {kasMasuk.length === 0 ? (
                <p className="text-sm text-muted-foreground italic text-center py-6 border border-dashed rounded-xl">Belum ada kas masuk tercatat.</p>
              ) : (
                kasMasuk.map(item => (
-                 <div key={item.id} className="card-premium p-4 flex items-center justify-between hover:border-primary-500/30 group">
-                    <div>
-                      <p className="text-sm font-medium text-foreground">{item.name}</p>
-                      <p className="text-[10px] text-muted-foreground mt-0.5">{item.is_recurring ? 'Rutin / Tetap' : 'Sekali masuk'} · {CASHFLOW_CATEGORY_LABELS[item.category]}</p>
+                 <div key={item.id} className="card-premium p-4 flex items-center justify-between gap-3 hover:border-primary-500/30 group">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-foreground truncate">{item.name}</p>
+                      <p className="text-[10px] text-muted-foreground mt-0.5 truncate">{item.is_recurring ? 'Rutin / Tetap' : 'Sekali masuk'} · {CASHFLOW_CATEGORY_LABELS[item.category]}</p>
                     </div>
-                    <div className="flex items-center gap-3">
-                      <span className="font-numeric font-semibold text-emerald-500">+{formatRupiah(item.amount)}</span>
-                      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                         <button onClick={() => { setEditingItem(item); setForm({ name: item.name, direction: item.direction, category: item.category, amount: item.amount, is_recurring: item.is_recurring }); setShowModal(true); }} className="p-1.5 text-muted-foreground hover:text-primary-500"><Edit2 className="w-3.5 h-3.5" /></button>
-                         <button onClick={() => handleDelete(item.id)} className="p-1.5 text-muted-foreground hover:text-red-500"><Trash2 className="w-3.5 h-3.5" /></button>
+                    <div className="flex items-center gap-3 shrink-0">
+                      <span className="font-numeric font-semibold text-emerald-500">+{formatRupiahCompact(item.amount)}</span>
+                      <div className="flex gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                         <button onClick={() => { setEditingItem(item); setForm({ name: item.name, direction: item.direction, category: item.category, amount: item.amount, is_recurring: item.is_recurring }); setShowModal(true); }} className="p-2 text-muted-foreground hover:text-primary-500 touch-target"><Edit2 className="w-3.5 h-3.5" /></button>
+                         <button onClick={() => handleDelete(item.id)} className="p-2 text-muted-foreground hover:text-red-500 touch-target"><Trash2 className="w-3.5 h-3.5" /></button>
                       </div>
                     </div>
                  </div>
@@ -234,26 +237,26 @@ export function ArusKasContent() {
                <ArrowDownRight className="w-5 h-5 text-red-500" />
                Kas Keluar
             </h2>
-            <span className="text-red-500 font-bold font-numeric text-sm sm:text-base">-{formatRupiah(totalKeluar)}</span>
+            <span className="text-red-500 font-bold font-numeric text-sm sm:text-base">-{formatRupiahCompact(totalKeluar)}</span>
           </div>
           <div className="space-y-4">
              {outGroups.filter(g => g.items.length > 0).map(group => (
                <div key={group.cat} className="space-y-2">
                  <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center justify-between px-2">
                     <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full" style={{ background: group.color }} /> {group.label}</span>
-                    <span className="font-numeric">{formatRupiah(group.total)}</span>
+                    <span className="font-numeric">{formatRupiahCompact(group.total)}</span>
                  </h3>
                  {group.items.map(item => (
-                   <div key={item.id} className="bg-card border border-border rounded-lg p-3 flex items-center justify-between hover:border-muted-foreground/30 transition-colors group/item">
-                      <div>
-                        <p className="text-sm text-foreground">{item.name}</p>
+                   <div key={item.id} className="bg-card border border-border rounded-xl p-3.5 flex items-center justify-between gap-3 hover:border-muted-foreground/30 transition-colors group/item">
+                      <div className="min-w-0">
+                        <p className="text-sm text-foreground truncate">{item.name}</p>
                         <p className="text-[10px] text-muted-foreground mt-0.5">{item.is_recurring ? 'Beban Tetap' : 'Beban Variabel'}</p>
                       </div>
-                      <div className="flex items-center gap-3">
-                        <span className="font-numeric font-medium text-foreground">-{formatRupiah(item.amount)}</span>
-                        <div className="flex gap-1 opacity-0 group-hover/item:opacity-100 transition-opacity">
-                           <button onClick={() => { setEditingItem(item); setForm({ name: item.name, direction: item.direction, category: item.category, amount: item.amount, is_recurring: item.is_recurring }); setShowModal(true); }} className="p-1 text-muted-foreground hover:text-primary-500"><Edit2 className="w-3 h-3" /></button>
-                           <button onClick={() => handleDelete(item.id)} className="p-1 text-muted-foreground hover:text-red-500"><Trash2 className="w-3 h-3" /></button>
+                      <div className="flex items-center gap-3 shrink-0">
+                        <span className="font-numeric font-medium text-foreground">-{formatRupiahCompact(item.amount)}</span>
+                        <div className="flex gap-1 opacity-100 sm:opacity-0 sm:group-hover/item:opacity-100 transition-opacity">
+                           <button onClick={() => { setEditingItem(item); setForm({ name: item.name, direction: item.direction, category: item.category, amount: item.amount, is_recurring: item.is_recurring }); setShowModal(true); }} className="p-2 text-muted-foreground hover:text-primary-500 touch-target"><Edit2 className="w-3.5 h-3.5" /></button>
+                           <button onClick={() => handleDelete(item.id)} className="p-2 text-muted-foreground hover:text-red-500 touch-target"><Trash2 className="w-3.5 h-3.5" /></button>
                         </div>
                       </div>
                    </div>
@@ -267,52 +270,44 @@ export function ArusKasContent() {
         </div>
       </div>
 
-      {/* Item Modal Overlay */}
-      {showModal && (
-        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-          <div className="bg-card w-full max-w-md rounded-xl shadow-xl overflow-hidden animate-in fade-in zoom-in-95">
-            <div className="flex items-center justify-between p-4 border-b border-border">
-              <h3 className="font-semibold text-foreground flex items-center gap-2">
-                {form.direction === 'masuk' ? <ArrowUpRight className="w-4 h-4 text-emerald-500"/> : <ArrowDownRight className="w-4 h-4 text-red-500"/>}
-                {editingItem ? 'Edit Arus Kas' : (form.direction === 'masuk' ? 'Catat Kas Masuk' : 'Catat Kas Keluar')}
-              </h3>
-              <button onClick={() => setShowModal(false)} className="text-muted-foreground hover:bg-muted p-1 rounded-md"><X className="w-4 h-4" /></button>
-            </div>
-            <form onSubmit={handleSave} className="p-4 space-y-4">
-              <div>
-                <label className="block text-xs font-medium text-foreground mb-1.5">Nama Item / Keterangan</label>
-                <input required value={form.name} onChange={e => setForm({...form, name: e.target.value})} type="text" className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary-500" placeholder={form.direction === 'masuk' ? "e.g. Gaji Pokok" : "e.g. Belanja Bulanan"} />
-              </div>
-              
-              {form.direction === 'keluar' && (
-                <div>
-                  <label className="block text-xs font-medium text-foreground mb-1.5">Kategori Pengeluaran</label>
-                  <select value={form.category} onChange={e => setForm({...form, category: e.target.value as CashflowItem['category']})} className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary-500">
-                    <option value="kewajiban_cicilan">Kewajiban & Cicilan (Misal: KPR, Paylater)</option>
-                    <option value="masa_depan_investasi">Masa Depan & Investasi (Misal: Reksadana)</option>
-                    <option value="kebutuhan_sehari_hari">Kebutuhan Sehari-hari (Misal: Makan, Listrik)</option>
-                  </select>
-                </div>
-              )}
-
-              <div>
-                <label className="block text-xs font-medium text-foreground mb-1.5">Jumlah Uang (Rp)</label>
-                <input required min={0} value={form.amount || ''} onChange={e => setForm({...form, amount: Number(e.target.value)})} type="number" className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary-500" />
-              </div>
-
-              <div className="flex items-center gap-2 mt-2">
-                <input type="checkbox" id="is_recurring" checked={form.is_recurring} onChange={e => setForm({...form, is_recurring: e.target.checked})} className="rounded text-primary-500 focus:ring-primary-500 bg-background border-border" />
-                <label htmlFor="is_recurring" className="text-sm text-foreground select-none pointer-events-auto">Jadikan Anggaran Rutin Tetap (berulang tiap bulan)</label>
-              </div>
-
-              <div className="pt-2 flex justify-end gap-2">
-                <button type="button" onClick={() => setShowModal(false)} className="px-4 py-2 text-sm font-medium text-muted-foreground hover:bg-muted rounded-lg">Batal</button>
-                <button type="submit" className="px-4 py-2 text-sm font-medium text-white bg-primary-500 hover:bg-primary-600 rounded-lg shadow-glow">Simpan</button>
-              </div>
-            </form>
+      <BottomSheet
+        open={showModal}
+        onClose={() => setShowModal(false)}
+        title={editingItem ? 'Edit Arus Kas' : (form.direction === 'masuk' ? 'Catat Kas Masuk' : 'Catat Kas Keluar')}
+      >
+        <form onSubmit={handleSave} className="space-y-4">
+          <div>
+            <label className="block text-xs font-medium text-foreground mb-1.5">Nama Item / Keterangan</label>
+            <input required value={form.name} onChange={e => setForm({...form, name: e.target.value})} type="text" className="input-field" placeholder={form.direction === 'masuk' ? "e.g. Gaji Pokok" : "e.g. Belanja Bulanan"} />
           </div>
-        </div>
-      )}
+
+          {form.direction === 'keluar' && (
+            <div>
+              <label className="block text-xs font-medium text-foreground mb-1.5">Kategori Pengeluaran</label>
+              <select value={form.category} onChange={e => setForm({...form, category: e.target.value as CashflowItem['category']})} className="input-field">
+                <option value="kewajiban_cicilan">Kewajiban & Cicilan (Misal: KPR, Paylater)</option>
+                <option value="masa_depan_investasi">Masa Depan & Investasi (Misal: Reksadana)</option>
+                <option value="kebutuhan_sehari_hari">Kebutuhan Sehari-hari (Misal: Makan, Listrik)</option>
+              </select>
+            </div>
+          )}
+
+          <div>
+            <label className="block text-xs font-medium text-foreground mb-1.5">Jumlah Uang (Rp)</label>
+            <input required min={0} value={form.amount || ''} onChange={e => setForm({...form, amount: Number(e.target.value)})} type="number" className="input-field font-numeric" />
+          </div>
+
+          <div className="flex items-center gap-2 mt-2">
+            <input type="checkbox" id="is_recurring" checked={form.is_recurring} onChange={e => setForm({...form, is_recurring: e.target.checked})} className="w-4 h-4 rounded text-primary-500 focus:ring-primary-500 bg-background border-border" />
+            <label htmlFor="is_recurring" className="text-sm text-foreground select-none pointer-events-auto">Jadikan Anggaran Rutin Tetap (berulang tiap bulan)</label>
+          </div>
+
+          <div className="pt-2 flex justify-end gap-2">
+            <button type="button" onClick={() => setShowModal(false)} className="btn-secondary">Batal</button>
+            <button type="submit" className="btn-primary">Simpan</button>
+          </div>
+        </form>
+      </BottomSheet>
     </div>
   );
 }

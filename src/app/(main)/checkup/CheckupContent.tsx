@@ -1,8 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { calculateFinancialCheckup, getDanaDarurat } from '@/shared';
+import { calculateFinancialCheckup, calculateNetWorth, calculateCashFlow, getDanaDarurat, checkupRadarScore } from '@/shared';
+import type { FinancialCheckupItem } from '@/shared';
 import { formatRupiah, formatPercent, getStatusColor, getStatusLabel } from '@/lib/utils';
+import { PageHeader } from '@/components/ui/PageHeader';
 import {
   RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Tooltip,
 } from 'recharts';
@@ -15,7 +17,7 @@ import { Skeleton, KPISkeleton, ChartSkeleton, ListSkeleton } from '@/components
 
 export function CheckupContent() {
   const [loading, setLoading] = useState(true);
-  const [checkupData, setCheckupData] = useState<any[]>([]);
+  const [checkupData, setCheckupData] = useState<FinancialCheckupItem[]>([]);
 
   useEffect(() => {
     async function fetchData() {
@@ -30,17 +32,18 @@ export function CheckupContent() {
         ]);
 
         const danaDarurat = getDanaDarurat(assets);
-        const totalAset = assets.reduce((s: number, a: any) => s + Number(a.amount), 0);
-        const totalUtang = debts.reduce((s: number, d: any) => s + Number(d.total_amount), 0);
-        const pendapatan = cashflows.filter((c: any) => c.direction === 'masuk').reduce((s: number, c: any) => s + Number(c.amount), 0);
-        const pengeluaranBulanan = cashflows.filter((c: any) => c.direction === 'keluar').reduce((s: number, c: any) => s + Number(c.amount), 0);
-        const totalCicilan = cashflows.filter((c: any) => c.category === 'kewajiban_cicilan').reduce((s: number, c: any) => s + Number(c.amount), 0);
-        const tabunganInvestasi = cashflows.filter((c: any) => c.category === 'masa_depan_investasi').reduce((s: number, c: any) => s + Number(c.amount), 0);
-        const biayaHidup = cashflows.filter((c: any) => c.category === 'kebutuhan_sehari_hari').reduce((s: number, c: any) => s + Number(c.amount), 0);
+        const nw = calculateNetWorth(assets, debts);
+        const cf = calculateCashFlow(cashflows);
 
         const result = calculateFinancialCheckup({
-          danaDarurat, pengeluaranBulanan, totalCicilan, pendapatan,
-          tabunganInvestasi, biayaHidup, totalAset, totalUtang,
+          danaDarurat,
+          pengeluaranBulanan: cf.totalKasKeluar,
+          totalCicilan: cf.totalKewajiban,
+          pendapatan: cf.totalKasMasuk,
+          tabunganInvestasi: cf.totalMasaDepan,
+          biayaHidup: cf.totalKebutuhan,
+          totalAset: nw.totalAssets,
+          totalUtang: nw.totalDebts,
         });
 
         setCheckupData(result);
@@ -76,67 +79,42 @@ export function CheckupContent() {
     );
   }
 
-  const sehatCount = checkupData.filter((c: any) => c.status === 'sehat').length;
+  const sehatCount = checkupData.filter((c) => c.status === 'sehat').length;
 
-  const radarData = checkupData.map((item: any) => {
-    let score = 0;
-    if (item.name === 'Kecukupan Dana Darurat') {
-      score = Math.min(100, (item.value / 6) * 100);
-    } else if (item.name === 'Arus Kas') {
-      score = item.value > 0 ? 100 : 20;
-    } else if (item.name === 'Rasio Cicilan / Pendapatan') {
-      score = (1 - Math.min(1, item.value / 0.5)) * 100;
-    } else if (item.name === 'Rasio Investasi / Pendapatan') {
-      score = Math.min(100, (item.value / 0.2) * 100);
-    } else if (item.name === 'Rasio Biaya Hidup / Pendapatan') {
-      score = (1 - Math.min(1, item.value / 0.8)) * 100;
-    } else if (item.name === 'Rasio Solvabilitas') {
-      score = Math.min(100, Math.min(item.value, 2) * 50);
-    }
-
-    return {
-      subject: item.name.replace(/^Rasio\s/, '').replace(/\/ Pendapatan$/, ''),
-      score: Math.round(score),
-      fullMark: 100,
-      status: item.status,
-    };
-  });
+  const radarData = checkupData.map((item: FinancialCheckupItem) => ({
+    subject: item.name.replace(/^Rasio\s/, '').replace(/\/ Pendapatan$/, ''),
+    score: checkupRadarScore(item),
+    fullMark: 100,
+    status: item.status,
+  }));
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center shadow-glow">
-              <Activity className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <h1 className="text-xl sm:text-2xl font-bold text-foreground">Scorecard Keuangan</h1>
-              <p className="text-muted-foreground text-xs sm:text-sm mt-0.5">
-                Status 6 rasio kesehatan keuangan berdasarkan data aset dan arus kas Anda
+      <PageHeader
+        title="Scorecard Keuangan"
+        subtitle="Status 6 rasio kesehatan keuangan berdasarkan data aset dan arus kas Anda"
+        icon={Activity}
+        gradient="from-amber-500 to-orange-500"
+        action={
+          <div className={`card-premium px-5 py-3 text-center self-start border ${
+            sehatCount >= 4 ? 'border-emerald-500/30 bg-emerald-500/10' : 
+            sehatCount >= 2 ? 'border-amber-500/30 bg-amber-500/10' : 
+            'border-red-500/30 bg-red-500/10'
+          }`}>
+            <div className="flex items-center gap-2 mb-1 justify-center">
+              {sehatCount >= 4 ? <ShieldCheck className="w-4 h-4 text-emerald-500" /> : 
+               sehatCount >= 2 ? <AlertCircle className="w-4 h-4 text-amber-500" /> : 
+               <ShieldAlert className="w-4 h-4 text-red-500" />}
+              <p className="text-2xl font-bold font-numeric" style={{ color: sehatCount >= 4 ? '#059669' : sehatCount >= 2 ? '#d97706' : '#dc2626' }}>
+                {sehatCount}/6
               </p>
             </div>
-          </div>
-        </div>
-        <div className={`card-premium px-5 py-3 text-center self-start border ${
-          sehatCount >= 4 ? 'border-emerald-500/30 bg-emerald-500/10' : 
-          sehatCount >= 2 ? 'border-amber-500/30 bg-amber-500/10' : 
-          'border-red-500/30 bg-red-500/10'
-        }`}>
-          <div className="flex items-center gap-2 mb-1 justify-center">
-            {sehatCount >= 4 ? <ShieldCheck className="w-4 h-4 text-emerald-500" /> : 
-             sehatCount >= 2 ? <AlertCircle className="w-4 h-4 text-amber-500" /> : 
-             <ShieldAlert className="w-4 h-4 text-red-500" />}
-            <p className="text-2xl font-bold font-numeric" style={{ color: sehatCount >= 4 ? '#059669' : sehatCount >= 2 ? '#d97706' : '#dc2626' }}>
-              {sehatCount}/6
+            <p className="text-xs font-medium mt-0.5" style={{ color: sehatCount >= 4 ? '#059669' : sehatCount >= 2 ? '#d97706' : '#dc2626' }}>
+              {sehatCount >= 4 ? 'Cukup Sehat' : sehatCount >= 2 ? 'Perlu Perhatian' : 'Kritis'}
             </p>
           </div>
-          <p className="text-xs font-medium mt-0.5" style={{ color: sehatCount >= 4 ? '#059669' : sehatCount >= 2 ? '#d97706' : '#dc2626' }}>
-            {sehatCount >= 4 ? 'Cukup Sehat' : sehatCount >= 2 ? 'Perlu Perhatian' : 'Kritis'}
-          </p>
-        </div>
-      </div>
+        }
+      />
 
       {/* Radar Chart */}
       <div className="card-premium p-4 sm:p-6 overflow-hidden relative">
@@ -179,7 +157,7 @@ export function CheckupContent() {
 
       {/* 6 Rasio Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-        {checkupData.map((item: any, idx: number) => {
+        {checkupData.map((item: FinancialCheckupItem, idx: number) => {
           const color = getStatusColor(item.status);
           const isRupiahValue = item.name === 'Arus Kas';
           const isDarurat = item.name.includes('Dana Darurat');
@@ -227,7 +205,7 @@ export function CheckupContent() {
                     width: isRupiahValue ? (item.value > 0 ? '100%' : '5%') :
                       isDarurat ? `${Math.min(100, (item.value / 6) * 100)}%` :
                       isSolvabilitas ? `${Math.min(100, item.value * 100)}%` :
-                      item.name.includes('Investasi') ? `${Math.min(100, (item.value / 0.2) * 100)}%` :
+                      item.key === 'rasio_investasi' ? `${Math.min(100, (item.value / 0.2) * 100)}%` :
                       `${Math.min(100, item.value * 100)}%`,
                   }}
                 />

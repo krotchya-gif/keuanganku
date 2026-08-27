@@ -5,8 +5,12 @@ import { createClient } from '@/utils/supabase/client';
 import { getCurrentUserId } from '@/lib/queries/users';
 import { fetchSavingsGoals } from '@/lib/queries/savings';
 import { fetchTransactionsByCategory } from '@/lib/queries/transactions';
-import { PiggyBank, Target, ArrowUpRight, Plus, X, Edit2, Trash2 } from 'lucide-react';
+import { PiggyBank, Target, ArrowUpRight, Plus, Edit2, Trash2 } from 'lucide-react';
 import { Skeleton, CardSkeleton, ChartSkeleton } from '@/components/ui/Skeleton';
+import { PageHeader } from '@/components/ui/PageHeader';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { BottomSheet } from '@/components/ui/BottomSheet';
+import { TableScroll } from '@/components/ui/TableScroll';
 import { formatRupiah, formatRupiahCompact, formatPercent } from '@/lib/utils';
 import { calculateSavingsProgress } from '@/shared';
 import type { SavingsGoal, Transaction } from '@/shared';
@@ -105,31 +109,36 @@ export function TabunganContent() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Target Tabungan & Investasi</h1>
-          <p className="text-muted-foreground text-sm mt-1">Pantau progres menuju target finansial Anda</p>
-        </div>
-        <button onClick={() => { setEditing(null); setForm({ name: '', target_amount: 0, monthly_contribution: 0, icon: '🎯', color: '#635bff' }); setShowModal(true); }} className="flex items-center gap-2 bg-primary-500 hover:bg-primary-600 text-white px-4 py-2.5 rounded-xl text-sm font-medium shadow-glow">
-          <Plus className="w-4 h-4" /> Target Baru
-        </button>
-      </div>
+      <PageHeader
+        title="Target Tabungan & Investasi"
+        subtitle="Pantau progres menuju target finansial Anda"
+        icon={PiggyBank}
+        gradient="from-emerald-500 to-teal-600"
+        action={
+          <button onClick={() => { setEditing(null); setForm({ name: '', target_amount: 0, monthly_contribution: 0, icon: '🎯', color: '#635bff' }); setShowModal(true); }} className="btn-primary">
+            <Plus className="w-4 h-4" /> Target Baru
+          </button>
+        }
+      />
 
       {goals.length === 0 ? (
-        <div className="flex flex-col items-center justify-center p-12 card-premium text-center border-dashed">
-          <PiggyBank className="w-12 h-12 text-muted-foreground mb-3 opacity-20" />
-          <p className="text-sm font-medium text-foreground">Belum ada target tabungan.</p>
-          <p className="text-xs text-muted-foreground mt-1">Buat target baru untuk mulai menabung.</p>
+        <div className="card-premium border-dashed">
+          <EmptyState
+            icon={PiggyBank}
+            title="Belum ada target tabungan."
+            description="Buat target baru untuk mulai menabung."
+            color="#3ecf8e"
+          />
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="md:col-span-1 space-y-4">
-            <div className="card-premium p-6 border border-emerald-500/20 bg-emerald-500/5">
+            <div className="card-premium p-5 sm:p-6 border border-emerald-500/20 bg-emerald-500/5">
               <div className="flex items-center gap-2 mb-2">
                 <PiggyBank className="w-5 h-5 text-emerald-500" />
                 <h2 className="text-sm font-bold uppercase text-emerald-700">Total Terkumpul</h2>
               </div>
-              <p className="text-3xl font-bold font-numeric text-emerald-600">{formatRupiah(totalAccumulated)}</p>
+              <p className="kpi-value font-bold font-numeric text-emerald-600">{formatRupiahCompact(totalAccumulated)}</p>
               <div className="flex items-center justify-between mt-4 mb-2 text-xs">
                 <span className="text-muted-foreground">Total Target: {formatRupiahCompact(totalTarget)}</span>
                 <span className="font-bold text-emerald-600 font-numeric">{formatPercent(totalTarget > 0 ? totalAccumulated / totalTarget : 0)}</span>
@@ -148,12 +157,12 @@ export function TabunganContent() {
                   const prog = calculateSavingsProgress(g);
                   return (
                     <div key={g.id}>
-                      <div className="flex justify-between items-center mb-1">
-                        <span className="text-xs font-semibold flex items-center gap-1"><span>{g.icon || '🎯'}</span> {g.name}</span>
-                        <div className="flex items-center gap-1">
+                      <div className="flex justify-between items-center mb-1 gap-2">
+                        <span className="text-xs font-semibold flex items-center gap-1 min-w-0"><span className="shrink-0">{g.icon || '🎯'}</span> <span className="truncate">{g.name}</span></span>
+                        <div className="flex items-center gap-1 shrink-0">
                           <span className="text-[10px] font-numeric text-muted-foreground">{formatRupiahCompact(prog.totalSaved)} / {formatRupiahCompact(g.target_amount)}</span>
-                          <button onClick={() => { setEditing(g); setForm({ name: g.name, target_amount: Number(g.target_amount), monthly_contribution: Number(g.monthly_contribution), icon: g.icon || '🎯', color: g.color || '#635bff' }); setShowModal(true); }} className="p-1 text-muted-foreground hover:text-primary-500"><Edit2 className="w-3 h-3" /></button>
-                          <button onClick={() => handleDelete(g)} className="p-1 text-muted-foreground hover:text-red-500"><Trash2 className="w-3 h-3" /></button>
+                          <button onClick={() => { setEditing(g); setForm({ name: g.name, target_amount: Number(g.target_amount), monthly_contribution: Number(g.monthly_contribution), icon: g.icon || '🎯', color: g.color || '#635bff' }); setShowModal(true); }} className="p-1.5 text-muted-foreground hover:text-primary-500 touch-target"><Edit2 className="w-3.5 h-3.5" /></button>
+                          <button onClick={() => handleDelete(g)} className="p-1.5 text-muted-foreground hover:text-red-500 touch-target"><Trash2 className="w-3.5 h-3.5" /></button>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
@@ -189,14 +198,15 @@ export function TabunganContent() {
             </div>
 
             <div className="card-premium overflow-hidden">
+              <TableScroll minWidth={560}>
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-border bg-muted/40">
-                    <th className="py-3 px-4 text-left font-medium text-muted-foreground">Target</th>
-                    <th className="py-3 px-4 text-left font-medium text-muted-foreground">Target Amount</th>
-                    <th className="py-3 px-4 text-left font-medium text-muted-foreground">Terkumpul</th>
-                    <th className="py-3 px-4 text-left font-medium text-muted-foreground">Progres</th>
-                    <th className="py-3 px-4 text-left font-medium text-muted-foreground">Target Tanggal</th>
+                    <th className="py-3 px-4 text-left font-medium text-muted-foreground whitespace-nowrap">Target</th>
+                    <th className="py-3 px-4 text-left font-medium text-muted-foreground whitespace-nowrap">Target Amount</th>
+                    <th className="py-3 px-4 text-left font-medium text-muted-foreground whitespace-nowrap">Terkumpul</th>
+                    <th className="py-3 px-4 text-left font-medium text-muted-foreground whitespace-nowrap">Progres</th>
+                    <th className="py-3 px-4 text-left font-medium text-muted-foreground whitespace-nowrap">Target Tanggal</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/60">
@@ -204,64 +214,57 @@ export function TabunganContent() {
                     const prog = calculateSavingsProgress(g);
                     return (
                       <tr key={g.id} className="hover:bg-muted/30">
-                        <td className="py-3 px-4"><span className="mr-2">{g.icon || '🎯'}</span>{g.name}</td>
-                        <td className="py-3 px-4 font-numeric">{formatRupiah(g.target_amount)}</td>
-                        <td className="py-3 px-4 font-numeric text-emerald-600">{formatRupiah(prog.totalSaved)}</td>
+                        <td className="py-3 px-4 whitespace-nowrap"><span className="mr-2">{g.icon || '🎯'}</span>{g.name}</td>
+                        <td className="py-3 px-4 font-numeric whitespace-nowrap">{formatRupiahCompact(g.target_amount)}</td>
+                        <td className="py-3 px-4 font-numeric text-emerald-600 whitespace-nowrap">{formatRupiahCompact(prog.totalSaved)}</td>
                         <td className="py-3 px-4">
                           <div className="flex items-center gap-2">
                             <div className="h-1.5 w-20 bg-muted rounded-full overflow-hidden">
                               <div className="h-full rounded-full" style={{ width: `${Math.min(100, prog.progressPercent)}%`, background: g.color || '#635bff' }} />
                             </div>
-                            <span className="text-xs font-numeric font-medium">{prog.progressPercent.toFixed(0)}%</span>
+                            <span className="text-xs font-numeric font-medium whitespace-nowrap">{prog.progressPercent.toFixed(0)}%</span>
                           </div>
                         </td>
-                        <td className="py-3 px-4 text-muted-foreground">{g.target_date ? new Date(g.target_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '-'}</td>
+                        <td className="py-3 px-4 text-muted-foreground whitespace-nowrap">{g.target_date ? new Date(g.target_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '-'}</td>
                       </tr>
                     );
                   })}
                 </tbody>
               </table>
+              </TableScroll>
             </div>
           </div>
         </div>
       )}
 
-      {showModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
-          <div className="bg-card w-full max-w-sm rounded-xl shadow-xl overflow-hidden animate-in fade-in zoom-in-95">
-            <div className="flex items-center justify-between p-4 border-b border-border">
-              <h3 className="font-semibold text-foreground">{editing ? 'Edit Target' : 'Target Baru'}</h3>
-              <button onClick={() => setShowModal(false)} className="text-muted-foreground hover:bg-muted p-1 rounded-md"><X className="w-4 h-4" /></button>
-            </div>
-            <form onSubmit={handleSubmit} className="p-5 space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-foreground mb-1.5 uppercase tracking-wide">Nama Target</label>
-                <input required value={form.name} onChange={e => setForm({...form, name: e.target.value})} type="text" className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500" placeholder="e.g. Dana Darurat 6x" />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-foreground mb-1.5 uppercase tracking-wide">Target Amount (Rp)</label>
-                <input required min={0} value={form.target_amount || ''} onChange={e => setForm({...form, target_amount: Number(e.target.value)})} type="number" className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm font-numeric focus:ring-2 focus:ring-primary-500" />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-foreground mb-1.5 uppercase tracking-wide">Target Nabung per Bulan (Rp)</label>
-                <input min={0} value={form.monthly_contribution || ''} onChange={e => setForm({...form, monthly_contribution: Number(e.target.value)})} type="number" className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm font-numeric focus:ring-2 focus:ring-primary-500" />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-foreground mb-1.5 uppercase tracking-wide">Icon</label>
-                <div className="flex flex-wrap gap-2">
-                  {ICONS.map(ic => (
-                    <button key={ic} type="button" onClick={() => setForm({...form, icon: ic})} className={`w-9 h-9 rounded-lg text-lg flex items-center justify-center border ${form.icon === ic ? 'border-primary-500 bg-primary-500/10' : 'border-border hover:border-muted-foreground'}`}>{ic}</button>
-                  ))}
-                </div>
-              </div>
-              <div className="pt-2 flex justify-end gap-2">
-                <button type="button" onClick={() => setShowModal(false)} className="px-4 py-2 text-sm font-medium text-muted-foreground hover:bg-muted rounded-lg">Batal</button>
-                <button type="submit" className="px-4 py-2 text-sm font-medium text-white bg-primary-500 hover:bg-primary-600 rounded-lg shadow-glow">Simpan</button>
-              </div>
-            </form>
+      <BottomSheet open={showModal} onClose={() => setShowModal(false)} title={editing ? 'Edit Target' : 'Target Baru'}>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-xs font-semibold text-foreground mb-1.5 uppercase tracking-wide">Nama Target</label>
+            <input required value={form.name} onChange={e => setForm({...form, name: e.target.value})} type="text" className="input-field" placeholder="e.g. Dana Darurat 6x" />
           </div>
-        </div>
-      )}
+          <div>
+            <label className="block text-xs font-semibold text-foreground mb-1.5 uppercase tracking-wide">Target Amount (Rp)</label>
+            <input required min={0} value={form.target_amount || ''} onChange={e => setForm({...form, target_amount: Number(e.target.value)})} type="number" className="input-field font-numeric" />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-foreground mb-1.5 uppercase tracking-wide">Target Nabung per Bulan (Rp)</label>
+            <input min={0} value={form.monthly_contribution || ''} onChange={e => setForm({...form, monthly_contribution: Number(e.target.value)})} type="number" className="input-field font-numeric" />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-foreground mb-1.5 uppercase tracking-wide">Icon</label>
+            <div className="flex flex-wrap gap-2">
+              {ICONS.map(ic => (
+                <button key={ic} type="button" onClick={() => setForm({...form, icon: ic})} className={`touch-target w-10 h-10 rounded-xl text-lg flex items-center justify-center border ${form.icon === ic ? 'border-primary-500 bg-primary-500/10' : 'border-border hover:border-muted-foreground'}`}>{ic}</button>
+              ))}
+            </div>
+          </div>
+          <div className="pt-2 flex justify-end gap-2">
+            <button type="button" onClick={() => setShowModal(false)} className="btn-secondary">Batal</button>
+            <button type="submit" className="btn-primary">Simpan</button>
+          </div>
+        </form>
+      </BottomSheet>
     </div>
   );
 }

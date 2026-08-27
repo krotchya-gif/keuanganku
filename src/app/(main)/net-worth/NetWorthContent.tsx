@@ -1,8 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Plus, TrendingUp, TrendingDown, Edit2, Trash2, X, Loader2, Save } from 'lucide-react';
+import { Plus, TrendingUp, TrendingDown, Edit2, Trash2, Loader2, Save } from 'lucide-react';
 import { Skeleton, KPISkeleton, ChartSkeleton, TableSkeleton } from '@/components/ui/Skeleton';
+import { PageHeader } from '@/components/ui/PageHeader';
+import { BottomSheet } from '@/components/ui/BottomSheet';
 import { formatRupiah, formatRupiahCompact, formatPercent, getLocalDateString } from '@/lib/utils';
 import { calculateNetWorth, calculateGrowth, ASSET_CATEGORY_LABELS } from '@/shared';
 import type { Asset, Debt } from '@/shared';
@@ -218,29 +220,29 @@ export function NetWorthContent() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-foreground">Net Worth</h1>
-          <p className="text-muted-foreground text-xs sm:text-sm mt-1">Pantau total kekayaan bersih Anda</p>
-        </div>
-        <button 
-          onClick={handleSaveSnapshot} 
-          disabled={savingSnapshot}
-          className="flex items-center justify-center gap-2 bg-primary-500 hover:bg-primary-600 disabled:opacity-50 text-white px-4 py-2.5 sm:py-2 rounded-xl sm:rounded-lg text-sm font-medium transition-colors shadow-glow"
-        >
-          {savingSnapshot ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-          <span className="hidden sm:inline">Simpan Snapshot Bulan Ini</span>
-          <span className="sm:hidden">Simpan Snapshot</span>
-        </button>
-      </div>
+      <PageHeader
+        title="Net Worth"
+        subtitle="Pantau total kekayaan bersih Anda"
+        icon={TrendingUp}
+        action={
+          <button
+            onClick={handleSaveSnapshot}
+            disabled={savingSnapshot}
+            className="btn-primary"
+          >
+            {savingSnapshot ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+            <span className="hidden sm:inline">Simpan Snapshot Bulan Ini</span>
+            <span className="sm:hidden">Simpan Snapshot</span>
+          </button>
+        }
+      />
 
       {/* Summary cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
         {/* Net Worth */}
         <div className="card-premium p-4 sm:p-6 bg-gradient-to-br from-primary-500 to-primary-600 border-primary-500 text-white">
           <p className="text-sm font-medium text-white/80">Net Worth</p>
-          <p className="text-2xl sm:text-3xl font-bold font-numeric mt-2">{formatRupiahCompact(result.netWorth)}</p>
+          <p className="kpi-value font-bold font-numeric mt-2">{formatRupiahCompact(result.netWorth)}</p>
           <div className={`flex items-center gap-1 mt-2 text-sm ${isPositive ? 'text-emerald-200' : 'text-red-200'}`}>
             {isPositive ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
             <span>{isPositive ? '+' : ''}{formatPercent(growth)} tren terkini</span>
@@ -248,22 +250,22 @@ export function NetWorthContent() {
         </div>
         <div className="card-premium p-4 sm:p-6">
           <p className="text-sm text-muted-foreground font-medium">Total Aset</p>
-          <p className="text-xl sm:text-2xl font-bold font-numeric text-foreground mt-2">{formatRupiahCompact(result.totalAssets)}</p>
+          <p className="kpi-value font-bold font-numeric text-foreground mt-2">{formatRupiahCompact(result.totalAssets)}</p>
           <div className="mt-3 space-y-1">
             {Object.entries(result.breakdown.assets).map(([key, val]) => (
               <div key={key} className="flex justify-between text-xs">
                 <span className="flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full" style={{ background: ASSET_COLORS[key] }} />
+                  <span className="w-2 h-2 rounded-full shrink-0" style={{ background: ASSET_COLORS[key] }} />
                   <span className="text-muted-foreground">{ASSET_CATEGORY_LABELS[key as keyof typeof ASSET_CATEGORY_LABELS]}</span>
                 </span>
-                <span className="font-numeric font-medium">{formatRupiahCompact(val)}</span>
+                <span className="font-numeric font-medium shrink-0">{formatRupiahCompact(val)}</span>
               </div>
             ))}
           </div>
         </div>
         <div className="card-premium p-4 sm:p-6">
           <p className="text-sm text-muted-foreground font-medium">Total Utang</p>
-          <p className="text-2xl font-bold font-numeric text-red-500 mt-2">{formatRupiahCompact(result.totalDebts)}</p>
+          <p className="kpi-value font-bold font-numeric text-red-500 mt-2">{formatRupiahCompact(result.totalDebts)}</p>
           <div className="mt-3 space-y-1">
             {[
               { label: 'Jangka Pendek', val: result.breakdown.debts.jangka_pendek, color: '#f5a623' },
@@ -389,28 +391,28 @@ export function NetWorthContent() {
                         <span className="w-2 h-2 rounded-full" style={{ background: ASSET_COLORS[cat] }} />
                         {ASSET_CATEGORY_LABELS[cat as keyof typeof ASSET_CATEGORY_LABELS]}
                       </h3>
-                      <span className="text-sm font-numeric font-semibold text-foreground">
-                        {formatRupiah(arr.reduce((s, a) => s + a.amount, 0))}
+                      <span className="text-sm font-numeric font-semibold text-foreground shrink-0">
+                        {formatRupiahCompact(arr.reduce((s, a) => s + a.amount, 0))}
                       </span>
                     </div>
                     <div className="space-y-2">
                       {arr.map((asset) => (
-                        <div key={asset.id} className="flex items-center justify-between px-3 py-2.5 rounded-lg bg-muted/40 hover:bg-muted group">
-                          <p className="text-sm text-foreground">{asset.name}</p>
-                          <div className="flex items-center gap-3">
-                            <p className="text-sm font-numeric font-medium text-foreground">{formatRupiah(asset.amount)}</p>
-                            <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div key={asset.id} className="flex items-center justify-between px-3 py-2.5 rounded-xl bg-muted/40 hover:bg-muted group gap-3">
+                          <p className="text-sm text-foreground truncate min-w-0">{asset.name}</p>
+                          <div className="flex items-center gap-3 shrink-0">
+                            <p className="text-sm font-numeric font-medium text-foreground whitespace-nowrap">{formatRupiahCompact(asset.amount)}</p>
+                            <div className="flex gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                               <button 
                                 onClick={() => {
                                   setEditingAsset(asset);
                                   setAssetForm({ name: asset.name, category: asset.category, amount: asset.amount });
                                   setShowAssetModal(true);
                                 }}
-                                className="p-1 text-muted-foreground hover:text-primary-500"
+                                className="p-2 text-muted-foreground hover:text-primary-500 touch-target"
                               >
                                 <Edit2 className="w-3.5 h-3.5" />
                               </button>
-                              <button onClick={() => deleteAsset(asset.id)} className="p-1 text-muted-foreground hover:text-red-500">
+                              <button onClick={() => deleteAsset(asset.id)} className="p-2 text-muted-foreground hover:text-red-500 touch-target">
                                 <Trash2 className="w-3.5 h-3.5" />
                               </button>
                             </div>
@@ -428,21 +430,21 @@ export function NetWorthContent() {
             ) : (
               <div className="space-y-3">
                 {debts.map((debt) => (
-                  <div key={debt.id} className="flex items-center justify-between px-3 py-3 rounded-lg bg-muted/40 hover:bg-muted group">
-                    <div>
-                      <p className="text-sm font-medium text-foreground">{debt.name}</p>
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        Cicilan: {formatRupiah(debt.monthly_payment)}/bln · Jatuh tempo tgl {debt.due_date}
+                  <div key={debt.id} className="flex items-center justify-between px-3 py-3 rounded-xl bg-muted/40 hover:bg-muted group gap-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-foreground truncate">{debt.name}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                        Cicilan: {formatRupiahCompact(debt.monthly_payment)}/bln · Jatuh tempo tgl {debt.due_date}
                       </p>
                     </div>
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-3 shrink-0">
                       <div className="text-right">
-                        <p className="text-sm font-numeric font-semibold text-red-500">{formatRupiah(debt.total_amount)}</p>
+                        <p className="text-sm font-numeric font-semibold text-red-500 whitespace-nowrap">{formatRupiahCompact(debt.total_amount)}</p>
                         <p className="text-[10px] text-muted-foreground">
                           {debt.term === 'jangka_pendek' ? 'Jangka Pendek' : 'Jangka Panjang'}
                         </p>
                       </div>
-                      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="flex gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                         <button 
                           onClick={() => {
                             setEditingDebt(debt);
@@ -452,11 +454,11 @@ export function NetWorthContent() {
                             });
                             setShowDebtModal(true);
                           }}
-                          className="p-1 text-muted-foreground hover:text-primary-500"
+                          className="p-2 text-muted-foreground hover:text-primary-500 touch-target"
                         >
                           <Edit2 className="w-3.5 h-3.5" />
                         </button>
-                        <button onClick={() => deleteDebt(debt.id)} className="p-1 text-muted-foreground hover:text-red-500">
+                        <button onClick={() => deleteDebt(debt.id)} className="p-2 text-muted-foreground hover:text-red-500 touch-target">
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
                       </div>
@@ -469,87 +471,71 @@ export function NetWorthContent() {
         </div>
       </div>
 
-      {/* Asset Modal Overlay */}
-      {showAssetModal && (
-        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-          <div className="bg-card w-full max-w-md rounded-xl shadow-xl overflow-hidden animate-in fade-in zoom-in-95">
-            <div className="flex items-center justify-between p-4 border-b border-border">
-              <h3 className="font-semibold text-foreground">{editingAsset ? 'Edit Aset' : 'Tambah Aset'}</h3>
-              <button onClick={() => setShowAssetModal(false)} className="text-muted-foreground hover:bg-muted p-1 rounded-md"><X className="w-4 h-4" /></button>
-            </div>
-            <form onSubmit={saveAsset} className="p-4 space-y-4">
-              <div>
-                <label className="block text-xs font-medium text-foreground mb-1.5">Nama Aset</label>
-                <input required value={assetForm.name} onChange={e => setAssetForm({...assetForm, name: e.target.value})} type="text" className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary-500" placeholder="e.g. Tabungan BCA" />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-foreground mb-1.5">Kategori</label>
-                <select value={assetForm.category} onChange={e => setAssetForm({...assetForm, category: e.target.value as Asset['category']})} className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary-500">
-                  <option value="kas_setara_kas">Kas & Setara Kas</option>
-                  <option value="investasi">Investasi (Saham, Reksadana)</option>
-                  <option value="tetap">Aset Tetap (Rumah, Mobil)</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-foreground mb-1.5">Nilai Terkini (Rp)</label>
-                <input required min={0} value={assetForm.amount || ''} onChange={e => setAssetForm({...assetForm, amount: Number(e.target.value)})} type="number" className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary-500" />
-              </div>
-              <div className="pt-2 flex justify-end gap-2">
-                <button type="button" onClick={() => setShowAssetModal(false)} className="px-4 py-2 text-sm font-medium text-muted-foreground hover:bg-muted rounded-lg">Batal</button>
-                <button type="submit" className="px-4 py-2 text-sm font-medium text-white bg-primary-500 hover:bg-primary-600 rounded-lg shadow-glow">Simpan</button>
-              </div>
-            </form>
+      {/* Asset Modal */}
+      <BottomSheet open={showAssetModal} onClose={() => setShowAssetModal(false)} title={editingAsset ? 'Edit Aset' : 'Tambah Aset'}>
+        <form onSubmit={saveAsset} className="space-y-4">
+          <div>
+            <label className="block text-xs font-medium text-foreground mb-1.5">Nama Aset</label>
+            <input required value={assetForm.name} onChange={e => setAssetForm({...assetForm, name: e.target.value})} type="text" className="input-field" placeholder="e.g. Tabungan BCA" />
           </div>
-        </div>
-      )}
+          <div>
+            <label className="block text-xs font-medium text-foreground mb-1.5">Kategori</label>
+            <select value={assetForm.category} onChange={e => setAssetForm({...assetForm, category: e.target.value as Asset['category']})} className="input-field">
+              <option value="kas_setara_kas">Kas & Setara Kas</option>
+              <option value="investasi">Investasi (Saham, Reksadana)</option>
+              <option value="tetap">Aset Tetap (Rumah, Mobil)</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-foreground mb-1.5">Nilai Terkini (Rp)</label>
+            <input required min={0} value={assetForm.amount || ''} onChange={e => setAssetForm({...assetForm, amount: Number(e.target.value)})} type="number" className="input-field font-numeric" />
+          </div>
+          <div className="pt-2 flex justify-end gap-2">
+            <button type="button" onClick={() => setShowAssetModal(false)} className="btn-secondary">Batal</button>
+            <button type="submit" className="btn-primary">Simpan</button>
+          </div>
+        </form>
+      </BottomSheet>
 
-      {/* Debt Modal Overlay */}
-      {showDebtModal && (
-        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-          <div className="bg-card w-full max-w-md rounded-xl shadow-xl overflow-hidden animate-in fade-in zoom-in-95">
-            <div className="flex items-center justify-between p-4 border-b border-border">
-              <h3 className="font-semibold text-foreground">{editingDebt ? 'Edit Utang' : 'Tambah Utang'}</h3>
-              <button onClick={() => setShowDebtModal(false)} className="text-muted-foreground hover:bg-muted p-1 rounded-md"><X className="w-4 h-4" /></button>
-            </div>
-            <form onSubmit={saveDebt} className="p-4 space-y-4">
-              <div>
-                <label className="block text-xs font-medium text-foreground mb-1.5">Nama Utang</label>
-                <input required value={debtForm.name} onChange={e => setDebtForm({...debtForm, name: e.target.value})} type="text" className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary-500" placeholder="e.g. KPR Mandiri" />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-medium text-foreground mb-1.5">Tipe Utang</label>
-                  <select value={debtForm.term} onChange={e => setDebtForm({...debtForm, term: e.target.value as Debt['term']})} className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary-500">
-                    <option value="jangka_pendek">Jangka Pendek (Credit Card, Paylater)</option>
-                    <option value="jangka_panjang">Jangka Panjang (KPR, Kredit Kendaraan)</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-foreground mb-1.5">Sisa Pokok (Rp)</label>
-                  <input required min={0} value={debtForm.total_amount || ''} onChange={e => setDebtForm({...debtForm, total_amount: Number(e.target.value)})} type="number" className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary-500" />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-foreground mb-1.5">Cicilan Bulanan (Rp)</label>
-                  <input required min={0} value={debtForm.monthly_payment || ''} onChange={e => setDebtForm({...debtForm, monthly_payment: Number(e.target.value)})} type="number" className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary-500" />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-foreground mb-1.5">Bunga/Tahun (Desimal)</label>
-                  <input required min={0} step="0.001" value={debtForm.interest_rate || ''} onChange={e => setDebtForm({...debtForm, interest_rate: Number(e.target.value)})} type="number" className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary-500" placeholder="0.05 untuk 5%" />
-                </div>
-                <div className="col-span-2">
-                  <label className="block text-xs font-medium text-foreground mb-1.5">Tgl Jatuh Tempo (1-31)</label>
-                  <input required min={1} max={31} value={debtForm.due_date} onChange={e => setDebtForm({...debtForm, due_date: Number(e.target.value)})} type="number" className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary-500" />
-                </div>
-              </div>
-              
-              <div className="pt-2 flex justify-end gap-2">
-                <button type="button" onClick={() => setShowDebtModal(false)} className="px-4 py-2 text-sm font-medium text-muted-foreground hover:bg-muted rounded-lg">Batal</button>
-                <button type="submit" className="px-4 py-2 text-sm font-medium text-white bg-primary-500 hover:bg-primary-600 rounded-lg shadow-glow">Simpan</button>
-              </div>
-            </form>
+      {/* Debt Modal */}
+      <BottomSheet open={showDebtModal} onClose={() => setShowDebtModal(false)} title={editingDebt ? 'Edit Utang' : 'Tambah Utang'}>
+        <form onSubmit={saveDebt} className="space-y-4">
+          <div>
+            <label className="block text-xs font-medium text-foreground mb-1.5">Nama Utang</label>
+            <input required value={debtForm.name} onChange={e => setDebtForm({...debtForm, name: e.target.value})} type="text" className="input-field" placeholder="e.g. KPR Mandiri" />
           </div>
-        </div>
-      )}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-medium text-foreground mb-1.5">Tipe Utang</label>
+              <select value={debtForm.term} onChange={e => setDebtForm({...debtForm, term: e.target.value as Debt['term']})} className="input-field">
+                <option value="jangka_pendek">Jangka Pendek (Credit Card, Paylater)</option>
+                <option value="jangka_panjang">Jangka Panjang (KPR, Kredit Kendaraan)</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-foreground mb-1.5">Sisa Pokok (Rp)</label>
+              <input required min={0} value={debtForm.total_amount || ''} onChange={e => setDebtForm({...debtForm, total_amount: Number(e.target.value)})} type="number" className="input-field font-numeric" />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-foreground mb-1.5">Cicilan Bulanan (Rp)</label>
+              <input required min={0} value={debtForm.monthly_payment || ''} onChange={e => setDebtForm({...debtForm, monthly_payment: Number(e.target.value)})} type="number" className="input-field font-numeric" />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-foreground mb-1.5">Bunga/Tahun (Desimal)</label>
+              <input required min={0} step="0.001" value={debtForm.interest_rate || ''} onChange={e => setDebtForm({...debtForm, interest_rate: Number(e.target.value)})} type="number" className="input-field font-numeric" placeholder="0.05 untuk 5%" />
+            </div>
+            <div className="col-span-2">
+              <label className="block text-xs font-medium text-foreground mb-1.5">Tgl Jatuh Tempo (1-31)</label>
+              <input required min={1} max={31} value={debtForm.due_date} onChange={e => setDebtForm({...debtForm, due_date: Number(e.target.value)})} type="number" className="input-field font-numeric" />
+            </div>
+          </div>
+
+          <div className="pt-2 flex justify-end gap-2">
+            <button type="button" onClick={() => setShowDebtModal(false)} className="btn-secondary">Batal</button>
+            <button type="submit" className="btn-primary">Simpan</button>
+          </div>
+        </form>
+      </BottomSheet>
     </div>
   );
 }

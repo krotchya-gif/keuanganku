@@ -2,12 +2,10 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
-import { Eye, EyeOff, LogIn, Loader2, TrendingUp, Shield, BarChart3 } from 'lucide-react';
+import { Eye, EyeOff, LogIn, Loader2, TrendingUp, Shield, BarChart3, Wallet } from 'lucide-react';
 
 export default function LoginPage() {
-  const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -32,7 +30,7 @@ export default function LoginPage() {
 
       if (error) {
         if (error.message.includes('Email not confirmed')) {
-          setError('Email belum dikonfirmasi. Cek inbox kamu dan klik link verifikasi dari Supabase, atau matikan "Confirm email" di Supabase Dashboard â†’ Authentication â†’ Providers â†’ Email.');
+          setError('Email belum dikonfirmasi. Silakan cek inbox email Anda dan klik link verifikasi, lalu coba masuk kembali.');
         } else if (error.message === 'Invalid login credentials') {
           setError('Email atau password salah. Silakan coba lagi.');
         } else {
@@ -45,7 +43,7 @@ export default function LoginPage() {
       }
     } catch (err: unknown) {
       if (err instanceof Error && err.message === 'timeout') {
-        setError('Koneksi timeout. Pastikan Supabase URL dan API key di .env.local sudah benar.');
+        setError('Koneksi timeout. Pastikan koneksi internet Anda stabil, lalu coba lagi.');
       } else {
         setError('Terjadi kesalahan. Silakan coba lagi.');
       }
@@ -55,16 +53,16 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex">
-      {/* Left Panel â€” Branding */}
-      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-indigo-600 via-violet-600 to-purple-700 p-12 flex-col justify-between relative overflow-hidden">
+      {/* Left Panel — Branding */}
+      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-primary-600 via-primary-500 to-violet-600 p-12 flex-col justify-between relative overflow-hidden">
         {/* Decorative circles */}
         <div className="absolute -top-20 -right-20 w-80 h-80 bg-white/10 rounded-full blur-3xl" />
         <div className="absolute -bottom-20 -left-20 w-80 h-80 bg-white/10 rounded-full blur-3xl" />
 
         <div className="relative z-10">
           <div className="flex items-center gap-3 mb-12">
-            <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm">
-              <TrendingUp className="w-5 h-5 text-white" />
+            <div className="w-10 h-10 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-sm">
+              <Wallet className="w-5 h-5 text-white" />
             </div>
             <span className="text-white text-xl font-bold">Keuanganku</span>
           </div>
@@ -83,8 +81,8 @@ export default function LoginPage() {
             { icon: Shield, title: 'Checkup Keuangan', desc: '6 rasio kesehatan finansial real-time' },
             { icon: TrendingUp, title: 'Simulasi KPR', desc: 'Hitung cicilan KPR dengan akurat' },
           ].map((f) => (
-            <div key={f.title} className="flex items-start gap-3 bg-white/10 backdrop-blur-sm rounded-xl p-3">
-              <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center shrink-0">
+            <div key={f.title} className="flex items-start gap-3 bg-white/10 backdrop-blur-sm rounded-2xl p-3">
+              <div className="w-8 h-8 bg-white/20 rounded-xl flex items-center justify-center shrink-0">
                 <f.icon className="w-4 h-4 text-white" />
               </div>
               <div>
@@ -96,15 +94,15 @@ export default function LoginPage() {
         </div>
       </div>
 
-      {/* Right Panel â€” Login Form */}
-      <div className="flex-1 flex items-center justify-center p-8 bg-background">
+      {/* Right Panel — Login Form */}
+      <div className="flex-1 flex items-center justify-center p-6 sm:p-8 bg-background">
         <div className="w-full max-w-md">
-          {/* Mobile logo */}
-          <div className="flex lg:hidden items-center gap-2 mb-8">
-            <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center">
-              <TrendingUp className="w-4 h-4 text-white" />
+          {/* Mobile header */}
+          <div className="flex lg:hidden flex-col items-center mb-8">
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center shadow-glow mb-3">
+              <Wallet className="w-7 h-7 text-white" />
             </div>
-            <span className="text-lg font-bold text-foreground">Keuanganku</span>
+            <span className="text-xl font-bold text-foreground">Keuanganku</span>
           </div>
 
           <div className="mb-8">
@@ -124,6 +122,7 @@ export default function LoginPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="kamu@email.com"
                 required
+                autoComplete="email"
                 className="input-field"
               />
             </div>
@@ -133,7 +132,7 @@ export default function LoginPage() {
                 <label htmlFor="password" className="block text-sm font-medium text-foreground">
                   Password
                 </label>
-                <Link href="/lupa-password" className="text-xs font-medium text-indigo-600 hover:text-indigo-700 hover:underline">
+                <Link href="/lupa-password" className="text-xs font-medium text-primary-500 hover:text-primary-600 hover:underline">
                   Lupa password?
                 </Link>
               </div>
@@ -143,14 +142,16 @@ export default function LoginPage() {
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
+                  placeholder="••••••••"
                   required
-                  className="input-field pr-10"
+                  autoComplete="current-password"
+                  className="input-field pr-12"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 touch-target flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+                  aria-label={showPassword ? 'Sembunyikan password' : 'Tampilkan password'}
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
@@ -158,7 +159,7 @@ export default function LoginPage() {
             </div>
 
             {error && (
-              <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">
+              <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-4 py-3">
                 {error}
               </div>
             )}
@@ -166,7 +167,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 disabled:cursor-not-allowed text-white py-2.5 px-4 rounded-lg font-medium transition-colors text-sm"
+              className="w-full btn-primary py-3"
             >
               {loading ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -179,7 +180,7 @@ export default function LoginPage() {
 
           <p className="text-center text-sm text-muted-foreground mt-6">
             Belum punya akun?{' '}
-            <Link href="/register" className="text-indigo-600 hover:text-indigo-700 font-medium hover:underline">
+            <Link href="/register" className="text-primary-500 hover:text-primary-600 font-medium hover:underline">
               Daftar sekarang
             </Link>
           </p>

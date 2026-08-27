@@ -20,10 +20,53 @@ function addMonths(date: Date, months: number): Date {
   return d;
 }
 
+// ===== VALIDASI INPUT KPR =====
+/**
+ * Validasi parameter simulasi KPR sebelum dihitung.
+ * Mengembalikan null jika valid, atau pesan error (Bahasa Indonesia) jika tidak valid.
+ */
+export function validateKPRInput(input: {
+  propertyPrice: number;
+  downPayment: number;
+  loanPeriodYears: number;
+  fixedPeriodYears: number;
+  floatingPhases?: { durationYears: number }[];
+}): string | null {
+  if (!Number.isFinite(input.propertyPrice) || input.propertyPrice <= 0) {
+    return 'Harga properti harus lebih dari 0.';
+  }
+  if (!Number.isFinite(input.downPayment) || input.downPayment < 0) {
+    return 'Uang muka (DP) tidak boleh negatif.';
+  }
+  if (input.downPayment >= input.propertyPrice) {
+    return 'Uang muka (DP) tidak boleh lebih besar atau sama dengan harga properti.';
+  }
+  if (!Number.isFinite(input.loanPeriodYears) || input.loanPeriodYears <= 0) {
+    return 'Tenor KPR harus lebih dari 0 tahun.';
+  }
+  if (!Number.isFinite(input.fixedPeriodYears) || input.fixedPeriodYears < 0) {
+    return 'Masa bunga fix tidak boleh negatif.';
+  }
+  if (input.fixedPeriodYears > input.loanPeriodYears) {
+    return 'Masa bunga fix tidak boleh melebihi tenor KPR.';
+  }
+
+  const totalPhaseYears = (input.floatingPhases ?? []).reduce(
+    (sum, p) => sum + (Number.isFinite(p.durationYears) ? p.durationYears : 0),
+    0
+  );
+  if (input.fixedPeriodYears + totalPhaseYears > input.loanPeriodYears) {
+    return 'Total durasi fase bunga (fix + transisi) melebihi tenor KPR.';
+  }
+
+  return null;
+}
+
 // ===== KALKULASI TABEL AMORTISASI KPR =====
 /**
  * calculateKPR — Hitung tabel amortisasi lengkap menggunakan Iterative Balance Tracking
  * Mendukung KPR Lurus (1 Fix + 1 Float) maupun KPR Berjenjang (Array of Floating Transitions)
+ * Melempar Error dengan pesan validasi jika input tidak valid.
  */
 export function calculateKPR(input: {
   propertyPrice: number;
@@ -36,6 +79,9 @@ export function calculateKPR(input: {
   startDate?: Date;
   monthlyIncome?: number;
 }): KPRResult {
+  const error = validateKPRInput(input);
+  if (error) throw new Error(error);
+
   const loanPrincipal = input.propertyPrice - input.downPayment;
   const totalPeriods = input.loanPeriodYears * 12;
   const fixedPeriods = input.fixedPeriodYears * 12;

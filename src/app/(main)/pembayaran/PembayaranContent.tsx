@@ -4,9 +4,11 @@ import { useState, useEffect } from 'react';
 import { getCurrentUserId } from '@/lib/queries/users';
 import { fetchBudgetItemsByCategory } from '@/lib/queries/budget';
 import { fetchTransactionsByCategory } from '@/lib/queries/transactions';
-import { CalendarHeart, CheckCircle2, XCircle } from 'lucide-react';
+import { CalendarHeart, CheckCircle2, XCircle, CreditCard } from 'lucide-react';
 import { Skeleton, ListSkeleton } from '@/components/ui/Skeleton';
-import { formatRupiah, getMonthRange, getYearOptions } from '@/lib/utils';
+import { PageHeader } from '@/components/ui/PageHeader';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { formatRupiah, formatRupiahCompact, getMonthRange, getYearOptions } from '@/lib/utils';
 import type { BudgetItem, Transaction } from '@/shared';
 
 export function PembayaranContent() {
@@ -83,27 +85,27 @@ export function PembayaranContent() {
 
     return (
       <div className={`card-premium overflow-hidden border ${bgClass}`}>
-        <div className="bg-background/80 backdrop-blur-sm px-5 py-4 flex justify-between items-center border-b border-border/50">
-           <div>
-             <h3 className={`font-bold ${colorClass} uppercase tracking-wide`}>{title}</h3>
-             <p className="text-xs text-muted-foreground mt-0.5">Terkumpul: {formatRupiah(totalPaid)} / {formatRupiah(totalTarget)}</p>
+        <div className="bg-background/80 backdrop-blur-sm px-5 py-4 flex justify-between items-center gap-3 border-b border-border/50">
+           <div className="min-w-0">
+             <h3 className={`font-bold ${colorClass} uppercase tracking-wide truncate`}>{title}</h3>
+             <p className="text-xs text-muted-foreground mt-0.5 font-numeric">Terkumpul: {formatRupiahCompact(totalPaid)} / {formatRupiahCompact(totalTarget)}</p>
            </div>
-           {totalPaid >= totalTarget && totalTarget > 0 && <span className="bg-emerald-100 text-emerald-700 text-xs font-bold px-2.5 py-1 rounded-full flex items-center gap-1"><CheckCircle2 className="w-3.5 h-3.5" /> Lunas</span>}
+           {totalPaid >= totalTarget && totalTarget > 0 && <span className="bg-emerald-100 text-emerald-700 text-xs font-bold px-2.5 py-1 rounded-full flex items-center gap-1 shrink-0"><CheckCircle2 className="w-3.5 h-3.5" /> Lunas</span>}
         </div>
         <div className="divide-y divide-border/30 bg-card">
            {enrichedList.map(item => (
-             <div key={item.id} className="p-4 flex items-center justify-between hover:bg-muted/10">
-               <div>
+             <div key={item.id} className="p-4 flex items-center justify-between gap-3 hover:bg-muted/10">
+               <div className="min-w-0">
                   <p className="text-sm font-semibold text-foreground flex items-center gap-2">
-                     {item.isFullyPaid ? <CheckCircle2 className="w-4 h-4 text-emerald-500" /> : <XCircle className="w-4 h-4 text-muted-foreground" />} 
-                     {item.name}
+                     {item.isFullyPaid ? <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" /> : <XCircle className="w-4 h-4 text-muted-foreground shrink-0" />}
+                     <span className="truncate">{item.name}</span>
                   </p>
                </div>
-               <div className="text-right">
+               <div className="text-right shrink-0">
                   <p className={`text-sm font-numeric font-bold ${item.isFullyPaid ? 'text-emerald-600' : 'text-foreground'}`}>
-                    {formatRupiah(item.paid)}
+                    {formatRupiahCompact(item.paid)}
                   </p>
-                  <p className="text-[10px] font-numeric text-muted-foreground">Target: {formatRupiah(item.target)}</p>
+                  <p className="text-[10px] font-numeric text-muted-foreground">Target: {formatRupiahCompact(item.target)}</p>
                </div>
              </div>
            ))}
@@ -114,26 +116,31 @@ export function PembayaranContent() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Kalendar Pembayaran</h1>
-          <p className="text-muted-foreground text-sm mt-1">Ceklis otomatis tagihan dan cicilan hutang yang harus dibayar bulan ini</p>
-        </div>
-        <div className="flex items-center gap-2">
-           <select value={month} onChange={(e) => setMonth(Number(e.target.value))} className="bg-card border border-border rounded-lg px-3 py-2 text-sm font-medium focus:ring-primary-500">
-             {Array.from({length: 12}, (_, i) => (<option key={i+1} value={i+1}>{new Date(2000, i, 1).toLocaleDateString('id-ID', { month: 'long' })}</option>))}
-           </select>
-           <select value={year} onChange={(e) => setYear(Number(e.target.value))} className="bg-card border border-border rounded-lg px-3 py-2 text-sm font-medium inline-block w-24 focus:ring-primary-500">
-             {getYearOptions().map(y => <option key={y} value={y}>{y}</option>)}
-           </select>
-        </div>
-      </div>
+      <PageHeader
+        title="Kalendar Pembayaran"
+        subtitle="Ceklis otomatis tagihan dan cicilan hutang yang harus dibayar bulan ini"
+        icon={CreditCard}
+        gradient="from-amber-500 to-orange-600"
+        action={
+          <div className="flex items-center gap-2">
+            <select value={month} onChange={(e) => setMonth(Number(e.target.value))} className="bg-card border border-border rounded-xl px-3 py-2.5 text-sm font-medium focus:ring-primary-500 touch-target">
+              {Array.from({length: 12}, (_, i) => (<option key={i+1} value={i+1}>{new Date(2000, i, 1).toLocaleDateString('id-ID', { month: 'long' })}</option>))}
+            </select>
+            <select value={year} onChange={(e) => setYear(Number(e.target.value))} className="bg-card border border-border rounded-xl px-3 py-2.5 text-sm font-medium inline-block w-24 focus:ring-primary-500 touch-target">
+              {getYearOptions().map(y => <option key={y} value={y}>{y}</option>)}
+            </select>
+          </div>
+        }
+      />
 
       {items.length === 0 ? (
-        <div className="flex flex-col items-center justify-center p-12 card-premium text-center border-dashed">
-          <CalendarHeart className="w-12 h-12 text-muted-foreground mb-3 opacity-20" />
-          <p className="text-sm font-medium text-foreground">Belum ada kewajiban pembayaran.</p>
-          <p className="text-xs text-muted-foreground mt-1">Tambahkan Tagihan & Cicilan Hutang di fitur Budgeting &gt; Amplop Master.</p>
+        <div className="card-premium border-dashed">
+          <EmptyState
+            icon={CalendarHeart}
+            title="Belum ada kewajiban pembayaran."
+            description="Tambahkan Tagihan & Cicilan Hutang di fitur Budgeting → Amplop Master."
+            color="#f59e0b"
+          />
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

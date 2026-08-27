@@ -5,7 +5,9 @@ import { getCurrentUserId } from '@/lib/queries/users';
 import { fetchTransactions } from '@/lib/queries/transactions';
 import { CalendarHeart } from 'lucide-react';
 import { Skeleton, ListSkeleton } from '@/components/ui/Skeleton';
-import { formatRupiah, getMonthRange, getYearOptions } from '@/lib/utils';
+import { PageHeader } from '@/components/ui/PageHeader';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { formatRupiah, formatRupiahCompact, getMonthRange, getYearOptions } from '@/lib/utils';
 import type { Transaction } from '@/shared';
 
 export function KalendarContent() {
@@ -55,26 +57,31 @@ export function KalendarContent() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Kalendar Transaksi & Aktivitas</h1>
-          <p className="text-muted-foreground text-sm mt-1">Timeline riwayat keluar-masuk uang Anda berdasarkan hari</p>
-        </div>
-        <div className="flex items-center gap-2">
-           <select value={month} onChange={(e) => setMonth(Number(e.target.value))} className="bg-card border border-border rounded-lg px-3 py-2 text-sm font-medium focus:ring-primary-500">
-             {Array.from({length: 12}, (_, i) => (<option key={i+1} value={i+1}>{new Date(2000, i, 1).toLocaleDateString('id-ID', { month: 'long' })}</option>))}
-           </select>
-           <select value={year} onChange={(e) => setYear(Number(e.target.value))} className="bg-card border border-border rounded-lg px-3 py-2 text-sm font-medium inline-block w-24 focus:ring-primary-500">
-             {getYearOptions().map(y => <option key={y} value={y}>{y}</option>)}
-           </select>
-        </div>
-      </div>
+      <PageHeader
+        title="Kalendar Transaksi"
+        subtitle="Timeline riwayat keluar-masuk uang Anda berdasarkan hari"
+        icon={CalendarHeart}
+        gradient="from-rose-500 to-pink-600"
+        action={
+          <div className="flex items-center gap-2">
+            <select value={month} onChange={(e) => setMonth(Number(e.target.value))} className="bg-card border border-border rounded-xl px-3 py-2.5 text-sm font-medium focus:ring-primary-500 touch-target">
+              {Array.from({length: 12}, (_, i) => (<option key={i+1} value={i+1}>{new Date(2000, i, 1).toLocaleDateString('id-ID', { month: 'long' })}</option>))}
+            </select>
+            <select value={year} onChange={(e) => setYear(Number(e.target.value))} className="bg-card border border-border rounded-xl px-3 py-2.5 text-sm font-medium inline-block w-24 focus:ring-primary-500 touch-target">
+              {getYearOptions().map(y => <option key={y} value={y}>{y}</option>)}
+            </select>
+          </div>
+        }
+      />
 
       {dates.length === 0 ? (
-        <div className="flex flex-col items-center justify-center p-12 card-premium text-center border-dashed">
-          <CalendarHeart className="w-12 h-12 text-muted-foreground mb-3 opacity-20" />
-          <p className="text-sm font-medium text-foreground">Kalendar keuangan masih kosong.</p>
-          <p className="text-xs text-muted-foreground mt-1">Catat jurnal harian Anda di modul Budgeting.</p>
+        <div className="card-premium border-dashed">
+          <EmptyState
+            icon={CalendarHeart}
+            title="Kalendar keuangan masih kosong."
+            description="Catat jurnal harian Anda di modul Budgeting."
+            color="#f43f5e"
+          />
         </div>
       ) : (
         <div className="space-y-6 max-w-3xl">
@@ -98,19 +105,19 @@ export function KalendarContent() {
                 {/* Daily Cards */}
                 <div className="flex-1 pb-6">
                   <div className="flex items-center gap-3 mb-3">
-                     {totalIn > 0 && <span className="text-xs font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded font-numeric">Masuk: {formatRupiah(totalIn)}</span>}
-                     {totalOut > 0 && <span className="text-xs font-semibold text-red-500 bg-red-50 px-2 py-0.5 rounded font-numeric">Keluar: {formatRupiah(totalOut)}</span>}
+                     {totalIn > 0 && <span className="text-xs font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded font-numeric shrink-0">Masuk: {formatRupiahCompact(totalIn)}</span>}
+                     {totalOut > 0 && <span className="text-xs font-semibold text-red-500 bg-red-50 px-2 py-0.5 rounded font-numeric shrink-0">Keluar: {formatRupiahCompact(totalOut)}</span>}
                   </div>
                   
                   <div className="space-y-2">
                     {dailyTxs.map(tx => (
-                      <div key={tx.id} className="card-premium p-4 flex justify-between items-center group/card hover:border-border transition-colors">
-                        <div>
-                           <p className="text-sm font-bold text-foreground">{tx.subcategory || 'Tanpa Kategori'}</p>
-                           <p className="text-xs text-muted-foreground mt-0.5">{tx.description || '-'}</p>
+                      <div key={tx.id} className="card-premium p-4 flex justify-between items-center gap-3 group/card">
+                        <div className="min-w-0">
+                           <p className="text-sm font-bold text-foreground truncate">{tx.subcategory || 'Tanpa Kategori'}</p>
+                           <p className="text-xs text-muted-foreground mt-0.5 truncate">{tx.description || '-'}</p>
                         </div>
-                        <p className={`text-base font-bold font-numeric ${tx.category === 'PENDAPATAN' ? 'text-emerald-500' : 'text-foreground'}`}>
-                           {tx.category === 'PENDAPATAN' ? '+' : '-'}{formatRupiah(tx.amount)}
+                        <p className={`text-base font-bold font-numeric shrink-0 ${tx.category === 'PENDAPATAN' ? 'text-emerald-500' : 'text-foreground'}`}>
+                           {tx.category === 'PENDAPATAN' ? '+' : '-'}{formatRupiahCompact(tx.amount)}
                         </p>
                       </div>
                     ))}

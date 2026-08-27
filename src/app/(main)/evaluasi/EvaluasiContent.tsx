@@ -4,8 +4,9 @@ import { useState, useEffect } from 'react';
 import { getCurrentUserId } from '@/lib/queries/users';
 import { fetchTransactions } from '@/lib/queries/transactions';
 import { fetchSnapshots } from '@/lib/queries/snapshots';
-import { TrendingUp, TrendingDown, Target } from 'lucide-react';
+import { TrendingUp, TrendingDown, Target, BarChart3 } from 'lucide-react';
 import { Skeleton, KPISkeleton, ChartSkeleton } from '@/components/ui/Skeleton';
+import { PageHeader } from '@/components/ui/PageHeader';
 import { formatRupiahCompact, getYearOptions } from '@/lib/utils';
 import { calculateMonthlyBreakdown } from '@/shared';
 import {
@@ -96,35 +97,37 @@ export function EvaluasiContent() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Evaluasi Tahunan</h1>
-          <p className="text-muted-foreground text-sm mt-1">Laporan komprehensif kesehatan finansial Anda dalam setahun</p>
-        </div>
-        <select value={year} onChange={(e) => setYear(Number(e.target.value))} className="bg-card border border-border rounded-lg px-4 py-2 text-sm font-bold focus:ring-primary-500">
-           {getYearOptions().map(y => <option key={y} value={y}>Tahun {y}</option>)}
-        </select>
-      </div>
+      <PageHeader
+        title="Evaluasi Tahunan"
+        subtitle="Laporan komprehensif kesehatan finansial Anda dalam setahun"
+        icon={BarChart3}
+        gradient="from-emerald-500 to-teal-600"
+        action={
+          <select value={year} onChange={(e) => setYear(Number(e.target.value))} className="bg-card border border-border rounded-xl px-4 py-2.5 text-sm font-bold focus:ring-primary-500 touch-target">
+             {getYearOptions().map(y => <option key={y} value={y}>Tahun {y}</option>)}
+          </select>
+        }
+      />
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-         <div className="card-premium p-5 border-emerald-500/20 bg-emerald-500/5">
-            <p className="text-xs font-bold text-emerald-700 uppercase tracking-widest mb-1 flex items-center gap-1.5"><TrendingUp className="w-3.5 h-3.5"/> Total Pemasukan</p>
-            <p className="text-2xl font-bold font-numeric text-emerald-600 mt-2">{formatRupiahCompact(totalIncome)}</p>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+         <div className="card-premium p-4 sm:p-5 border-emerald-500/20 bg-emerald-500/5">
+            <p className="text-xs font-bold text-emerald-700 uppercase tracking-widest mb-1 flex items-center gap-1.5"><TrendingUp className="w-3.5 h-3.5 shrink-0"/> Total Pemasukan</p>
+            <p className="kpi-value font-bold font-numeric text-emerald-600 mt-2">{formatRupiahCompact(totalIncome)}</p>
          </div>
-         <div className="card-premium p-5 border-red-500/10 bg-red-500/5">
-            <p className="text-xs font-bold text-red-700 uppercase tracking-widest mb-1 flex items-center gap-1.5"><TrendingDown className="w-3.5 h-3.5"/> Total Pengeluaran</p>
-            <p className="text-2xl font-bold font-numeric text-red-600 mt-2">{formatRupiahCompact(totalExpense)}</p>
+         <div className="card-premium p-4 sm:p-5 border-red-500/10 bg-red-500/5">
+            <p className="text-xs font-bold text-red-700 uppercase tracking-widest mb-1 flex items-center gap-1.5"><TrendingDown className="w-3.5 h-3.5 shrink-0"/> Total Pengeluaran</p>
+            <p className="kpi-value font-bold font-numeric text-red-600 mt-2">{formatRupiahCompact(totalExpense)}</p>
          </div>
-         <div className="card-premium p-5">
-            <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1 flex items-center gap-1.5"><Target className="w-3.5 h-3.5"/> Net Surplus / Defisit</p>
-            <p className={`text-2xl font-bold font-numeric mt-2 ${netSurplus >= 0 ? 'text-primary-600' : 'text-red-500'}`}>
+         <div className="card-premium p-4 sm:p-5">
+            <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1 flex items-center gap-1.5"><Target className="w-3.5 h-3.5 shrink-0"/> Net Surplus / Defisit</p>
+            <p className={`kpi-value font-bold font-numeric mt-2 ${netSurplus >= 0 ? 'text-primary-600' : 'text-red-500'}`}>
                {netSurplus >= 0 ? '+' : ''}{formatRupiahCompact(netSurplus)}
             </p>
          </div>
-         <div className="card-premium p-5 border-primary-500/20 shadow-md">
+         <div className="card-premium p-4 sm:p-5 border-primary-500/20 shadow-md">
             <p className="text-xs font-bold text-primary-700 uppercase tracking-widest mb-1">Pertumbuhan Net Worth</p>
-            <p className={`text-2xl font-bold font-numeric mt-2 ${nwGrowth >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
+            <p className={`kpi-value font-bold font-numeric mt-2 ${nwGrowth >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
                {nwGrowth >= 0 ? '+' : ''}{formatRupiahCompact(nwGrowth)}
             </p>
          </div>

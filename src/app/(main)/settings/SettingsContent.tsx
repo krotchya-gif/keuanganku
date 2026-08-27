@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { createClient } from '@/utils/supabase/client';
-import { Loader2, AlertTriangle, User, RefreshCcw } from 'lucide-react';
+import { Loader2, AlertTriangle, User, RefreshCcw, Settings as SettingsIcon } from 'lucide-react';
+import { PageHeader } from '@/components/ui/PageHeader';
 
 export function SettingsContent() {
   const [loading, setLoading] = useState(true);
@@ -64,10 +65,11 @@ export function SettingsContent() {
 
   return (
     <div className="space-y-6 max-w-2xl">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">Pengaturan Akun</h1>
-        <p className="text-muted-foreground text-sm mt-1">Kelola profil pengguna dan manajemen data aplikasi</p>
-      </div>
+      <PageHeader
+        title="Pengaturan Akun"
+        subtitle="Kelola profil pengguna dan manajemen data aplikasi"
+        icon={SettingsIcon}
+      />
 
       {/* Profil User */}
       <div className="card-premium p-6">
@@ -113,7 +115,7 @@ export function SettingsContent() {
                    alert('Gagal mengirim tautan reset. Periksa email Anda atau coba lagi.');
                  }
               }}
-              className="bg-primary-50 text-primary-600 hover:bg-primary-100 hover:text-primary-700 px-4 py-2 rounded-lg text-sm font-bold transition-colors"
+              className="btn-secondary"
             >
               Kirim Tautan Reset
             </button>
@@ -138,7 +140,7 @@ export function SettingsContent() {
            <button 
              onClick={handleReset}
              disabled={reseting}
-             className="flex items-center gap-2 bg-white border border-red-200 hover:bg-red-50 hover:border-red-300 text-red-600 px-5 py-2.5 rounded-lg text-sm font-bold transition-all shadow-sm"
+             className="flex items-center gap-2 bg-white border border-red-200 hover:bg-red-50 hover:border-red-300 text-red-600 px-5 py-2.5 rounded-xl text-sm font-bold transition-all shadow-sm active:scale-[0.98]"
            >
              {reseting ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCcw className="w-4 h-4" />}
              {reseting ? 'Mereset Data...' : 'Hapus Semua Data Sekarang'}

@@ -1,22 +1,40 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { formatRupiah, formatRupiahCompact, formatPercent } from '@/lib/utils';
 import { calculateKPR, calculateAdditionalCosts, calculateInstallmentRatio } from '@/shared';
+import type { KPRResult } from '@/shared';
 import {
   AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer,
   CartesianGrid, Legend,
 } from 'recharts';
 import { ChartTooltip } from '@/components/charts/ChartTooltip';
 import { chartGridStyle, chartAxisStyle, formatChartRupiah } from '@/components/charts/ChartTheme';
-import { Calculator, Save, X, Bookmark, Loader2, Trash2, PlusCircle, Layers, Eye, Calendar, Home, Wallet, Percent, TrendingUp } from 'lucide-react';
+import { Calculator, Save, X, Bookmark, Loader2, Trash2, PlusCircle, Layers, Eye, Calendar, Home, Wallet, Percent, TrendingUp, AlertCircle } from 'lucide-react';
 import { Skeleton, CardSkeleton } from '@/components/ui/Skeleton';
+import { PageHeader } from '@/components/ui/PageHeader';
+import { BottomSheet } from '@/components/ui/BottomSheet';
+import { TableScroll } from '@/components/ui/TableScroll';
 import { createClient } from '@/utils/supabase/client';
 import { getCurrentUserId } from '@/lib/queries/users';
 import { fetchKPRSimulations, type SavedSimulation } from '@/lib/queries/kpr';
 
 const statusColors: Record<string, string> = { sehat: '#3ecf8e', warning: '#f5a623', bahaya: '#ef4444' };
 const statusLabels: Record<string, string> = { sehat: '✅ Rasio Sehat', warning: '⚠️ Perlu Waspada', bahaya: '🔴 Tidak Sehat' };
+
+const EMPTY_KPR_RESULT: KPRResult = {
+  schedule: [],
+  summary: {
+    loanPrincipal: 0,
+    totalPrincipalPaid: 0,
+    totalInterestPaid: 0,
+    totalPaid: 0,
+    interestToPrincipalRatio: 0,
+    minInstallment: 0,
+    maxInstallment: 0,
+    remainingAtFloating: 0,
+  },
+};
 
 // Warna untuk masing-masing fase bunga
 const PHASE_COLORS = [
@@ -37,9 +55,9 @@ function getPhaseStyling(phaseIndex: number | undefined, totalFloatingPhases: nu
 
 function InfoRow({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
   return (
-    <div className="flex justify-between items-center py-2 border-b border-border/60 last:border-0">
-      <span className="text-sm text-muted-foreground">{label}</span>
-      <span className={`text-sm font-numeric font-semibold ${highlight ? 'text-primary-500' : 'text-foreground'}`}>{value}</span>
+    <div className="flex justify-between items-center py-2 border-b border-border/60 last:border-0 gap-3">
+      <span className="text-sm text-muted-foreground min-w-0 truncate">{label}</span>
+      <span className={`text-sm font-numeric font-semibold shrink-0 whitespace-nowrap ${highlight ? 'text-primary-500' : 'text-foreground'}`}>{value}</span>
     </div>
   );
 }
@@ -161,6 +179,7 @@ export function KPRContent() {
   const saveSimulation = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!simName.trim()) return;
+    if (calcError) return;
     setIsSaving(true);
     try {
       const supabase = createClient();
@@ -236,15 +255,25 @@ export function KPRContent() {
   const remainingFloatingYears = form.loanPeriodYears - form.fixedPeriodYears - totalTransitionYears;
   const isDurationValid = remainingFloatingYears >= 0;
 
-  const kprResult = calculateKPR({
-    propertyPrice: form.propertyPrice,
-    downPayment: form.downPayment,
-    loanPeriodYears: form.loanPeriodYears,
-    fixedRateAnnual: form.fixedRateAnnual,
-    fixedPeriodYears: form.fixedPeriodYears,
-    floatingRateAnnual: form.floatingRateAnnual,
-    floatingPhases: berjenjang ? floatingPhases : [],
-  });
+  const { kprResult, calcError } = useMemo(() => {
+    try {
+      const result = calculateKPR({
+        propertyPrice: form.propertyPrice,
+        downPayment: form.downPayment,
+        loanPeriodYears: form.loanPeriodYears,
+        fixedRateAnnual: form.fixedRateAnnual,
+        fixedPeriodYears: form.fixedPeriodYears,
+        floatingRateAnnual: form.floatingRateAnnual,
+        floatingPhases: berjenjang ? floatingPhases : [],
+      });
+      return { kprResult: result, calcError: null as string | null };
+    } catch (err) {
+      return {
+        kprResult: EMPTY_KPR_RESULT,
+        calcError: err instanceof Error ? err.message : 'Input simulasi tidak valid.',
+      };
+    }
+  }, [form, berjenjang, floatingPhases]);
 
   const additionalCosts = calculateAdditionalCosts({
     propertyPrice: form.propertyPrice,
@@ -294,19 +323,20 @@ export function KPRContent() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Simulasi KPR</h1>
-          <p className="text-muted-foreground text-sm mt-1">Hitung cicilan, amortisasi, dan biaya-biaya KPR secara lengkap</p>
-        </div>
-        <button
-          onClick={() => setShowSaveModal(true)}
-          className="flex items-center gap-2 bg-primary-500 hover:bg-primary-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-glow"
-        >
-          <Save className="w-4 h-4" /> Simpan Simulasi
-        </button>
-      </div>
+      <PageHeader
+        title="Simulasi KPR"
+        subtitle="Hitung cicilan, amortisasi, dan biaya-biaya KPR secara lengkap"
+        icon={Home}
+        gradient="from-sky-500 to-blue-600"
+        action={
+          <button
+            onClick={() => setShowSaveModal(true)}
+            className="btn-primary"
+          >
+            <Save className="w-4 h-4" /> Simpan Simulasi
+          </button>
+        }
+      />
 
       {/* Saved Simulations Bar */}
       {simulations.length > 0 && (
@@ -327,12 +357,12 @@ export function KPRContent() {
               <div className="flex items-center gap-1">
                 <button 
                   onClick={(e) => { e.stopPropagation(); setSelectedSim(sim); setShowDetailModal(true); }}
-                  className="p-1 opacity-0 group-hover:opacity-100 hover:text-blue-500 transition-opacity"
+                  className="p-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 hover:text-blue-500 transition-opacity touch-target"
                   title="Lihat detail"
                 >
                   <Eye className="w-3.5 h-3.5" />
                 </button>
-                <button onClick={(e) => deleteSimulation(sim.id, e)} className="p-1 opacity-0 group-hover:opacity-100 hover:text-red-500 transition-opacity">
+                <button onClick={(e) => deleteSimulation(sim.id, e)} className="p-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 hover:text-red-500 transition-opacity touch-target">
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
               </div>
@@ -619,21 +649,27 @@ export function KPRContent() {
         {/* ── RIGHT: Results ── */}
         <div className="col-span-1 md:col-span-2 space-y-4">
           {/* Summary KPIs */}
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-3 gap-2 sm:gap-3">
             {[
               { label: 'Pinjaman Pokok', value: formatRupiahCompact(kprResult.summary.loanPrincipal), color: 'text-primary-500' },
               { label: 'Total Bunga Dibayar', value: formatRupiahCompact(kprResult.summary.totalInterestPaid), color: 'text-red-500' },
               { label: 'Total Uang Dikeluarkan', value: formatRupiahCompact(kprResult.summary.totalPaid + additionalCosts.total), color: 'text-foreground' },
             ].map((kpi) => (
-              <div key={kpi.label} className="card-premium p-4">
-                <p className="text-xs text-muted-foreground">{kpi.label}</p>
-                <p className={`text-lg font-bold font-numeric mt-1 ${kpi.color}`}>{kpi.value}</p>
+              <div key={kpi.label} className="card-premium p-3 sm:p-4">
+                <p className="text-[10px] sm:text-xs text-muted-foreground truncate">{kpi.label}</p>
+                <p className={`text-sm sm:text-lg font-bold font-numeric mt-1 ${kpi.color} truncate`}>{kpi.value}</p>
               </div>
             ))}
           </div>
 
           {/* Tabs */}
           <div className="card-premium">
+            {calcError && (
+              <div className="mx-5 mt-5 flex items-start gap-2.5 bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">
+                <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
+                <p>{calcError} Sesuaikan input di form simulasi.</p>
+              </div>
+            )}
             <div className="flex border-b border-border">
               {[
                 { key: 'ringkasan', label: '📊 Ringkasan' },
@@ -727,11 +763,12 @@ export function KPRContent() {
                       })}
                     </div>
                   )}
+                  <TableScroll minWidth={760}>
                   <table className="w-full text-xs box-border">
                     <thead>
                       <tr className="border-b border-border bg-muted/30">
                         {['Bln', 'Tanggal', 'Saldo Awal', 'Angsuran Pokok', 'Angsuran Bunga', 'Total Cicilan', 'Sisa Pokok'].map((h) => (
-                          <th key={h} className="text-left py-2 px-2 text-muted-foreground font-medium">{h}</th>
+                          <th key={h} className="text-left py-2 px-2 text-muted-foreground font-medium whitespace-nowrap">{h}</th>
                         ))}
                       </tr>
                     </thead>
@@ -743,8 +780,8 @@ export function KPRContent() {
                         const rowBg = isFixed ? '' : `${PHASE_COLORS[colorIdx].bg}`;
                         return (
                           <tr key={row.period} className={`border-b border-border/40 hover:brightness-95 ${rowBg}`}>
-                            <td className="py-2.5 px-2 font-numeric">{row.period}</td>
-                            <td className="py-2.5 px-2">
+                            <td className="py-2.5 px-2 font-numeric whitespace-nowrap">{row.period}</td>
+                            <td className="py-2.5 px-2 whitespace-nowrap">
                               {row.date.toLocaleDateString('id-ID', { month: 'short', year: '2-digit' })}
                               {!isFixed && row.phaseLabel && (
                                 <span className={`ml-1 text-[9px] px-1 py-0.5 rounded font-semibold ${PHASE_COLORS[colorIdx].badge}`}>
@@ -752,16 +789,17 @@ export function KPRContent() {
                                 </span>
                               )}
                             </td>
-                            <td className="py-2.5 px-2 font-numeric">{formatRupiahCompact(row.beginningBalance)}</td>
-                            <td className="py-2.5 px-2 font-numeric text-emerald-600">{formatRupiahCompact(row.principalPayment)}</td>
-                            <td className="py-2.5 px-2 font-numeric text-red-500">{formatRupiahCompact(row.interestPayment)}</td>
-                            <td className="py-2.5 px-2 font-numeric font-semibold text-primary-600">{formatRupiahCompact(row.totalPayment)}</td>
-                            <td className="py-2.5 px-2 font-numeric font-medium">{formatRupiahCompact(row.endingBalance)}</td>
+                            <td className="py-2.5 px-2 font-numeric whitespace-nowrap">{formatRupiahCompact(row.beginningBalance)}</td>
+                            <td className="py-2.5 px-2 font-numeric text-emerald-600 whitespace-nowrap">{formatRupiahCompact(row.principalPayment)}</td>
+                            <td className="py-2.5 px-2 font-numeric text-red-500 whitespace-nowrap">{formatRupiahCompact(row.interestPayment)}</td>
+                            <td className="py-2.5 px-2 font-numeric font-semibold text-primary-600 whitespace-nowrap">{formatRupiahCompact(row.totalPayment)}</td>
+                            <td className="py-2.5 px-2 font-numeric font-medium whitespace-nowrap">{formatRupiahCompact(row.endingBalance)}</td>
                           </tr>
                         );
                       })}
                     </tbody>
                   </table>
+                  </TableScroll>
                   {!showAllRows && kprResult.schedule.length > 24 && (
                     <button onClick={() => setShowAllRows(true)} className="mt-4 w-full text-xs bg-muted/50 font-medium text-primary-500 hover:text-primary-600 py-2.5 rounded-lg transition-colors">
                       Tampilkan seluruh {kprResult.schedule.length} bulan angsuran →
@@ -822,20 +860,9 @@ export function KPRContent() {
       </div>
 
       {/* Detail Modal */}
-      {showDetailModal && selectedSim && (
-        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-          <div className="bg-card w-full max-w-lg rounded-xl shadow-xl overflow-hidden animate-in zoom-in-95 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between p-4 border-b border-border bg-muted/30">
-              <div className="flex items-center gap-2">
-                <Home className="w-5 h-5 text-primary-500" />
-                <h3 className="font-semibold text-foreground">{selectedSim.name}</h3>
-              </div>
-              <button onClick={() => setShowDetailModal(false)} className="text-muted-foreground hover:bg-muted p-1 rounded-md">
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            
-            <div className="p-5 space-y-5">
+      <BottomSheet open={showDetailModal && !!selectedSim} onClose={() => setShowDetailModal(false)} title={selectedSim?.name} maxWidth="sm:max-w-lg">
+        {selectedSim && (
+          <div className="space-y-5">
               {/* Tanggal */}
               <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/30 px-3 py-2 rounded-lg">
                 <Calendar className="w-3.5 h-3.5" />
@@ -943,50 +970,41 @@ export function KPRContent() {
               <div className="pt-4 flex gap-2 border-t border-border">
                 <button 
                   onClick={() => { loadSimulation(selectedSim); setShowDetailModal(false); }}
-                  className="flex-1 bg-primary-500 hover:bg-primary-600 text-white px-4 py-2.5 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2"
+                  className="btn-primary flex-1"
                 >
                   <Calculator className="w-4 h-4" /> Load ke Form
                 </button>
                 <button 
                   onClick={(e) => { deleteSimulation(selectedSim.id, e); setShowDetailModal(false); }}
-                  className="px-4 py-2.5 text-sm font-medium text-red-500 hover:bg-red-50 rounded-lg transition-colors flex items-center gap-2"
+                  className="px-4 py-2.5 text-sm font-medium text-red-500 hover:bg-red-50 rounded-xl transition-colors flex items-center gap-2"
                 >
                   <Trash2 className="w-4 h-4" /> Hapus
                 </button>
               </div>
             </div>
-          </div>
-        </div>
-      )}
+        )}
+      </BottomSheet>
 
       {/* Save Modal */}
-      {showSaveModal && (
-        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-          <div className="bg-card w-full max-w-sm rounded-xl shadow-xl overflow-hidden animate-in zoom-in-95">
-            <div className="flex items-center justify-between p-4 border-b border-border">
-              <h3 className="font-semibold text-foreground">Simpan Simulasi KPR</h3>
-              <button onClick={() => setShowSaveModal(false)} className="text-muted-foreground hover:bg-muted p-1 rounded-md"><X className="w-4 h-4" /></button>
-            </div>
-            <form onSubmit={saveSimulation} className="p-4 space-y-4">
-              <div>
-                <label className="block text-xs font-medium text-foreground mb-1.5">Nama Simulasi</label>
-                <input required autoFocus value={simName} onChange={e => setSimName(e.target.value)} type="text" className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary-500" placeholder="e.g. Cluster Bintaro Jaya" />
-              </div>
-              {berjenjang && (
-                <p className="text-xs text-muted-foreground bg-muted/50 px-3 py-2 rounded-lg">
-                  Simulasi akan disimpan dengan <strong>{floatingPhases.length} fase bunga berjenjang</strong>.
-                </p>
-              )}
-              <div className="pt-2 flex justify-end gap-2">
-                <button type="button" onClick={() => setShowSaveModal(false)} className="px-4 py-2 text-sm font-medium text-muted-foreground hover:bg-muted rounded-lg">Batal</button>
-                <button disabled={isSaving} type="submit" className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-primary-500 hover:bg-primary-600 rounded-lg shadow-glow">
-                  {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Simpan'}
-                </button>
-              </div>
-            </form>
+      <BottomSheet open={showSaveModal} onClose={() => setShowSaveModal(false)} title="Simpan Simulasi KPR">
+        <form onSubmit={saveSimulation} className="space-y-4">
+          <div>
+            <label className="block text-xs font-medium text-foreground mb-1.5">Nama Simulasi</label>
+            <input required autoFocus value={simName} onChange={e => setSimName(e.target.value)} type="text" className="input-field" placeholder="e.g. Cluster Bintaro Jaya" />
           </div>
-        </div>
-      )}
+          {berjenjang && (
+            <p className="text-xs text-muted-foreground bg-muted/50 px-3 py-2 rounded-lg">
+              Simulasi akan disimpan dengan <strong>{floatingPhases.length} fase bunga berjenjang</strong>.
+            </p>
+          )}
+          <div className="pt-2 flex justify-end gap-2">
+            <button type="button" onClick={() => setShowSaveModal(false)} className="btn-secondary">Batal</button>
+            <button disabled={isSaving} type="submit" className="btn-primary">
+              {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Simpan'}
+            </button>
+          </div>
+        </form>
+      </BottomSheet>
     </div>
   );
 }

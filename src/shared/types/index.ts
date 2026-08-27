@@ -163,6 +163,7 @@ export interface CashFlowResult {
 }
 
 export interface FinancialCheckupItem {
+  key: 'dana_darurat' | 'arus_kas' | 'rasio_cicilan' | 'rasio_investasi' | 'rasio_biaya_hidup' | 'solvabilitas';
   name: string;
   formula: string;
   recommendation: string;

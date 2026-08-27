@@ -35,7 +35,19 @@ export async function updateSession(request: NextRequest) {
   // refreshing the auth token (local JWT verify — faster than getUser)
   const claims = (await supabase.auth.getClaims()).data?.claims ?? null;
 
-  const isPublicRoute = request.nextUrl.pathname.startsWith('/login') || request.nextUrl.pathname.startsWith('/register') || request.nextUrl.pathname.startsWith('/_next') || request.nextUrl.pathname.includes('.');
+  const publicPaths = [
+    '/login',
+    '/register',
+    '/lupa-password',
+    '/reset-password',
+    '/auth/callback',
+    '/~offline',
+    '/',
+  ];
+  const isPublicRoute =
+    publicPaths.some((p) => (p === '/' ? request.nextUrl.pathname === '/' : request.nextUrl.pathname.startsWith(p))) ||
+    request.nextUrl.pathname.startsWith('/_next') ||
+    request.nextUrl.pathname.includes('.');
 
   if (!claims && !isPublicRoute) {
     const url = request.nextUrl.clone();

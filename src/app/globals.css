@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -15,7 +15,7 @@
     --border: 220 13% 91%;
     --input: 220 13% 91%;
     --ring: 248 90% 66%;
-    --radius: 0.75rem;
+    --radius: 1rem;
   }
 
   .dark {
@@ -32,9 +32,12 @@
 
   * { @apply border-border; }
 
+  html { -webkit-tap-highlight-color: transparent; }
+
   body {
     @apply bg-background text-foreground font-sans antialiased;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    overscroll-behavior-y: none;
   }
 
   /* Angka monospace */
@@ -47,12 +50,22 @@
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb { @apply bg-border rounded-full; }
   ::-webkit-scrollbar-thumb:hover { @apply bg-muted-foreground; }
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 }
 
 @layer components {
-  /* Premium Card */
+  /* Premium Card — fintech: rounded-2xl, border ringan, shadow lembut */
   .card-premium {
-    @apply bg-card rounded-lg border border-border/60 shadow-card hover:shadow-card-hover transition-all duration-200;
+    @apply bg-card rounded-2xl border border-border/60 shadow-card transition-all duration-200;
+  }
+  .card-premium:hover {
+    @apply shadow-card-hover;
+  }
+
+  /* Card dengan aksen warna lembut */
+  .card-soft {
+    @apply rounded-2xl border border-border/60 shadow-card;
   }
 
   /* Gradient text */
@@ -62,18 +75,18 @@
 
   /* Status badge */
   .badge-sehat {
-    @apply bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-medium px-2 py-0.5 rounded-full;
+    @apply bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-medium px-2.5 py-1 rounded-full;
   }
   .badge-warning {
-    @apply bg-yellow-50 text-yellow-700 border border-yellow-200 text-xs font-medium px-2 py-0.5 rounded-full;
+    @apply bg-yellow-50 text-yellow-700 border border-yellow-200 text-xs font-medium px-2.5 py-1 rounded-full;
   }
   .badge-bahaya {
-    @apply bg-red-50 text-red-700 border border-red-200 text-xs font-medium px-2 py-0.5 rounded-full;
+    @apply bg-red-50 text-red-700 border border-red-200 text-xs font-medium px-2.5 py-1 rounded-full;
   }
 
   /* Nav item */
   .nav-item {
-    @apply flex items-center gap-3 px-3 py-2.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-all duration-150 text-sm font-medium;
+    @apply flex items-center gap-3 px-3 py-2.5 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted transition-all duration-150 text-sm font-medium;
   }
   .nav-item.active {
     @apply bg-primary-500/10 text-primary-500 font-semibold;
@@ -81,7 +94,7 @@
 
   /* Input styling */
   .input-field {
-    @apply w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 transition-colors;
+    @apply w-full rounded-xl border border-input bg-background px-3.5 py-2.5 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 transition-colors;
   }
 
   /* Skeleton loader */
@@ -95,6 +108,36 @@
   }
   .progress-bar-fill {
     @apply h-full rounded-full transition-all duration-700 ease-out;
+  }
+
+  /* Tombol utama */
+  .btn-primary {
+    @apply flex items-center justify-center gap-2 bg-primary-500 hover:bg-primary-600 active:scale-[0.98] text-white px-4 py-2.5 rounded-xl text-sm font-medium transition-all shadow-glow disabled:opacity-60 disabled:cursor-not-allowed;
+  }
+  .btn-secondary {
+    @apply flex items-center justify-center gap-2 bg-muted hover:bg-muted/70 text-foreground px-4 py-2.5 rounded-xl text-sm font-medium transition-all active:scale-[0.98];
+  }
+
+  /* Tabel scroll aman di mobile */
+  .table-scroll {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+  }
+  .table-scroll table {
+    @apply min-w-[640px];
+  }
+
+  /* Nilai KPI besar yang mengecil otomatis (tidak pernah terpotong) */
+  .kpi-value {
+    font-size: clamp(1.375rem, 7vw, 2rem);
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+  }
+
+  /* Bottom sheet handle */
+  .sheet-handle {
+    @apply w-10 h-1 rounded-full bg-border mx-auto mb-3;
   }
 }
 
@@ -119,11 +162,9 @@
     padding-top: env(safe-area-inset-top, 0px);
   }
 
-  /* Ensure touch targets are at least 44px on mobile */
-  @media (max-width: 767px) {
-    .touch-target {
-      min-height: 44px;
-      min-width: 44px;
-    }
+  /* Touch targets minimal 44px di semua device */
+  .touch-target {
+    min-height: 44px;
+    min-width: 44px;
   }
 }

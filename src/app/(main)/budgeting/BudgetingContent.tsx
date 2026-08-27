@@ -1,8 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, X, Loader2, ArrowRightLeft, Target, Wallet, CalendarDays, Download } from 'lucide-react';
+import { Plus, Edit2, Trash2, Loader2, ArrowRightLeft, Target, Wallet, CalendarDays, Download, PiggyBank } from 'lucide-react';
 import { Skeleton, TableSkeleton } from '@/components/ui/Skeleton';
+import { PageHeader } from '@/components/ui/PageHeader';
+import { BottomSheet } from '@/components/ui/BottomSheet';
 import { formatRupiah, formatRupiahCompact, formatPercent, getTodayString, getMonthRange, getYearOptions } from '@/lib/utils';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { ChartTooltip } from '@/components/charts/ChartTooltip';
@@ -26,6 +28,17 @@ export function BudgetingContent() {
 
   const [month, setMonth] = useState(new Date().getMonth() + 1);
   const [year, setYear] = useState(new Date().getFullYear());
+
+  // FAB "Catat Transaksi" → buka tab Jurnal Harian
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('catat') === '1') {
+      setActiveTab('transaksi');
+      setShowTxModal(true);
+      window.history.replaceState(null, '', '/budgeting');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Modals
   const [showItemModal, setShowItemModal] = useState(false);
@@ -194,21 +207,22 @@ export function BudgetingContent() {
 
   return (
     <div className="space-y-6">
-      {/* Header & Month Selector */}
-      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-foreground">Budgeting Harian (Amplop)</h1>
-          <p className="text-muted-foreground text-xs sm:text-sm mt-1">Sistem amplop digital: Rencanakan, Catat, dan Evaluasi</p>
-        </div>
-        <div className="flex items-center gap-2">
-           <select value={month} onChange={(e) => setMonth(Number(e.target.value))} className="bg-card border border-border rounded-lg px-3 py-2 text-sm font-medium focus:ring-primary-500">
-             {Array.from({length: 12}, (_, i) => (<option key={i+1} value={i+1}>{new Date(2000, i, 1).toLocaleDateString('id-ID', { month: 'long' })}</option>))}
-           </select>
-           <select value={year} onChange={(e) => setYear(Number(e.target.value))} className="bg-card border border-border rounded-lg px-3 py-2 text-sm font-medium inline-block w-24 focus:ring-primary-500">
-             {getYearOptions().map(y => <option key={y} value={y}>{y}</option>)}
-           </select>
-        </div>
-      </div>
+      <PageHeader
+        title="Budgeting Harian"
+        subtitle="Sistem amplop digital: Rencanakan, Catat, dan Evaluasi"
+        icon={PiggyBank}
+        gradient="from-violet-500 to-purple-600"
+        action={
+          <div className="flex items-center gap-2">
+            <select value={month} onChange={(e) => setMonth(Number(e.target.value))} className="bg-card border border-border rounded-xl px-3 py-2.5 text-sm font-medium focus:ring-primary-500 touch-target">
+              {Array.from({length: 12}, (_, i) => (<option key={i+1} value={i+1}>{new Date(2000, i, 1).toLocaleDateString('id-ID', { month: 'long' })}</option>))}
+            </select>
+            <select value={year} onChange={(e) => setYear(Number(e.target.value))} className="bg-card border border-border rounded-xl px-3 py-2.5 text-sm font-medium inline-block w-24 focus:ring-primary-500 touch-target">
+              {getYearOptions().map(y => <option key={y} value={y}>{y}</option>)}
+            </select>
+          </div>
+        }
+      />
 
       {/* Tabs */}
       <div className="card-premium">
@@ -236,15 +250,15 @@ export function BudgetingContent() {
                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
                  <div className="card-premium p-4 border-emerald-500/20 bg-emerald-500/5">
                    <p className="text-xs text-muted-foreground font-medium mb-1">Total Pemasukan (Aktual)</p>
-                   <p className="text-xl font-bold font-numeric text-emerald-600">{formatRupiahCompact(totalIncomeActual)} <span className="text-xs text-muted-foreground font-normal">/ {formatRupiahCompact(totalIncomePlanned)}</span></p>
+                   <p className="text-lg sm:text-xl font-bold font-numeric text-emerald-600">{formatRupiahCompact(totalIncomeActual)} <span className="text-xs text-muted-foreground font-normal">/ {formatRupiahCompact(totalIncomePlanned)}</span></p>
                  </div>
                  <div className="card-premium p-4">
                    <p className="text-xs text-muted-foreground font-medium mb-1">Total Pengeluaran (Aktual)</p>
-                   <p className="text-xl font-bold font-numeric text-foreground">{formatRupiahCompact(totalExpenseActual)} <span className="text-xs text-muted-foreground font-normal">/ {formatRupiahCompact(totalExpensePlanned)}</span></p>
+                   <p className="text-lg sm:text-xl font-bold font-numeric text-foreground">{formatRupiahCompact(totalExpenseActual)} <span className="text-xs text-muted-foreground font-normal">/ {formatRupiahCompact(totalExpensePlanned)}</span></p>
                  </div>
                  <div className={`card-premium p-4 ${isOverbudget ? 'border-red-500/30 bg-red-500/5' : ''}`}>
                    <p className="text-xs text-muted-foreground font-medium mb-1">Sisa Anggaran Tersedia</p>
-                   <p className={`text-xl font-bold font-numeric ${isOverbudget ? 'text-red-500' : 'text-primary-500'}`}>
+                   <p className={`text-lg sm:text-xl font-bold font-numeric ${isOverbudget ? 'text-red-500' : 'text-primary-500'}`}>
                      {isOverbudget ? '-' : ''}{formatRupiahCompact(Math.abs(budgetRemaining))}
                      {isOverbudget && <span className="text-[10px] ml-2 px-1.5 py-0.5 rounded bg-red-100 text-red-600">Overbudget</span>}
                    </p>
@@ -252,7 +266,7 @@ export function BudgetingContent() {
                  <div className="card-premium p-4">
                    <p className="text-xs text-muted-foreground font-medium mb-1">% Pemakaian Anggaran</p>
                    <div className="flex items-center gap-2 mt-1">
-                     <p className={`text-xl font-bold font-numeric ${totalExpensePlanned > 0 && totalExpenseActual/totalExpensePlanned > 0.9 ? 'text-red-500' : 'text-foreground'}`}>
+                     <p className={`text-lg sm:text-xl font-bold font-numeric ${totalExpensePlanned > 0 && totalExpenseActual/totalExpensePlanned > 0.9 ? 'text-red-500' : 'text-foreground'}`}>
                        {formatPercent(totalExpensePlanned > 0 ? totalExpenseActual/totalExpensePlanned : 0)}
                      </p>
                      <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
@@ -298,14 +312,14 @@ export function BudgetingContent() {
                            const pct = item.planned > 0 ? (item.actual / item.planned) : (item.actual > 0 ? 1 : 0);
                            const isOver = item.actual > item.planned;
                            return (
-                             <div key={item.id} className="group/item">
-                               <div className="flex justify-between items-end mb-1">
-                                 <p className="text-sm font-medium text-foreground">{item.name}</p>
-                                 <p className="text-xs font-numeric font-medium">
-                                   <span className={isOver ? (group.catKey === 'PENDAPATAN' ? 'text-emerald-500' : 'text-red-500') : 'text-foreground'}>{formatRupiah(item.actual)}</span>
-                                   <span className="text-muted-foreground"> / {formatRupiahCompact(item.planned)}</span>
-                                 </p>
-                               </div>
+<div key={item.id} className="group/item">
+                                <div className="flex justify-between items-end mb-1 gap-2">
+                                  <p className="text-sm font-medium text-foreground truncate min-w-0">{item.name}</p>
+                                  <p className="text-xs font-numeric font-medium shrink-0 whitespace-nowrap">
+                                    <span className={isOver ? (group.catKey === 'PENDAPATAN' ? 'text-emerald-500' : 'text-red-500') : 'text-foreground'}>{formatRupiahCompact(item.actual)}</span>
+                                    <span className="text-muted-foreground"> / {formatRupiahCompact(item.planned)}</span>
+                                  </p>
+                                </div>
                                <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden relative">
                                  <div 
                                    className={`absolute left-0 top-0 h-full rounded-full transition-all`} 
@@ -422,12 +436,12 @@ export function BudgetingContent() {
                            <td className={`py-3 px-4 text-right font-numeric font-semibold ${t.category === 'PENDAPATAN' ? 'text-emerald-500' : 'text-foreground'}`}>
                              {t.category === 'PENDAPATAN' ? '+' : '-'}{formatRupiah(t.amount)}
                            </td>
-                           <td className="py-3 px-4">
-                               <div className="flex gap-1 justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                 <button onClick={() => { setEditingTx(t); setTxForm({ transaction_date: String(t.transaction_date).slice(0, 10), category: t.category, subcategory: t.subcategory || '', amount: Number(t.amount), description: t.description || '' }); setShowTxModal(true); }} className="p-1.5 text-muted-foreground hover:bg-muted rounded"><Edit2 className="w-3.5 h-3.5" /></button>
-                                 <button onClick={() => deleteTransaction(t.id)} className="p-1.5 text-muted-foreground hover:bg-red-50 hover:text-red-500 rounded"><Trash2 className="w-3.5 h-3.5" /></button>
-                               </div>
-                           </td>
+<td className="py-3 px-4">
+                                <div className="flex gap-1 justify-center opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                                  <button onClick={() => { setEditingTx(t); setTxForm({ transaction_date: String(t.transaction_date).slice(0, 10), category: t.category, subcategory: t.subcategory || '', amount: Number(t.amount), description: t.description || '' }); setShowTxModal(true); }} className="p-2 text-muted-foreground hover:bg-muted rounded touch-target"><Edit2 className="w-3.5 h-3.5" /></button>
+                                  <button onClick={() => deleteTransaction(t.id)} className="p-2 text-muted-foreground hover:bg-red-50 hover:text-red-500 rounded touch-target"><Trash2 className="w-3.5 h-3.5" /></button>
+                                </div>
+                            </td>
                          </tr>
                        ))}
                      </tbody>
@@ -470,16 +484,16 @@ export function BudgetingContent() {
                        </div>
                        <ul className="divide-y divide-border/60">
                          {items.map(item => (
-                           <li key={item.id} className="px-4 py-3 flex justify-between items-center hover:bg-muted/20 group">
-                             <div>
-                               <p className="text-sm font-medium text-foreground">{item.name}</p>
-                               <p className="text-[10px] text-muted-foreground font-numeric tracking-wide mt-0.5">TARGET: {formatRupiah(item.amount)}</p>
-                             </div>
-                             <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                 <button onClick={() => { setEditingItem(item); setItemForm({ name: item.name, category: item.category, amount: Number(item.amount) }); setShowItemModal(true); }} className="text-muted-foreground hover:text-primary-500"><Edit2 className="w-3.5 h-3.5" /></button>
-                                <button onClick={() => deleteBudgetItem(item.id)} className="text-muted-foreground hover:text-red-500"><Trash2 className="w-3.5 h-3.5" /></button>
-                             </div>
-                           </li>
+<li key={item.id} className="px-4 py-3 flex justify-between items-center hover:bg-muted/20 group gap-3">
+                              <div className="min-w-0">
+                                <p className="text-sm font-medium text-foreground truncate">{item.name}</p>
+                                <p className="text-[10px] text-muted-foreground font-numeric tracking-wide mt-0.5 truncate">TARGET: {formatRupiahCompact(item.amount)}</p>
+                              </div>
+                              <div className="flex gap-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity shrink-0">
+                                  <button onClick={() => { setEditingItem(item); setItemForm({ name: item.name, category: item.category, amount: Number(item.amount) }); setShowItemModal(true); }} className="p-2 text-muted-foreground hover:text-primary-500 touch-target"><Edit2 className="w-3.5 h-3.5" /></button>
+                                 <button onClick={() => deleteBudgetItem(item.id)} className="p-2 text-muted-foreground hover:text-red-500 touch-target"><Trash2 className="w-3.5 h-3.5" /></button>
+                              </div>
+                            </li>
                          ))}
                        </ul>
                      </div>
@@ -499,100 +513,81 @@ export function BudgetingContent() {
       </div>
 
       {/* ── MODALS ── */}
-      
+
       {/* 1. Modal Item (Amplop Master) */}
-      {showItemModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-card w-full max-w-sm rounded-xl shadow-xl overflow-hidden animate-in fade-in zoom-in-95">
-            <div className="flex items-center justify-between p-4 border-b border-border">
-              <h3 className="font-semibold text-foreground">{editingItem ? 'Edit Target Amplop' : 'Bikin Amplop Master Baru'}</h3>
-              <button onClick={() => setShowItemModal(false)} className="text-muted-foreground hover:bg-muted p-1 rounded-md"><X className="w-4 h-4" /></button>
-            </div>
-            <form onSubmit={saveBudgetItem} className="p-5 space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-foreground mb-1.5 uppercase tracking-wide">Nama Amplop</label>
-                <input required value={itemForm.name} onChange={e => setItemForm({...itemForm, name: e.target.value})} type="text" className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500" placeholder="e.g. Belanja Bulanan, Listrik PLN, Nongkrong" />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-foreground mb-1.5 uppercase tracking-wide">Kategori Induk</label>
-                <select value={itemForm.category} onChange={e => setItemForm({...itemForm, category: e.target.value as BudgetCategory})} className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500">
-                  {Object.entries(BUDGET_CATEGORY_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-foreground mb-1.5 uppercase tracking-wide">Rencana Saldo (Rp)</label>
-                <input required min={0} value={itemForm.amount || ''} onChange={e => setItemForm({...itemForm, amount: Number(e.target.value)})} type="number" className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm font-numeric focus:ring-2 focus:ring-primary-500" />
-                <p className="text-[10px] text-muted-foreground mt-1">Berapa budget ideal yang ingin Anda sisihkan sebulan untuk dompet ini?</p>
-              </div>
-              <div className="pt-2 flex justify-end gap-2">
-                <button type="button" onClick={() => setShowItemModal(false)} className="px-4 py-2 text-sm font-medium text-muted-foreground hover:bg-muted rounded-lg border border-transparent">Batal</button>
-                <button type="submit" className="px-4 py-2 text-sm font-medium text-white bg-primary-500 hover:bg-primary-600 rounded-lg shadow-glow">Simpan Master Amplop</button>
-              </div>
-            </form>
+      <BottomSheet open={showItemModal} onClose={() => setShowItemModal(false)} title={editingItem ? 'Edit Target Amplop' : 'Bikin Amplop Master Baru'}>
+        <form onSubmit={saveBudgetItem} className="space-y-4">
+          <div>
+            <label className="block text-xs font-semibold text-foreground mb-1.5 uppercase tracking-wide">Nama Amplop</label>
+            <input required value={itemForm.name} onChange={e => setItemForm({...itemForm, name: e.target.value})} type="text" className="input-field" placeholder="e.g. Belanja Bulanan, Listrik PLN, Nongkrong" />
           </div>
-        </div>
-      )}
+          <div>
+            <label className="block text-xs font-semibold text-foreground mb-1.5 uppercase tracking-wide">Kategori Induk</label>
+            <select value={itemForm.category} onChange={e => setItemForm({...itemForm, category: e.target.value as BudgetCategory})} className="input-field">
+              {Object.entries(BUDGET_CATEGORY_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-foreground mb-1.5 uppercase tracking-wide">Rencana Saldo (Rp)</label>
+            <input required min={0} value={itemForm.amount || ''} onChange={e => setItemForm({...itemForm, amount: Number(e.target.value)})} type="number" className="input-field font-numeric" />
+            <p className="text-[10px] text-muted-foreground mt-1">Berapa budget ideal yang ingin Anda sisihkan sebulan untuk dompet ini?</p>
+          </div>
+          <div className="pt-2 flex justify-end gap-2">
+            <button type="button" onClick={() => setShowItemModal(false)} className="btn-secondary">Batal</button>
+            <button type="submit" className="btn-primary">Simpan Master Amplop</button>
+          </div>
+        </form>
+      </BottomSheet>
 
       {/* 2. Modal Transaksi (Jurnal) */}
-      {showTxModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 shadow-2xl flex items-center justify-center p-4">
-          <div className="bg-card w-full max-w-sm rounded-xl overflow-hidden animate-in fade-in zoom-in-95 border border-border">
-            <div className="flex items-center justify-between p-4 border-b border-border bg-muted/20">
-              <h3 className="font-semibold text-foreground flex items-center gap-2">
-                <ArrowRightLeft className="w-4 h-4 text-primary-500" />
-                {editingTx ? 'Revisi Catatan Jurnal' : 'Input Catatan Transaksi Jurnal'}
-              </h3>
-              <button onClick={() => setShowTxModal(false)} className="text-muted-foreground hover:bg-muted/50 p-1.5 rounded-md transition-colors"><X className="w-4 h-4" /></button>
+      <BottomSheet open={showTxModal} onClose={() => setShowTxModal(false)} title={editingTx ? 'Revisi Catatan Jurnal' : 'Input Catatan Transaksi Jurnal'}>
+        <form onSubmit={saveTransaction} className="space-y-4">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="col-span-2">
+              <label className="block text-xs font-semibold text-foreground mb-1.5 uppercase tracking-wide">Tanggal Transaksi</label>
+              <input required value={txForm.transaction_date} onChange={e => setTxForm({...txForm, transaction_date: e.target.value})} type="date" className="input-field" />
             </div>
-            <form onSubmit={saveTransaction} className="p-5 space-y-4">
-              <div className="grid grid-cols-2 gap-3">
-                <div className="col-span-2">
-                  <label className="block text-xs font-semibold text-foreground mb-1.5 uppercase tracking-wide">Tanggal Transaksi</label>
-                  <input required value={txForm.transaction_date} onChange={e => setTxForm({...txForm, transaction_date: e.target.value})} type="date" className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500" />
-                </div>
-                
-                <div className="col-span-2">
-                  <label className="block text-xs font-semibold text-foreground mb-1.5 uppercase tracking-wide">Sumber/Tujuan Amplop</label>
-                  <select 
-                    value={txForm.subcategory} 
-                    onChange={e => {
-                       const selectedName = e.target.value;
-                       const matchedItem = budgetItems.find(i => i.name === selectedName);
-                       setTxForm({...txForm, subcategory: selectedName, category: matchedItem ? matchedItem.category : 'BIAYA_OPERASIONAL' as BudgetCategory });
-                    }} 
-                    className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm font-medium focus:ring-2 focus:ring-primary-500"
-                  >
-                    <option value="" disabled>-- Pilih Amplop --</option>
-                    {Object.entries(BUDGET_CATEGORY_LABELS).map(([catKey, catLabel]) => {
-                       const options = budgetItems.filter(i => i.category === catKey);
-                       if (options.length === 0) return null;
-                       return (
-                         <optgroup key={catKey} label={catLabel.toUpperCase()}>
-                           {options.map(o => <option key={o.id} value={o.name}>{o.name}</option>)}
-                         </optgroup>
-                       );
-                    })}
-                  </select>
-                </div>
 
-                <div className="col-span-2">
-                  <label className="block text-xs font-semibold text-foreground mb-1.5 uppercase tracking-wide">Nominal Mutasi (Rp)</label>
-                  <input required min={0} value={txForm.amount || ''} onChange={e => setTxForm({...txForm, amount: Number(e.target.value)})} type="number" className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm font-numeric font-bold focus:ring-2 focus:ring-primary-500 placeholder:font-normal" placeholder="150000" />
-                </div>
-                
-                <div className="col-span-2">
-                  <label className="block text-xs font-semibold text-foreground mb-1.5 uppercase tracking-wide">Keterangan / Catatan Pendek</label>
-                  <input value={txForm.description} onChange={e => setTxForm({...txForm, description: e.target.value})} type="text" maxLength={100} className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500" placeholder="e.g. Beli kopi sama teman kantor" />
-                </div>
-              </div>
-              <div className="pt-3 flex justify-end gap-2 border-t border-border mt-2">
-                <button type="button" onClick={() => setShowTxModal(false)} className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-lg transition-colors">Batal</button>
-                <button type="submit" className="px-5 py-2 text-sm font-medium text-white bg-primary-500 hover:bg-primary-600 active:scale-95 transition-all rounded-lg shadow-glow">Simpan Jurnal</button>
-              </div>
-            </form>
+            <div className="col-span-2">
+              <label className="block text-xs font-semibold text-foreground mb-1.5 uppercase tracking-wide">Sumber/Tujuan Amplop</label>
+              <select
+                value={txForm.subcategory}
+                onChange={e => {
+                   const selectedName = e.target.value;
+                   const matchedItem = budgetItems.find(i => i.name === selectedName);
+                   setTxForm({...txForm, subcategory: selectedName, category: matchedItem ? matchedItem.category : 'BIAYA_OPERASIONAL' as BudgetCategory });
+                }}
+                className="input-field font-medium"
+              >
+                <option value="" disabled>-- Pilih Amplop --</option>
+                {Object.entries(BUDGET_CATEGORY_LABELS).map(([catKey, catLabel]) => {
+                   const options = budgetItems.filter(i => i.category === catKey);
+                   if (options.length === 0) return null;
+                   return (
+                     <optgroup key={catKey} label={catLabel.toUpperCase()}>
+                       {options.map(o => <option key={o.id} value={o.name}>{o.name}</option>)}
+                     </optgroup>
+                   );
+                })}
+              </select>
+            </div>
+
+            <div className="col-span-2">
+              <label className="block text-xs font-semibold text-foreground mb-1.5 uppercase tracking-wide">Nominal Mutasi (Rp)</label>
+              <input required min={0} value={txForm.amount || ''} onChange={e => setTxForm({...txForm, amount: Number(e.target.value)})} type="number" className="input-field font-numeric font-bold placeholder:font-normal" placeholder="150000" />
+            </div>
+
+            <div className="col-span-2">
+              <label className="block text-xs font-semibold text-foreground mb-1.5 uppercase tracking-wide">Keterangan / Catatan Pendek</label>
+              <input value={txForm.description} onChange={e => setTxForm({...txForm, description: e.target.value})} type="text" maxLength={100} className="input-field" placeholder="e.g. Beli kopi sama teman kantor" />
+            </div>
           </div>
-        </div>
-      )}
+          <div className="pt-3 flex justify-end gap-2 border-t border-border mt-2">
+            <button type="button" onClick={() => setShowTxModal(false)} className="btn-secondary">Batal</button>
+            <button type="submit" className="btn-primary">Simpan Jurnal</button>
+          </div>
+        </form>
+      </BottomSheet>
     </div>
   );
 }

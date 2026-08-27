@@ -26,18 +26,31 @@ import {
 } from 'lucide-react';
 import { createClient } from '@/utils/supabase/client';
 
-const navItems = [
-  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/net-worth', label: 'Net Worth', icon: TrendingUp },
-  { href: '/arus-kas', label: 'Arus Kas', icon: ArrowLeftRight },
-  { href: '/checkup', label: 'Checkup Keuangan', icon: HeartPulse },
-  { href: '/kpr', label: 'Simulasi KPR', icon: Home },
-  { href: '/budgeting', label: 'Budgeting', icon: PiggyBank },
-  { href: '/pembayaran', label: 'Pembayaran', icon: CreditCard },
-  { href: '/kalendar', label: 'Kalendar', icon: Calendar },
-  { href: '/tabungan', label: 'Tabungan', icon: Target },
-  { href: '/evaluasi', label: 'Evaluasi Tahunan', icon: BarChart3 },
-  { href: '/settings', label: 'Pengaturan', icon: Settings },
+const navGroups: { label: string; items: { href: string; label: string; icon: typeof LayoutDashboard }[] }[] = [
+  {
+    label: 'Utama',
+    items: [
+      { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+      { href: '/net-worth', label: 'Net Worth', icon: TrendingUp },
+      { href: '/arus-kas', label: 'Arus Kas', icon: ArrowLeftRight },
+    ],
+  },
+  {
+    label: 'Perencanaan',
+    items: [
+      { href: '/checkup', label: 'Checkup Keuangan', icon: HeartPulse },
+      { href: '/kpr', label: 'Simulasi KPR', icon: Home },
+      { href: '/budgeting', label: 'Budgeting', icon: PiggyBank },
+      { href: '/pembayaran', label: 'Pembayaran', icon: CreditCard },
+      { href: '/kalendar', label: 'Kalendar', icon: Calendar },
+      { href: '/tabungan', label: 'Tabungan', icon: Target },
+      { href: '/evaluasi', label: 'Evaluasi Tahunan', icon: BarChart3 },
+    ],
+  },
+  {
+    label: 'Akun',
+    items: [{ href: '/settings', label: 'Pengaturan', icon: Settings }],
+  },
 ];
 
 export function Sidebar() {
@@ -121,23 +134,30 @@ export function Sidebar() {
 
         {/* Navigation */}
         <nav className="flex-1 p-3 overflow-y-auto no-scrollbar">
-          <div className="space-y-0.5">
-            {navItems.map((item) => {
-              const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
-              const Icon = item.icon;
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={cn('nav-item', isActive && 'active')}
-                >
-                  <Icon className="w-4 h-4 shrink-0" />
-                  <span className="flex-1">{item.label}</span>
-                  {isActive && <ChevronRight className="w-3 h-3 opacity-60" />}
-                </Link>
-              );
-            })}
-          </div>
+          {navGroups.map((group) => (
+            <div key={group.label} className="mb-4">
+              <p className="px-3 mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">
+                {group.label}
+              </p>
+              <div className="space-y-0.5">
+                {group.items.map((item) => {
+                  const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
+                  const Icon = item.icon;
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className={cn('nav-item', isActive && 'active')}
+                    >
+                      <Icon className="w-4 h-4 shrink-0" />
+                      <span className="flex-1">{item.label}</span>
+                      {isActive && <ChevronRight className="w-3 h-3 opacity-60" />}
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
         </nav>
 
         {/* Footer */}

@@ -7,7 +7,7 @@ import {
   Plus, Wallet, PiggyBank, Activity, LayoutDashboard,
   ChevronRight, CalendarDays, ArrowRight
 } from 'lucide-react';
-import { formatRupiah, formatRupiahCompact, formatPercent, getStatusColor, getMonthName, getMonthRange } from '@/lib/utils';
+import { formatRupiahCompact, formatPercent, getStatusColor, getMonthName, getMonthRange } from '@/lib/utils';
 import {
   AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer,
   RadarChart, Radar, PolarGrid, PolarAngleAxis,
@@ -23,7 +23,7 @@ import { fetchBudgetItems } from '@/lib/queries/budget';
 import { ChartTooltip } from '@/components/charts/ChartTooltip';
 import { ChartGradients, chartGridStyle, chartAxisStyle, formatChartRupiah } from '@/components/charts/ChartTheme';
 import type { Asset, Debt, CashflowItem, SavingsGoal, Transaction, FinancialCheckupItem } from '@/shared';
-import { getDanaDarurat, calculateNetWorth, calculateCashFlow, calculateFinancialCheckup, BUDGET_CATEGORY_LABELS, BUDGET_CATEGORY_COLORS } from '@/shared';
+import { getDanaDarurat, calculateNetWorth, calculateCashFlow, calculateFinancialCheckup, calculateGrowth, checkupRadarScore, BUDGET_CATEGORY_LABELS, BUDGET_CATEGORY_COLORS } from '@/shared';
 import { Skeleton, CardSkeleton, ChartSkeleton, KPISkeleton } from '@/components/ui/Skeleton';
 
 interface NetWorthHistoryPoint {
@@ -44,17 +44,6 @@ interface CheckupRadarPoint {
   name: string;
   value: number;
   status: 'sehat' | 'warning' | 'bahaya';
-}
-
-function normalizeRadarValue(index: number, raw: number, pendapatan: number): number {
-  switch (index) {
-    case 0: return Math.min(1, raw / 6);                                    // Dana Darurat (≥6x)
-    case 1: return Math.min(1, Math.max(0, raw / (pendapatan || 1)));       // Arus Kas (surplus)
-    case 2: return Math.min(1, raw / 0.3);                                  // Cicilan (<30%)
-    case 3: return Math.min(1, raw / 0.2);                                  // Investasi (10-20%)
-    case 4: return Math.min(1, raw / 0.6);                                  // Biaya Hidup (<60%)
-    default: return Number.isFinite(raw) && raw > 0 ? Math.min(1, 1 / raw) : 1; // Solvabilitas (>100%)
-  }
 }
 
 export function DashboardContent() {
@@ -99,7 +88,7 @@ export function DashboardContent() {
           setNetWorth({
             current: Number(latest.net_worth),
             previous: prevNW,
-            growth: prevNW > 0 ? (Number(latest.net_worth) - prevNW) / prevNW : 0,
+            growth: calculateGrowth(Number(latest.net_worth), prevNW) ?? 0,
             totalAssets: Number(latest.total_assets),
             totalDebts: Number(latest.total_debts),
           });
@@ -146,7 +135,7 @@ export function DashboardContent() {
           const radarNames = ['Dana Darurat', 'Arus Kas', 'Cicilan', 'Investasi', 'Biaya Hidup', 'Solvabilitas'];
           setCheckupData(checkup.map((item: FinancialCheckupItem, i: number) => ({
             name: radarNames[i],
-            value: normalizeRadarValue(i, item.value, cashFlowResult.totalKasMasuk),
+            value: checkupRadarScore(item) / 100,
             status: item.status,
           })));
         }
@@ -246,7 +235,7 @@ export function DashboardContent() {
                 </span>
               )}
             </div>
-            <p className="text-2xl sm:text-3xl font-bold font-numeric text-foreground mt-1">
+            <p className="kpi-value font-bold font-numeric text-foreground mt-1">
               {netWorth.current === 0 ? 'Rp 0' : formatRupiahCompact(netWorth.current)}
             </p>
             {netWorthHistory.length > 0 && (
@@ -287,7 +276,7 @@ export function DashboardContent() {
                 {isPositiveCF ? 'Surplus' : 'Defisit'}
               </span>
             </div>
-            <p className={`text-2xl sm:text-3xl font-bold font-numeric mt-1 ${isPositiveCF ? 'text-emerald-600' : 'text-red-500'}`}>
+            <p className={`kpi-value font-bold font-numeric mt-1 ${isPositiveCF ? 'text-emerald-600' : 'text-red-500'}`}>
               {isPositiveCF ? '+' : ''}{formatRupiahCompact(cashFlow.surplus)}
             </p>
             <div className="mt-4 space-y-2">
@@ -469,14 +458,14 @@ export function DashboardContent() {
               const pct = Math.min(100, (saved / target) * 100);
               return (
                 <div key={goal.id}>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <div className="flex items-center gap-2">
-                      <span className="text-base">{goal.icon || '🎯'}</span>
-                      <p className="text-sm font-medium text-foreground">{goal.name}</p>
+                  <div className="flex items-center justify-between mb-1.5 gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="text-base shrink-0">{goal.icon || '🎯'}</span>
+                      <p className="text-sm font-medium text-foreground truncate">{goal.name}</p>
                     </div>
-                    <div className="text-right">
+                    <div className="text-right shrink-0">
                       <p className="text-xs font-numeric font-semibold" style={{ color: goal.color || '#635bff' }}>
-                        {formatRupiah(saved)}
+                        {formatRupiahCompact(saved)}
                       </p>
                       <p className="text-[10px] text-muted-foreground">dari {formatRupiahCompact(target)}</p>
                     </div>
@@ -515,9 +504,9 @@ export function DashboardContent() {
                 {transactions.slice(0, 5).map((tx, i) => {
                   const isIncome = tx.category === 'PENDAPATAN';
                   return (
-                    <div key={tx.id || i} className="flex items-center justify-between px-3 py-2.5 rounded-lg hover:bg-muted/50 transition-colors">
+                    <div key={tx.id || i} className="flex items-center justify-between px-3 py-2.5 rounded-xl hover:bg-muted/50 transition-colors gap-3">
                       <div className="flex items-center gap-3 min-w-0">
-                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${isIncome ? 'bg-emerald-50' : 'bg-red-50'}`}>
+                        <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${isIncome ? 'bg-emerald-50' : 'bg-red-50'}`}>
                           <span className={`text-xs font-bold ${isIncome ? 'text-emerald-600' : 'text-red-500'}`}>
                             {isIncome ? '+' : '-'}
                           </span>

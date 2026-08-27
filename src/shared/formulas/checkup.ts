@@ -51,6 +51,7 @@ export function calculateFinancialCheckup(params: {
 
   return [
     {
+      key: 'dana_darurat',
       name: 'Kecukupan Dana Darurat',
       formula: 'Saldo Dana Darurat ÷ Pengeluaran per bulan',
       recommendation: '≥ 6 kali',
@@ -67,6 +68,7 @@ export function calculateFinancialCheckup(params: {
           : 'Dana darurat sangat kurang! Prioritaskan mengisi dana darurat segera.',
     },
     {
+      key: 'arus_kas',
       name: 'Arus Kas',
       formula: 'Kas Masuk − Kas Keluar',
       recommendation: 'Positif',
@@ -80,6 +82,7 @@ export function calculateFinancialCheckup(params: {
           : 'Arus kas negatif (defisit). Kurangi pengeluaran atau tambah pemasukan.',
     },
     {
+      key: 'rasio_cicilan',
       name: 'Rasio Cicilan / Pendapatan',
       formula: '(Total Cicilan Bulanan ÷ Pendapatan) × 100%',
       recommendation: '< 30%',
@@ -96,6 +99,7 @@ export function calculateFinancialCheckup(params: {
           : 'Cicilan sangat memberatkan! Di atas 50% pendapatan — berbahaya.',
     },
     {
+      key: 'rasio_investasi',
       name: 'Rasio Investasi / Pendapatan',
       formula: '(Investasi & Tabungan ÷ Pendapatan) × 100%',
       recommendation: '10% – 20%',
@@ -112,6 +116,7 @@ export function calculateFinancialCheckup(params: {
           : 'Investasi sangat minim. Mulai sisihkan minimal 10% dari pendapatan.',
     },
     {
+      key: 'rasio_biaya_hidup',
       name: 'Rasio Biaya Hidup / Pendapatan',
       formula: '(Total Biaya Hidup ÷ Pendapatan) × 100%',
       recommendation: '< 60%',
@@ -128,6 +133,7 @@ export function calculateFinancialCheckup(params: {
           : 'Biaya hidup sangat tinggi! Lebih dari 80% pendapatan habis untuk biaya hidup.',
     },
     {
+      key: 'solvabilitas',
       name: 'Rasio Solvabilitas',
       formula: '(Total Aset ÷ Total Utang) × 100%',
       recommendation: '> 100%',
@@ -139,4 +145,37 @@ export function calculateFinancialCheckup(params: {
           : 'Utang melebihi aset. Prioritaskan pelunasan utang.',
     },
   ];
+}
+
+// ===== SKOR RADAR (0-100, makin tinggi = makin sehat) =====
+/**
+ * Konversi nilai rasio ke skor 0-100 untuk grafik radar.
+ * Dipakai bersama oleh Dashboard & halaman Checkup agar konsisten.
+ */
+export function checkupRadarScore(item: Pick<FinancialCheckupItem, 'key' | 'value'>): number {
+  const { key, value } = item;
+  let score = 0;
+
+  switch (key) {
+    case 'dana_darurat':
+      score = (value / 6) * 100;
+      break;
+    case 'arus_kas':
+      score = value > 0 ? 100 : value === 0 ? 40 : 20;
+      break;
+    case 'rasio_cicilan':
+      score = (1 - Math.min(1, value / 0.5)) * 100;
+      break;
+    case 'rasio_investasi':
+      score = (value / 0.2) * 100;
+      break;
+    case 'rasio_biaya_hidup':
+      score = (1 - Math.min(1, value / 0.8)) * 100;
+      break;
+    case 'solvabilitas':
+      score = Number.isFinite(value) ? Math.min(value, 2) * 50 : 100;
+      break;
+  }
+
+  return Math.round(Math.max(0, Math.min(100, score)));
 }

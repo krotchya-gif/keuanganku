@@ -2,12 +2,10 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
-import { Eye, EyeOff, UserPlus, Loader2, TrendingUp, CheckCircle2 } from 'lucide-react';
+import { Eye, EyeOff, UserPlus, Loader2, TrendingUp, CheckCircle2, Wallet } from 'lucide-react';
 
 export default function RegisterPage() {
-  const router = useRouter();
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -47,27 +45,26 @@ export default function RegisterPage() {
     } else {
       setSuccess(true);
       setLoading(false);
-      // Auto redirect setelah 2 detik jika email confirmation dimatikan
-      setTimeout(() => { window.location.href = '/dashboard'; }, 2000);
     }
   };
 
   if (success) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="min-h-screen flex items-center justify-center bg-background p-6">
         <div className="text-center max-w-sm">
           <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <CheckCircle2 className="w-8 h-8 text-emerald-600" />
           </div>
           <h2 className="text-xl font-bold text-foreground mb-2">Akun berhasil dibuat!</h2>
           <p className="text-muted-foreground text-sm mb-6">
-            Selamat datang, <strong>{fullName}</strong>! Kamu akan diarahkan ke dashboard...
+            Selamat datang, <strong>{fullName}</strong>! Jika email konfirmasi diaktifkan, silakan
+            cek inbox Anda dan klik link verifikasi sebelum masuk.
           </p>
           <Link
-            href="/dashboard"
-            className="inline-flex items-center gap-2 bg-indigo-600 text-white px-6 py-2.5 rounded-lg font-medium text-sm hover:bg-indigo-700 transition-colors"
+            href="/login"
+            className="btn-primary w-full"
           >
-            Ke Dashboard
+            Masuk ke Keuanganku
           </Link>
         </div>
       </div>
@@ -76,15 +73,15 @@ export default function RegisterPage() {
 
   return (
     <div className="min-h-screen flex">
-      {/* Left Panel â€” Branding */}
-      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-violet-600 via-indigo-600 to-blue-700 p-12 flex-col justify-between relative overflow-hidden">
+      {/* Left Panel — Branding */}
+      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-primary-600 via-violet-600 to-purple-700 p-12 flex-col justify-between relative overflow-hidden">
         <div className="absolute -top-20 -right-20 w-80 h-80 bg-white/10 rounded-full blur-3xl" />
         <div className="absolute -bottom-20 -left-20 w-80 h-80 bg-white/10 rounded-full blur-3xl" />
 
         <div className="relative z-10">
           <div className="flex items-center gap-3 mb-12">
-            <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm">
-              <TrendingUp className="w-5 h-5 text-white" />
+            <div className="w-10 h-10 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-sm">
+              <Wallet className="w-5 h-5 text-white" />
             </div>
             <span className="text-white text-xl font-bold">Keuanganku</span>
           </div>
@@ -112,15 +109,15 @@ export default function RegisterPage() {
         </div>
       </div>
 
-      {/* Right Panel â€” Register Form */}
-      <div className="flex-1 flex items-center justify-center p-8 bg-background">
+      {/* Right Panel — Register Form */}
+      <div className="flex-1 flex items-center justify-center p-6 sm:p-8 bg-background">
         <div className="w-full max-w-md">
-          {/* Mobile logo */}
-          <div className="flex lg:hidden items-center gap-2 mb-8">
-            <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center">
-              <TrendingUp className="w-4 h-4 text-white" />
+          {/* Mobile header */}
+          <div className="flex lg:hidden flex-col items-center mb-8">
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center shadow-glow mb-3">
+              <Wallet className="w-7 h-7 text-white" />
             </div>
-            <span className="text-lg font-bold text-foreground">Keuanganku</span>
+            <span className="text-xl font-bold text-foreground">Keuanganku</span>
           </div>
 
           <div className="mb-8">
@@ -140,6 +137,7 @@ export default function RegisterPage() {
                 onChange={(e) => setFullName(e.target.value)}
                 placeholder="Nama kamu"
                 required
+                autoComplete="name"
                 className="input-field"
               />
             </div>
@@ -155,6 +153,7 @@ export default function RegisterPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="kamu@email.com"
                 required
+                autoComplete="email"
                 className="input-field"
               />
             </div>
@@ -171,12 +170,14 @@ export default function RegisterPage() {
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Minimal 6 karakter"
                   required
-                  className="input-field pr-10"
+                  autoComplete="new-password"
+                  className="input-field pr-12"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 touch-target flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+                  aria-label={showPassword ? 'Sembunyikan password' : 'Tampilkan password'}
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
@@ -185,7 +186,7 @@ export default function RegisterPage() {
             </div>
 
             {error && (
-              <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">
+              <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-4 py-3">
                 {error}
               </div>
             )}
@@ -193,7 +194,7 @@ export default function RegisterPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 disabled:cursor-not-allowed text-white py-2.5 px-4 rounded-lg font-medium transition-colors text-sm"
+              className="w-full btn-primary py-3"
             >
               {loading ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -206,7 +207,7 @@ export default function RegisterPage() {
 
           <p className="text-center text-sm text-muted-foreground mt-6">
             Sudah punya akun?{' '}
-            <Link href="/login" className="text-indigo-600 hover:text-indigo-700 font-medium hover:underline">
+            <Link href="/login" className="text-primary-500 hover:text-primary-600 font-medium hover:underline">
               Masuk di sini
             </Link>
           </p>

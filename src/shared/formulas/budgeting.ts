@@ -120,17 +120,3 @@ export function calculateMonthlyBreakdown(transactions: Transaction[]) {
     return { month, ...summary };
   });
 }
-
-// ===== FORMAT UTILITY =====
-export function formatRupiah(amount: number): string {
-  return new Intl.NumberFormat('id-ID', {
-    style: 'currency',
-    currency: 'IDR',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(amount);
-}
-
-export function formatPercent(value: number, decimals = 1): string {
-  return `${(value * 100).toFixed(decimals).replace('.', ',')}%`;
-}
