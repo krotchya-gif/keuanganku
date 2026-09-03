@@ -367,7 +367,7 @@ export function NetWorthContent() {
               onClick={() => setActiveTab(tab as 'aset' | 'utang')}
               className={`px-6 py-3 text-sm font-medium transition-colors ${activeTab === tab ? 'text-primary-500 border-b-2 border-primary-500' : 'text-muted-foreground hover:text-foreground'}`}
             >
-              {tab === 'aset' ? '💼 Daftar Aset' : '💳 Daftar Utang'}
+              {tab === 'aset' ? 'Daftar Aset' : 'Daftar Utang'}
             </button>
           ))}
           <div className="flex-1 flex justify-end items-center pr-4">
