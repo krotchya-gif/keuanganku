@@ -21,14 +21,17 @@ export default function LoginPage() {
     setError('');
     setLoading(true);
 
+    let timerId: ReturnType<typeof setTimeout> | undefined;
     try {
       const supabase = createClient();
 
-      // Timeout 10 detik
-      const timeoutPromise = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error('timeout')), 10000)
-      );
+      // Batas 10 detik; timer dibersihkan di finally dan janji yang kalah
+      // tetap ditangani agar tidak menjadi unhandled rejection.
       const authPromise = supabase.auth.signInWithPassword({ email, password });
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        timerId = setTimeout(() => reject(new Error('timeout')), 10000);
+      });
+      authPromise.catch(() => { /* ditangani lewat race di bawah */ });
 
       const { error } = await Promise.race([authPromise, timeoutPromise]) as Awaited<typeof authPromise>;
 
@@ -40,10 +43,10 @@ export default function LoginPage() {
         } else {
           setError(error.message);
         }
-        setLoading(false);
       } else {
         // Gunakan hard redirect agar middleware dan cookies membaca ulang secara sempurna
         window.location.href = '/dashboard';
+        return;
       }
     } catch (err: unknown) {
       if (err instanceof Error && err.message === 'timeout') {
@@ -51,6 +54,8 @@ export default function LoginPage() {
       } else {
         setError('Terjadi kesalahan. Silakan coba lagi.');
       }
+    } finally {
+      if (timerId) clearTimeout(timerId);
       setLoading(false);
     }
   };

@@ -8,14 +8,14 @@
 CREATE EXTENSION IF NOT EXISTS pg_cron;
 CREATE EXTENSION IF NOT EXISTS pg_net;
 
--- 2. Simpan service_role_key di Vault
--- ⚠️  GANTI 'your-service-role-key' dengan key dari:
+-- 2. Simpan service_role_key di Vault (lewati jika secret 'service_role_key' sudah ada)
+-- ⚠️  GANTI 'YOUR_SERVICE_ROLE_KEY' dengan key dari:
 --      Project Settings → API → service_role key
-SELECT vault.create_secret('your-service-role-key', 'service_role_key');
+SELECT vault.create_secret('YOUR_SERVICE_ROLE_KEY', 'service_role_key');
 
--- 3. Simpan project URL di Vault
+-- 3. Simpan project URL di Vault (lewati jika secret 'project_url' sudah ada)
 -- ⚠️  GANTI 'https://YOUR_PROJECT.supabase.co' dengan URL project-mu
-SELECT vault.create_secret('https://ogupmtptmepxfkedbmcv.supabase.co', 'project_url');
+SELECT vault.create_secret('https://YOUR_PROJECT.supabase.co', 'project_url');
 
 -- 4. Jadwalkan snapshot tiap tanggal 1 jam 00:00
 SELECT cron.schedule(

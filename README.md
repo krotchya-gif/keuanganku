@@ -147,9 +147,9 @@ npm run dev          # http://localhost:3002
 
 Snapshot otomatis tiap awal bulan via pg_cron (butuh Supabase Pro plan):
 
-1. Deploy edge function:
+1. Deploy edge function (TANPA `--no-verify-jwt` — handler memverifikasi service key dari header `Authorization`):
    ```bash
-   supabase functions deploy snapshot --no-verify-jwt
+   supabase functions deploy snapshot
    ```
 2. Jalankan `supabase/migrations/003_cron_snapshot.sql` di SQL Editor
 

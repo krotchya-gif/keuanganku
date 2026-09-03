@@ -15,9 +15,13 @@ export function calculatePMT(rate: number, nper: number, pv: number): number {
 }
 
 function addMonths(date: Date, months: number): Date {
-  const d = new Date(date);
-  d.setMonth(d.getMonth() + months);
-  return d;
+  // Tambah bulan via hari-1 lalu jepit tanggal ke hari terakhir bulan tujuan,
+  // agar 31 Jan + 1 bln = 28/29 Feb (bukan meluber ke Maret).
+  const targetYear = date.getFullYear();
+  const targetMonth = date.getMonth() + months;
+  const day = date.getDate();
+  const lastDayOfTarget = new Date(targetYear, targetMonth + 1, 0).getDate();
+  return new Date(targetYear, targetMonth, Math.min(day, lastDayOfTarget));
 }
 
 // ===== VALIDASI INPUT KPR =====

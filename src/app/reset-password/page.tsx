@@ -30,19 +30,24 @@ export default function ResetPasswordPage() {
     setLoading(true);
     setError('');
 
-    const supabase = createClient();
-    const { error: updateError } = await supabase.auth.updateUser({
-      password: password
-    });
+    try {
+      const supabase = createClient();
+      const { error: updateError } = await supabase.auth.updateUser({
+        password: password
+      });
 
-    if (updateError) {
-      setError(updateError.message);
+      if (updateError) {
+        setError(updateError.message);
+        setLoading(false);
+      } else {
+        setMessage('Kata sandi berhasil diubah! Anda akan dialihkan ke dashboard...');
+        setTimeout(() => {
+           router.push('/dashboard');
+        }, 2000);
+      }
+    } catch {
+      setError('Gagal terhubung ke server. Periksa koneksi internet Anda lalu coba lagi.');
       setLoading(false);
-    } else {
-      setMessage('Kata sandi berhasil diubah! Anda akan dialihkan ke dashboard...');
-      setTimeout(() => {
-         router.push('/dashboard');
-      }, 2000);
     }
   };
 

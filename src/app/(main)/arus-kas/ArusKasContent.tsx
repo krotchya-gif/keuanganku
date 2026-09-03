@@ -7,6 +7,7 @@ import { PageHeader } from '@/components/ui/PageHeader';
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
 import { StatCard } from '@/components/ui/StatCard';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { ErrorBanner } from '@/components/ui/ErrorBanner';
 import { RecordTransactionSheet } from '@/components/transactions/RecordTransactionSheet';
 import { formatRupiahCompact, getMonthRange, getCurrentMonthYear, getMonthName, cn } from '@/lib/utils';
 import { getCurrentUserId } from '@/lib/queries/users';
@@ -28,6 +29,7 @@ export function ArusKasContent() {
   const [filter, setFilter] = useState<Filter>('semua');
 
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editing, setEditing] = useState<Transaction | null>(null);
@@ -45,8 +47,10 @@ export function ArusKasContent() {
       setLoading(true);
       try {
         await refresh();
+        setFetchError(null);
       } catch (err) {
         console.error(err);
+        setFetchError('Gagal memuat transaksi. Periksa koneksi internet Anda lalu coba lagi.');
       } finally {
         setLoading(false);
       }
@@ -159,6 +163,23 @@ export function ArusKasContent() {
       </div>
 
       {/* Ringkasan bulan */}
+      {fetchError && (
+        <ErrorBanner message={fetchError} onRetry={() => {
+          setFetchError(null);
+          setLoading(true);
+          (async () => {
+            try {
+              await refresh();
+              setFetchError(null);
+            } catch (err) {
+              console.error(err);
+              setFetchError('Gagal memuat transaksi. Coba lagi.');
+            } finally {
+              setLoading(false);
+            }
+          })();
+        }} />
+      )}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
         <StatCard label="Pemasukan" value={formatRupiahCompact(totals.masuk)} icon={ArrowDownRight} color="#3ecf8e" />
         <StatCard label="Pengeluaran" value={formatRupiahCompact(totals.keluar)} icon={ArrowUpRight} color="#ef4444" />

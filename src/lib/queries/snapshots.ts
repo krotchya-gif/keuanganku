@@ -11,8 +11,9 @@ export async function fetchSnapshots(userId: string, limit = 12, year?: number):
 
   // Ambil snapshot TERBARU sebanyak `limit` (descending di DB, lalu dibalik
   // menjadi ascending agar siap dipakai grafik kiri→kanan).
-  const { data } = await query
+  const { data, error } = await query
     .order('snapshot_date', { ascending: false })
     .limit(limit);
+  if (error) throw new Error(error.message);
   return ((data ?? []) as NetWorthSnapshot[]).reverse();
 }

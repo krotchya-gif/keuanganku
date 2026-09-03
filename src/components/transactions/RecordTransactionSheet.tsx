@@ -46,12 +46,17 @@ export function RecordTransactionSheet({ open, onClose, onSaved, editTransaction
     if (!open) return;
     let cancelled = false;
     (async () => {
-      const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user || cancelled) return;
-      const items = await fetchBudgetItems(user.id);
-      if (!cancelled) {
-        setEnvelopes(items.length > 0 ? items.map((i) => ({ name: i.name, category: i.category })) : DEFAULT_BUDGET_ITEMS);
+      try {
+        const supabase = createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user || cancelled) return;
+        const items = await fetchBudgetItems(user.id);
+        if (!cancelled) {
+          setEnvelopes(items.length > 0 ? items.map((i) => ({ name: i.name, category: i.category })) : DEFAULT_BUDGET_ITEMS);
+        }
+      } catch (err) {
+        console.error(err);
+        if (!cancelled) setEnvelopes(DEFAULT_BUDGET_ITEMS);
       }
     })();
     return () => { cancelled = true; };

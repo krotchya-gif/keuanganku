@@ -1,15 +1,26 @@
-// Auto-snapshot Net Worth — dipanggil via pg_cron tiap akhir bulan
-// Deploy: supabase functions deploy snapshot-networth --no-verify-jwt
+// Auto-snapshot Net Worth — dipanggil via pg_cron tiap awal bulan
+// Deploy: supabase functions deploy snapshot
+//   (JANGAN pakai --no-verify-jwt — handler memverifikasi service key sendiri)
 // Schedule: jalankan SQL di Supabase SQL Editor (lihat cron_setup.sql di folder yang sama)
 
 import { serve } from "https://deno.land/std@0.170.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-serve(async () => {
+serve(async (req: Request) => {
   try {
+    // Wajib: hanya cron/dashboard yang membawa service role key boleh memicu.
+    // Cron SQL (003_cron_snapshot.sql) sudah mengirim header ini.
+    const authHeader = req.headers.get("Authorization") ?? "";
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+    if (!serviceKey || authHeader !== `Bearer ${serviceKey}`) {
+      return new Response(JSON.stringify({ ok: false, error: "Tidak berwenang" }), {
+        status: 401,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
     const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
-    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    const supabase = createClient(supabaseUrl, serviceKey);
 
     // Ambil semua user
     const { data: users, error: userErr } = await supabase
@@ -27,17 +38,25 @@ serve(async () => {
     let snapshotsCreated = 0;
 
     for (const user of users) {
-      // Ambil aset user
-      const { data: assets } = await supabase
+      // Ambil aset user — gagal? lewati user ini, JANGAN menimpa snapshot dengan nol.
+      const { data: assets, error: assetsErr } = await supabase
         .from("assets")
         .select("category, amount")
         .eq("user_id", user.id);
+      if (assetsErr) {
+        console.error(`Gagal membaca aset user ${user.id}, dilewati:`, assetsErr.message);
+        continue;
+      }
 
-      // Ambil utang user
-      const { data: debts } = await supabase
+      // Ambil utang user — perlakuan sama.
+      const { data: debts, error: debtsErr } = await supabase
         .from("debts")
         .select("term, total_amount")
         .eq("user_id", user.id);
+      if (debtsErr) {
+        console.error(`Gagal membaca utang user ${user.id}, dilewati:`, debtsErr.message);
+        continue;
+      }
 
       const assetsList = assets ?? [];
       const debtsList = debts ?? [];

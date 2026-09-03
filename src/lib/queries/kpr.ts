@@ -30,6 +30,7 @@ export interface SavedSimulation {
 }
 
 export async function fetchKPRSimulations(userId: string): Promise<SavedSimulation[]> {
-  const { data } = await createClient().from('kpr_simulations').select('*').eq('user_id', userId).order('created_at', { ascending: false });
+  const { data, error } = await createClient().from('kpr_simulations').select('*').eq('user_id', userId).order('created_at', { ascending: false });
+  if (error) throw new Error(error.message);
   return (data ?? []) as unknown as SavedSimulation[];
 }

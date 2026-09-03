@@ -29,25 +29,29 @@ export default function RegisterPage() {
       return;
     }
 
-    const supabase = createClient();
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: { full_name: fullName },
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
-      },
-    });
+    try {
+      const supabase = createClient();
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: { full_name: fullName },
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+        },
+      });
 
-    if (error) {
-      setError(
-        error.message.includes('already registered')
-          ? 'Email ini sudah terdaftar. Silakan login.'
-          : error.message
-      );
-      setLoading(false);
-    } else {
-      setSuccess(true);
+      if (error) {
+        setError(
+          error.message.includes('already registered')
+            ? 'Email ini sudah terdaftar. Silakan login.'
+            : error.message
+        );
+      } else {
+        setSuccess(true);
+      }
+    } catch {
+      setError('Gagal terhubung ke server. Periksa koneksi internet Anda lalu coba lagi.');
+    } finally {
       setLoading(false);
     }
   };

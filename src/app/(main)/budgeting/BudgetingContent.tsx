@@ -8,6 +8,7 @@ import { BottomSheet } from '@/components/ui/BottomSheet';
 import { CategoryChipPicker, type ChipGroup } from '@/components/ui/CategoryChipPicker';
 import { AmountKeypad } from '@/components/ui/AmountKeypad';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { ErrorBanner } from '@/components/ui/ErrorBanner';
 import { formatRupiah, formatRupiahCompact, formatPercent, getMonthRange, getYearOptions, getMonthName, cn } from '@/lib/utils';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { ChartTooltip } from '@/components/charts/ChartTooltip';
@@ -40,6 +41,7 @@ const CHART_SHORT_LABELS: Record<BudgetCategory, string> = {
  */
 export function BudgetingContent() {
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [userId, setUserId] = useState('');
 
   const [budgetItems, setBudgetItems] = useState<BudgetItem[]>([]);
@@ -79,6 +81,7 @@ export function BudgetingContent() {
       setTransactions(txData);
     } catch (err) {
       console.error(err);
+      setFetchError('Gagal memuat anggaran. Periksa koneksi internet Anda lalu coba lagi.');
     } finally {
       setLoading(false);
     }
@@ -190,6 +193,10 @@ export function BudgetingContent() {
           </div>
         }
       />
+
+      {fetchError && (
+        <ErrorBanner message={fetchError} onRetry={() => { setFetchError(null); fetchData(); }} />
+      )}
 
       {/* Tabs */}
       <div className="card-premium">

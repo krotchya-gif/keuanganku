@@ -24,6 +24,7 @@ import { HeroCard } from '@/components/ui/HeroCard';
 import { QuickActionCircle } from '@/components/ui/QuickActionCircle';
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { ErrorBanner } from '@/components/ui/ErrorBanner';
 import { ChartTooltip } from '@/components/charts/ChartTooltip';
 import { ChartGradients, chartAxisStyle, formatChartRupiah } from '@/components/charts/ChartTheme';
 import type { SavingsGoal, Transaction } from '@/shared';
@@ -64,6 +65,7 @@ export function DashboardContent() {
   const currentYear = now.getFullYear();
 
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [hidden, setHidden] = useState(false);
   const [recordOpen, setRecordOpen] = useState(false);
   const [summaryTab, setSummaryTab] = useState<'kas' | 'anggaran'>('kas');
@@ -156,6 +158,7 @@ export function DashboardContent() {
         });
       } catch (err) {
         console.error(err);
+        setFetchError('Gagal memuat data. Periksa koneksi internet Anda lalu coba lagi.');
       } finally {
         setLoading(false);
       }
@@ -216,6 +219,10 @@ export function DashboardContent() {
           Catat Transaksi
         </button>
       </div>
+
+      {fetchError && (
+        <ErrorBanner message={fetchError} onRetry={() => { setFetchError(null); setRefreshKey((k) => k + 1); }} />
+      )}
 
       {/* Hero — Kekayaan Bersih */}
       <HeroCard

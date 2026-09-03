@@ -21,17 +21,22 @@ export default function LupaPasswordPage() {
     setMessage('');
     setError('');
 
-    const supabase = createClient();
-    const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/auth/callback?type=recovery`,
-    });
+    try {
+      const supabase = createClient();
+      const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/auth/callback?type=recovery`,
+      });
 
-    if (resetError) {
-      setError(resetError.message);
-    } else {
-      setMessage('Tautan reset password telah dikirim ke email Anda. Periksa kotak masuk atau spam.');
+      if (resetError) {
+        setError(resetError.message);
+      } else {
+        setMessage('Tautan reset password telah dikirim ke email Anda. Periksa kotak masuk atau spam.');
+      }
+    } catch {
+      setError('Gagal terhubung ke server. Periksa koneksi internet Anda lalu coba lagi.');
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   return (
