@@ -73,10 +73,10 @@ export const chartAxisStyle = {
 export function formatChartRupiah(value: number): string {
   if (!Number.isFinite(value)) return 'Rp0';
   if (Math.abs(value) >= 1_000_000_000) {
-    return `Rp${(value / 1_000_000_000).toFixed(1)}M`;
+    return `Rp${(value / 1_000_000_000).toFixed(1).replace('.', ',')}M`;
   }
   if (Math.abs(value) >= 1_000_000) {
-    return `Rp${(value / 1_000_000).toFixed(1)}jt`;
+    return `Rp${(value / 1_000_000).toFixed(1).replace('.', ',')}jt`;
   }
   if (Math.abs(value) >= 1_000) {
     return `Rp${(value / 1_000).toFixed(0)}rb`;

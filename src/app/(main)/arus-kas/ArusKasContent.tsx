@@ -8,7 +8,7 @@ import { SegmentedControl } from '@/components/ui/SegmentedControl';
 import { StatCard } from '@/components/ui/StatCard';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { RecordTransactionSheet } from '@/components/transactions/RecordTransactionSheet';
-import { formatRupiahCompact, formatRupiah, getMonthRange, getCurrentMonthYear, getMonthName, cn } from '@/lib/utils';
+import { formatRupiahCompact, getMonthRange, getCurrentMonthYear, getMonthName, cn } from '@/lib/utils';
 import { getCurrentUserId } from '@/lib/queries/users';
 import { fetchTransactions } from '@/lib/queries/transactions';
 import { BUDGET_CATEGORY_COLORS } from '@/shared';
@@ -220,19 +220,19 @@ export function ArusKasContent() {
                           {isIncome ? <ArrowDownRight className="h-4 w-4" /> : <ArrowUpRight className="h-4 w-4" />}
                         </span>
                         <div className="min-w-0">
-                          <p className="truncate text-sm font-medium text-foreground">{rowTitle(tx)}</p>
+                          <p className="text-sm font-medium leading-snug text-foreground">{rowTitle(tx)}</p>
                           {rowMeta(tx) && <p className="truncate text-[10px] text-muted-foreground">{rowMeta(tx)}</p>}
                         </div>
                       </div>
-                      <div className="flex shrink-0 items-center gap-2">
+                      <div className="flex shrink-0 items-center gap-1.5">
                         <p className={cn('font-numeric text-sm font-semibold', isIncome ? 'text-success' : 'text-danger')}>
-                          {isIncome ? '+' : '−'}{formatRupiah(tx.amount).replace('Rp', 'Rp ')}
+                          {isIncome ? '+' : '−'}{formatRupiahCompact(tx.amount)}
                         </p>
                         <div className="flex gap-0.5 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100">
-                          <button onClick={() => { setEditing(tx); setSheetOpen(true); }} aria-label="Ubah transaksi" className="touch-target p-2 text-muted-foreground hover:text-primary-500">
+                          <button onClick={() => { setEditing(tx); setSheetOpen(true); }} aria-label="Ubah transaksi" className="p-1.5 text-muted-foreground hover:text-primary-500">
                             <Edit2 className="h-3.5 w-3.5" />
                           </button>
-                          <button onClick={() => handleDelete(tx)} aria-label="Hapus transaksi" className="touch-target p-2 text-muted-foreground hover:text-danger">
+                          <button onClick={() => handleDelete(tx)} aria-label="Hapus transaksi" className="p-1.5 text-muted-foreground hover:text-danger">
                             <Trash2 className="h-3.5 w-3.5" />
                           </button>
                         </div>

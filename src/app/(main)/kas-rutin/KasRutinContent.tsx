@@ -208,9 +208,9 @@ export function KasRutinContent() {
                 const pct = totalMasuk > 0 ? g.total / totalMasuk : 0;
                 return (
                   <div key={g.cat}>
-                    <div className="flex items-center gap-1.5 text-xs">
-                      <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: g.color }} />
-                      <span className="truncate text-muted-foreground">{g.label}</span>
+                    <div className="flex items-start gap-1.5 text-[11px] leading-tight">
+                      <span className="mt-0.5 h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: g.color }} />
+                      <span className="text-muted-foreground">{g.label}</span>
                     </div>
                     <p className="mt-1 font-numeric text-sm font-semibold text-foreground">{formatPercent(pct)}</p>
                     <p className="font-numeric text-[10px] text-muted-foreground">{formatRupiahCompact(g.total)}</p>
@@ -245,7 +245,7 @@ export function KasRutinContent() {
               kasMasuk.map((item) => (
                 <div key={item.id} className="card-premium group flex items-center justify-between gap-3 p-4 hover:border-primary-500/30">
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-medium text-foreground">{item.name}</p>
+                    <p className="text-sm font-medium leading-snug text-foreground">{item.name}</p>
                     <p className="mt-0.5 truncate text-[10px] text-muted-foreground">{item.is_recurring ? 'Rutin setiap bulan' : 'Sekali masuk'}</p>
                   </div>
                   <div className="flex shrink-0 items-center gap-3">
@@ -280,7 +280,7 @@ export function KasRutinContent() {
                 {group.items.map((item) => (
                   <div key={item.id} className="group/item flex items-center justify-between gap-3 rounded-xl border border-border bg-card p-3.5 transition-colors hover:border-muted-foreground/30">
                     <div className="min-w-0">
-                      <p className="truncate text-sm text-foreground">{item.name}</p>
+                      <p className="text-sm leading-snug text-foreground">{item.name}</p>
                       <p className="mt-0.5 text-[10px] text-muted-foreground">{item.is_recurring ? 'Nominal tetap' : 'Nominal berubah'}</p>
                     </div>
                     <div className="flex shrink-0 items-center gap-3">

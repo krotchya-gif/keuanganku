@@ -145,45 +145,48 @@ export function TabunganContent() {
           />
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="md:col-span-1 space-y-4">
-            <div className="card-premium p-5 sm:p-6 border border-emerald-500/20 bg-emerald-500/5">
+            <div className="card-premium p-5 sm:p-6 border border-success/20 bg-success/5">
               <div className="flex items-center gap-2 mb-2">
-                <PiggyBank className="w-5 h-5 text-emerald-500" />
-                <h2 className="text-sm font-bold uppercase text-emerald-700">Total Terkumpul</h2>
+                <PiggyBank className="h-5 w-5 text-success" />
+                <h2 className="text-sm font-bold uppercase text-success">Total Terkumpul</h2>
               </div>
-              <p className="kpi-value font-bold font-numeric text-emerald-600">{formatRupiahCompact(totalAccumulated)}</p>
-              <div className="flex items-center justify-between mt-4 mb-2 text-xs">
+              <p className="kpi-value font-bold font-numeric text-success">{formatRupiahCompact(totalAccumulated)}</p>
+              <div className="mt-4 mb-2 flex items-center justify-between text-xs">
                 <span className="text-muted-foreground">Total Target: {formatRupiahCompact(totalTarget)}</span>
-                <span className="font-bold text-emerald-600 font-numeric">{formatPercent(totalTarget > 0 ? totalAccumulated / totalTarget : 0)}</span>
+                <span className="font-numeric font-bold text-success">{formatPercent(totalTarget > 0 ? totalAccumulated / totalTarget : 0)}</span>
               </div>
-              <div className="h-2 w-full bg-emerald-100 rounded-full overflow-hidden">
-                <div className="h-full bg-emerald-500 transition-all rounded-full" style={{ width: `${Math.min(100, totalTarget > 0 ? (totalAccumulated / totalTarget) * 100 : 0)}%` }} />
+              <div className="h-2 w-full overflow-hidden rounded-full bg-success/15">
+                <div className="h-full rounded-full bg-success transition-all" style={{ width: `${Math.min(100, totalTarget > 0 ? (totalAccumulated / totalTarget) * 100 : 0)}%` }} />
               </div>
             </div>
 
             <div className="card-premium p-5">
-              <h2 className="text-sm font-bold mb-4 flex items-center gap-2 text-primary-600">
-                <Target className="w-4 h-4" /> Progres per Target
+              <h2 className="mb-4 flex items-center gap-2 text-sm font-bold text-primary-600">
+                <Target className="h-4 w-4" /> Progres per Target
               </h2>
               <div className="space-y-4">
                 {goals.map(g => {
                   const prog = calculateSavingsProgress(g);
                   return (
                     <div key={g.id}>
-                      <div className="flex justify-between items-center mb-1 gap-2">
-                        <span className="text-xs font-semibold flex items-center gap-1 min-w-0"><span className="shrink-0">{g.icon || '🎯'}</span> <span className="truncate">{g.name}</span></span>
-                        <div className="flex items-center gap-1 shrink-0">
-                          <span className="text-[10px] font-numeric text-muted-foreground">{formatRupiahCompact(prog.totalSaved)} / {formatRupiahCompact(g.target_amount)}</span>
-                          <button onClick={() => { setEditing(g); setForm({ name: g.name, target_amount: Number(g.target_amount), monthly_contribution: Number(g.monthly_contribution), saved: Number(g.initial_amount || 0) + Number(g.current_amount || 0), icon: g.icon || '🎯', color: g.color || '#635bff' }); setShowModal(true); }} aria-label={`Ubah target ${g.name}`} className="p-1.5 text-muted-foreground hover:text-primary-500 touch-target"><Edit2 className="w-3.5 h-3.5" /></button>
-                          <button onClick={() => handleDelete(g)} className="p-1.5 text-muted-foreground hover:text-red-500 touch-target"><Trash2 className="w-3.5 h-3.5" /></button>
+                      <div className="mb-1 flex items-center justify-between gap-2">
+                        <span className="flex min-w-0 flex-1 items-center gap-1.5 text-xs font-semibold">
+                          <span className="shrink-0">{g.icon || '🎯'}</span>
+                          <span className="min-w-0 leading-snug">{g.name}</span>
+                        </span>
+                        <div className="flex shrink-0 items-center gap-1">
+                          <span className="font-numeric text-[10px] text-muted-foreground">{formatRupiahCompact(prog.totalSaved)}</span>
+                          <button onClick={() => { setEditing(g); setForm({ name: g.name, target_amount: Number(g.target_amount), monthly_contribution: Number(g.monthly_contribution), saved: Number(g.initial_amount || 0) + Number(g.current_amount || 0), icon: g.icon || '🎯', color: g.color || '#635bff' }); setShowModal(true); }} aria-label={`Ubah target ${g.name}`} className="touch-target p-1.5 text-muted-foreground hover:text-primary-500"><Edit2 className="h-3.5 w-3.5" /></button>
+                          <button onClick={() => handleDelete(g)} aria-label={`Hapus target ${g.name}`} className="touch-target p-1.5 text-muted-foreground hover:text-danger"><Trash2 className="h-3.5 w-3.5" /></button>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
+                        <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
                           <div className="h-full rounded-full" style={{ width: `${Math.min(100, prog.progressPercent)}%`, background: g.color || '#635bff' }} />
                         </div>
-                        <span className="text-[9px] font-numeric font-bold w-8 text-right" style={{ color: g.color || '#635bff' }}>{prog.progressPercent.toFixed(1)}%</span>
+                        <span className="w-9 shrink-0 text-right font-numeric text-[9px] font-bold" style={{ color: g.color || '#635bff' }}>{formatPercent(prog.progressPercent / 100, 1)}</span>
                       </div>
                     </div>
                   );
@@ -192,10 +195,10 @@ export function TabunganContent() {
             </div>
           </div>
 
-          <div className="md:col-span-2 space-y-4">
+          <div className="md:col-span-1 space-y-4">
             <div className="card-premium p-6 h-full min-h-[300px] flex flex-col">
               <h2 className="text-sm font-bold mb-6 flex items-center gap-2">
-                <ArrowUpRight className="w-4 h-4 text-emerald-500" /> Grafik Setoran Tabungan ({year})
+                <ArrowUpRight className="w-4 h-4 text-success" /> Grafik Setoran Tabungan ({year})
               </h2>
               <div className="flex-1 w-full min-h-[250px]">
                 <ResponsiveContainer width="100%" height="100%">
@@ -209,43 +212,6 @@ export function TabunganContent() {
                   </AreaChart>
                 </ResponsiveContainer>
               </div>
-            </div>
-
-            <div className="card-premium overflow-hidden">
-              <TableScroll minWidth={560}>
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border bg-muted/40">
-                    <th className="py-3 px-4 text-left font-medium text-muted-foreground whitespace-nowrap">Target</th>
-                    <th className="py-3 px-4 text-left font-medium text-muted-foreground whitespace-nowrap">Target Amount</th>
-                    <th className="py-3 px-4 text-left font-medium text-muted-foreground whitespace-nowrap">Terkumpul</th>
-                    <th className="py-3 px-4 text-left font-medium text-muted-foreground whitespace-nowrap">Progres</th>
-                    <th className="py-3 px-4 text-left font-medium text-muted-foreground whitespace-nowrap">Target Tanggal</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border/60">
-                  {goals.map(g => {
-                    const prog = calculateSavingsProgress(g);
-                    return (
-                      <tr key={g.id} className="hover:bg-muted/30">
-                        <td className="py-3 px-4 whitespace-nowrap"><span className="mr-2">{g.icon || '🎯'}</span>{g.name}</td>
-                        <td className="py-3 px-4 font-numeric whitespace-nowrap">{formatRupiahCompact(g.target_amount)}</td>
-                        <td className="py-3 px-4 font-numeric text-emerald-600 whitespace-nowrap">{formatRupiahCompact(prog.totalSaved)}</td>
-                        <td className="py-3 px-4">
-                          <div className="flex items-center gap-2">
-                            <div className="h-1.5 w-20 bg-muted rounded-full overflow-hidden">
-                              <div className="h-full rounded-full" style={{ width: `${Math.min(100, prog.progressPercent)}%`, background: g.color || '#635bff' }} />
-                            </div>
-                            <span className="text-xs font-numeric font-medium whitespace-nowrap">{prog.progressPercent.toFixed(0)}%</span>
-                          </div>
-                        </td>
-                        <td className="py-3 px-4 text-muted-foreground whitespace-nowrap">{g.target_date ? new Date(g.target_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '-'}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-              </TableScroll>
             </div>
           </div>
         </div>

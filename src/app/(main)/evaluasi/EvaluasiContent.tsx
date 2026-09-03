@@ -139,10 +139,10 @@ export function EvaluasiContent() {
             <h2 className="text-sm font-bold mb-6">Perbandingan Pemasukan & Pengeluaran Bulanan</h2>
             <div className="h-64">
                <ResponsiveContainer width="100%" height="100%">
-                   <BarChart data={monthlyData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
+                   <BarChart data={monthlyData} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
                      <CartesianGrid {...chartGridStyle} vertical={false} />
                      <XAxis dataKey="bulan" {...chartAxisStyle} />
-                     <YAxis {...chartAxisStyle} tickFormatter={formatChartRupiah} />
+                     <YAxis {...chartAxisStyle} tickFormatter={formatChartRupiah} width={64} />
                      <Tooltip content={<ChartTooltip />} cursor={{ fill: 'transparent' }} />
                     <Legend wrapperStyle={{ fontSize: 12, marginTop: '10px' }} />
                     <Bar dataKey="Pemasukan" fill="#3ecf8e" radius={[4, 4, 0, 0]} maxBarSize={40} />
@@ -163,10 +163,10 @@ export function EvaluasiContent() {
             ) : (
                <div className="h-64">
                  <ResponsiveContainer width="100%" height="100%">
-                     <LineChart data={netWorthData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+                     <LineChart data={netWorthData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                        <CartesianGrid {...chartGridStyle} vertical={false} />
                        <XAxis dataKey="bulan" {...chartAxisStyle} />
-                       <YAxis {...chartAxisStyle} tickFormatter={formatChartRupiah} />
+                       <YAxis {...chartAxisStyle} tickFormatter={formatChartRupiah} width={64} />
                        <Tooltip content={<ChartTooltip />} />
                       <Line type="monotone" dataKey="Kekayaan" stroke="#635bff" strokeWidth={4} dot={{ r: 4, strokeWidth: 2 }} activeDot={{ r: 6 }} connectNulls />
                     </LineChart>

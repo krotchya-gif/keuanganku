@@ -25,6 +25,15 @@ const CATEGORY_GROUPS: ChipGroup[] = (Object.keys(BUDGET_CATEGORY_LABELS) as Bud
   color: BUDGET_CATEGORY_COLORS[key],
 }));
 
+/** Label pendek untuk sumbu-X grafik agar semua kategori terbaca. */
+const CHART_SHORT_LABELS: Record<BudgetCategory, string> = {
+  PENDAPATAN: 'Pendapatan',
+  TABUNGAN_INVESTASI: 'Tab. & Inv.',
+  TAGIHAN: 'Tagihan',
+  BIAYA_OPERASIONAL: 'Biaya Ops.',
+  HUTANG: 'Hutang',
+};
+
 /**
  * BudgetingContent — pilar Anggaran: evaluasi rencana vs realisasi
  * dan pengelolaan amplop. Pencatatan harian berada di halaman Arus Kas.
@@ -252,8 +261,17 @@ export function BudgetingContent() {
                   <h3 className="mb-4 text-sm font-bold text-foreground">Rencana vs Realisasi per Kategori</h3>
                   <div className="h-64">
                     <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={summaryByCategory.filter((g) => g.totalPlanned > 0 || g.totalActual > 0)} barGap={4} barCategoryGap="20%">
-                        <XAxis dataKey="label" {...chartAxisStyle} />
+                      <BarChart data={summaryByCategory.filter((g) => g.totalPlanned > 0 || g.totalActual > 0).map((g) => ({ ...g, labelShort: CHART_SHORT_LABELS[g.catKey] ?? g.label }))} barGap={4} barCategoryGap="20%">
+                        <XAxis
+                          dataKey="labelShort"
+                          {...chartAxisStyle}
+                          tick={{ ...chartAxisStyle.tick, fontSize: 10 }}
+                          interval={0}
+                          angle={-30}
+                          textAnchor="end"
+                          height={58}
+                          tickMargin={4}
+                        />
                         <YAxis {...chartAxisStyle} tickFormatter={formatChartRupiah} width={70} />
                         <Tooltip content={<ChartTooltip />} cursor={{ fill: 'hsl(var(--muted))', opacity: 0.5 }} />
                         <Bar dataKey="totalPlanned" name="Rencana" fill="#635bff" radius={[4, 4, 0, 0]} />

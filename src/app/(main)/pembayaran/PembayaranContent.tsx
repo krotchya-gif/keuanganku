@@ -88,7 +88,7 @@ export function PembayaranContent() {
         <div className="bg-background/80 backdrop-blur-sm px-5 py-4 flex justify-between items-center gap-3 border-b border-border/50">
            <div className="min-w-0">
              <h3 className={`font-bold ${colorClass} uppercase tracking-wide truncate`}>{title}</h3>
-             <p className="text-xs text-muted-foreground mt-0.5 font-numeric">Terkumpul: {formatRupiahCompact(totalPaid)} / {formatRupiahCompact(totalTarget)}</p>
+             <p className="mt-0.5 font-numeric text-xs text-muted-foreground">Terbayar: {formatRupiahCompact(totalPaid)} / {formatRupiahCompact(totalTarget)}</p>
            </div>
            {totalPaid >= totalTarget && totalTarget > 0 && <span className="flex shrink-0 items-center gap-1 rounded-full bg-success/10 px-2.5 py-1 text-xs font-bold text-success"><CheckCircle2 className="h-3.5 w-3.5" /> Lunas</span>}
         </div>
@@ -105,7 +105,7 @@ export function PembayaranContent() {
                   <p className={`text-sm font-numeric font-bold ${item.isFullyPaid ? 'text-success' : 'text-foreground'}`}>
                     {formatRupiahCompact(item.paid)}
                   </p>
-                  <p className="text-[10px] font-numeric text-muted-foreground">Target: {formatRupiahCompact(item.target)}</p>
+                  <p className="text-[10px] font-numeric text-muted-foreground">Rencana: {formatRupiahCompact(item.target)}</p>
                </div>
              </div>
            ))}
@@ -144,8 +144,8 @@ export function PembayaranContent() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-           {renderList(bills, 'Tagihan Berbayar', 'text-amber-600', 'border-amber-500/20')}
-           {renderList(debts, 'Cicilan Hutang', 'text-red-500', 'border-red-500/20')}
+           {renderList(bills, 'Tagihan Bulanan', 'text-amber-600', 'border-amber-500/20')}
+           {renderList(debts, 'Cicilan Utang', 'text-red-500', 'border-red-500/20')}
         </div>
       )}
     </div>

@@ -295,8 +295,8 @@ export function DashboardContent() {
                         endAngle={-270}
                         strokeWidth={0}
                       >
-                        <Cell fill="#635bff" />
-                        <Cell fill="hsl(var(--muted))" />
+                        <Cell key="sisa" fill="#635bff" />
+                        <Cell key="terpakai" fill="hsl(var(--muted))" />
                       </Pie>
                     </PieChart>
                   </ResponsiveContainer>

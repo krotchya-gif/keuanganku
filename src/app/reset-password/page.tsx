@@ -7,7 +7,7 @@ import { AuthShell } from '@/components/auth/AuthShell';
 import { Loader2, Key, Eye, EyeOff } from 'lucide-react';
 
 const inputClass =
-  'w-full rounded-xl border border-input bg-background px-3.5 py-3 text-sm text-foreground placeholder:text-muted-foreground transition-shadow focus:outline-none focus:ring-2 focus:ring-emerald-500/35 focus:border-emerald-500';
+  'w-full rounded-xl border border-input bg-background px-3.5 py-3 text-sm text-foreground placeholder:text-muted-foreground transition-shadow focus:outline-none focus:ring-2 focus:ring-primary-500/35 focus:border-primary-500';
 
 export default function ResetPasswordPage() {
   const [password, setPassword] = useState('');
@@ -108,7 +108,7 @@ export default function ResetPasswordPage() {
             <button
               type="submit"
               disabled={loading || !password}
-              className="w-full flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed text-white py-3 rounded-xl font-semibold text-sm transition-all mt-2"
+              className="w-full flex items-center justify-center gap-2 bg-primary-500 hover:bg-primary-600 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed text-white py-3 rounded-xl font-semibold text-sm transition-all mt-2"
             >
               {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Simpan Sandi Baru'}
             </button>

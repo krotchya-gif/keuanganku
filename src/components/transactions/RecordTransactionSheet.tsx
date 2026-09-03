@@ -32,8 +32,6 @@ interface RecordTransactionSheetProps {
  * Alur: pilih jenis → tanggal → ketuk kategori → nominal via keypad → simpan.
  */
 export function RecordTransactionSheet({ open, onClose, onSaved, editTransaction }: RecordTransactionSheetProps) {
-  const supabase = createClient();
-
   const [direction, setDirection] = useState<Direction>('keluar');
   const [date, setDate] = useState(getTodayString());
   const [amount, setAmount] = useState(0);
@@ -48,6 +46,7 @@ export function RecordTransactionSheet({ open, onClose, onSaved, editTransaction
     if (!open) return;
     let cancelled = false;
     (async () => {
+      const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
       if (!user || cancelled) return;
       const items = await fetchBudgetItems(user.id);
@@ -56,7 +55,7 @@ export function RecordTransactionSheet({ open, onClose, onSaved, editTransaction
       }
     })();
     return () => { cancelled = true; };
-  }, [open, supabase]);
+  }, [open]);
 
   // Isi ulang form saat membuka / mengganti mode edit.
   useEffect(() => {
@@ -112,6 +111,7 @@ export function RecordTransactionSheet({ open, onClose, onSaved, editTransaction
     if (amount <= 0) { setError('Isi nominal lebih dari nol.'); return; }
 
     setSaving(true);
+    const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { setError('Sesi berakhir. Silakan masuk kembali.'); setSaving(false); return; }
 
@@ -146,7 +146,7 @@ export function RecordTransactionSheet({ open, onClose, onSaved, editTransaction
 
   return (
     <BottomSheet open={open} onClose={onClose} title={editTransaction ? 'Ubah Transaksi' : 'Catat Transaksi'} maxWidth="sm:max-w-lg">
-      <div className="space-y-4">
+      <div className="space-y-3.5">
         <SegmentedControl<Direction>
           value={direction}
           onChange={(d) => { setDirection(d); setSelected(null); }}
@@ -214,9 +214,12 @@ export function RecordTransactionSheet({ open, onClose, onSaved, editTransaction
           </p>
         )}
 
-        <button onClick={save} disabled={saving} className="btn-primary w-full touch-target">
-          {saving ? 'Menyimpan…' : editTransaction ? 'Simpan Perubahan' : 'Simpan Transaksi'}
-        </button>
+        {/* Tombol simpan menempel di dasar sheet agar selalu terlihat */}
+        <div className="sticky bottom-0 -mx-5 -mb-5 border-t border-border/60 bg-card px-5 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3">
+          <button onClick={save} disabled={saving} className="btn-primary w-full touch-target">
+            {saving ? 'Menyimpan…' : editTransaction ? 'Simpan Perubahan' : 'Simpan Transaksi'}
+          </button>
+        </div>
       </div>
     </BottomSheet>
   );

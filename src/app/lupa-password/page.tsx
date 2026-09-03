@@ -7,7 +7,7 @@ import { AuthShell } from '@/components/auth/AuthShell';
 import { Loader2, ArrowLeft, Send } from 'lucide-react';
 
 const inputClass =
-  'w-full rounded-xl border border-input bg-background px-3.5 py-3 text-sm text-foreground placeholder:text-muted-foreground transition-shadow focus:outline-none focus:ring-2 focus:ring-emerald-500/35 focus:border-emerald-500';
+  'w-full rounded-xl border border-input bg-background px-3.5 py-3 text-sm text-foreground placeholder:text-muted-foreground transition-shadow focus:outline-none focus:ring-2 focus:ring-primary-500/35 focus:border-primary-500';
 
 export default function LupaPasswordPage() {
   const [email, setEmail] = useState('');
@@ -73,7 +73,7 @@ export default function LupaPasswordPage() {
             <button
               type="submit"
               disabled={loading || !email}
-              className="w-full flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed text-white py-3 rounded-xl font-semibold text-sm transition-all"
+              className="w-full flex items-center justify-center gap-2 bg-primary-500 hover:bg-primary-600 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed text-white py-3 rounded-xl font-semibold text-sm transition-all"
             >
               {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Kirim Tautan Reset'}
             </button>
@@ -82,7 +82,7 @@ export default function LupaPasswordPage() {
       </form>
 
       <div className="mt-8 text-center text-sm">
-        <Link href="/login" className="font-medium text-emerald-700 hover:text-emerald-800 hover:underline inline-flex items-center gap-2">
+        <Link href="/login" className="font-medium text-primary-600 hover:text-primary-700 hover:underline inline-flex items-center gap-2">
           <ArrowLeft className="w-4 h-4" /> Kembali ke Login
         </Link>
       </div>

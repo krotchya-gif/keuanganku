@@ -47,7 +47,7 @@ export function AmountKeypad({ value, onChange, className, disabled }: AmountKey
         <span className="mr-1.5 text-lg font-semibold text-muted-foreground">Rp</span>
         {formatRupiah(value).replace('Rp', '').trim() || '0'}
       </p>
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-3 gap-1.5">
         {keys.map((key) => (
           <button
             key={key}
@@ -56,7 +56,7 @@ export function AmountKeypad({ value, onChange, className, disabled }: AmountKey
             onClick={() => press(key)}
             aria-label={key === 'del' ? 'Hapus angka' : key}
             className={cn(
-              'flex h-12 touch-target items-center justify-center rounded-xl bg-muted/70 font-numeric text-lg font-medium text-foreground transition-all hover:bg-muted active:scale-[0.95] disabled:opacity-50',
+              'flex h-11 touch-target items-center justify-center rounded-xl bg-muted/70 font-numeric text-lg font-medium text-foreground transition-all hover:bg-muted active:scale-[0.95] disabled:opacity-50',
               key === 'del' && 'text-danger'
             )}
           >

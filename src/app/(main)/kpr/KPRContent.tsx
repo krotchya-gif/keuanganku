@@ -56,7 +56,7 @@ function getPhaseStyling(phaseIndex: number | undefined, totalFloatingPhases: nu
 function InfoRow({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
   return (
     <div className="flex justify-between items-center py-2 border-b border-border/60 last:border-0 gap-3">
-      <span className="text-sm text-muted-foreground min-w-0 truncate">{label}</span>
+      <span className="text-sm text-muted-foreground min-w-0 leading-snug">{label}</span>
       <span className={`text-sm font-numeric font-semibold shrink-0 whitespace-nowrap ${highlight ? 'text-primary-500' : 'text-foreground'}`}>{value}</span>
     </div>
   );

@@ -20,7 +20,7 @@ export function PageHeader({ title, subtitle, icon: Icon, gradient = 'from-prima
         </div>
         <div className="min-w-0">
           <h1 className="text-xl sm:text-2xl font-bold text-foreground truncate">{title}</h1>
-          {subtitle && <p className="text-muted-foreground text-xs sm:text-sm truncate">{subtitle}</p>}
+          {subtitle && <p className="text-muted-foreground text-xs sm:text-sm">{subtitle}</p>}
         </div>
       </div>
       {action}

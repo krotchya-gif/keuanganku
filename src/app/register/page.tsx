@@ -7,7 +7,7 @@ import { AuthShell } from '@/components/auth/AuthShell';
 import { Eye, EyeOff, Loader2, UserPlus, CheckCircle2 } from 'lucide-react';
 
 const inputClass =
-  'w-full rounded-xl border border-input bg-background px-3.5 py-3 text-sm text-foreground placeholder:text-muted-foreground transition-shadow focus:outline-none focus:ring-2 focus:ring-emerald-500/35 focus:border-emerald-500';
+  'w-full rounded-xl border border-input bg-background px-3.5 py-3 text-sm text-foreground placeholder:text-muted-foreground transition-shadow focus:outline-none focus:ring-2 focus:ring-primary-500/35 focus:border-primary-500';
 
 export default function RegisterPage() {
   const [fullName, setFullName] = useState('');
@@ -66,7 +66,7 @@ export default function RegisterPage() {
           </p>
           <Link
             href="/login"
-            className="w-full inline-flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-3 rounded-xl font-semibold text-sm transition-all active:scale-[0.98]"
+            className="w-full inline-flex items-center justify-center gap-2 bg-primary-500 hover:bg-primary-600 text-white px-6 py-3 rounded-xl font-semibold text-sm transition-all active:scale-[0.98]"
           >
             Masuk ke Keuanganku
           </Link>
@@ -151,7 +151,7 @@ export default function RegisterPage() {
         <button
           type="submit"
           disabled={loading}
-          className="w-full flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed text-white py-3 rounded-xl font-semibold text-sm transition-all"
+          className="w-full flex items-center justify-center gap-2 bg-primary-500 hover:bg-primary-600 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed text-white py-3 rounded-xl font-semibold text-sm transition-all"
         >
           {loading ? (
             <Loader2 className="w-4 h-4 animate-spin" />
@@ -164,7 +164,7 @@ export default function RegisterPage() {
 
       <p className="text-center text-sm text-muted-foreground mt-7">
         Sudah punya akun?{' '}
-        <Link href="/login" className="text-emerald-700 hover:text-emerald-800 font-semibold hover:underline">
+        <Link href="/login" className="text-primary-600 hover:text-primary-700 font-semibold hover:underline">
           Masuk di sini
         </Link>
       </p>

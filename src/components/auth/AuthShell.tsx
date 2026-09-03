@@ -8,12 +8,12 @@ const LEDGER_STRIP = [
 
 /**
  * AuthShell — kerangka halaman auth satu kolom bergaya "layar aplikasi".
- * Full-bleed forest green di semua breakpoint (tanpa split panel),
+ * Full-bleed navy-indigo di semua breakpoint (tanpa split panel),
  * brand + headline di atas, form card putih di tengah.
  */
 export function AuthShell({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-[100dvh] bg-[#0d2119] relative overflow-hidden flex flex-col">
+    <div className="min-h-[100dvh] bg-[#151439] relative overflow-hidden flex flex-col">
       {/* Pola garis halus, bukan gradient blob */}
       <div
         className="absolute inset-0"
@@ -29,8 +29,8 @@ export function AuthShell({ children }: { children: React.ReactNode }) {
         <div className="w-full max-w-md">
           {/* Brand */}
           <div className="flex flex-col items-center mb-6">
-            <div className="w-14 h-14 rounded-2xl bg-emerald-500 flex items-center justify-center shadow-[0_0_32px_rgba(16,185,129,0.35)]">
-              <Wallet className="w-7 h-7 text-[#0d2119]" />
+            <div className="w-14 h-14 rounded-2xl bg-primary-500 flex items-center justify-center shadow-[0_0_32px_rgba(99,91,255,0.45)]">
+              <Wallet className="w-7 h-7 text-white" />
             </div>
             <span className="text-white font-bold text-xl tracking-tight mt-3">Keuanganku</span>
           </div>
