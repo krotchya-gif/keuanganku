@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect } from 'react';
 import { X } from 'lucide-react';
 
 interface BottomSheetProps {
@@ -12,13 +13,33 @@ interface BottomSheetProps {
 
 /**
  * BottomSheet — mobile: sheet dari bawah, desktop: modal tengah.
- * Pengganti modal hand-rolled (fixed inset-0) agar konsisten & mobile-friendly.
+ * Dilengkapi aksesibilitas dasar: role dialog, Escape untuk menutup,
+ * dan lock scroll latar belakang.
  */
 export function BottomSheet({ open, onClose, title, children, maxWidth = 'sm:max-w-md' }: BottomSheetProps) {
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', onKey);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [open, onClose]);
+
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4">
+    <div
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-label={title ?? 'Dialog'}
+    >
       <div
         className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-fade-in-quick"
         onClick={onClose}
@@ -44,7 +65,7 @@ export function BottomSheet({ open, onClose, title, children, maxWidth = 'sm:max
         {!title && (
           <button
             onClick={onClose}
-            className="absolute right-4 top-4 touch-target flex items-center justify-center text-muted-foreground hover:bg-muted rounded-xl transition-colors"
+            className="absolute right-4 top-4 z-10 touch-target flex items-center justify-center text-muted-foreground hover:bg-muted rounded-xl transition-colors"
             aria-label="Tutup"
           >
             <X className="w-5 h-5" />

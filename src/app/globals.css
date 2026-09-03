@@ -84,7 +84,7 @@
     @apply bg-gradient-to-r from-primary-500 to-primary-600 bg-clip-text text-transparent;
   }
 
-  /* Status badge */
+  /* Status badge — aman untuk light & dark */
   .badge-sehat {
     @apply bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-medium px-2.5 py-1 rounded-full;
   }
@@ -93,6 +93,15 @@
   }
   .badge-bahaya {
     @apply bg-red-50 text-red-700 border border-red-200 text-xs font-medium px-2.5 py-1 rounded-full;
+  }
+  .dark .badge-sehat {
+    @apply bg-emerald-500/10 text-emerald-300 border-emerald-500/25;
+  }
+  .dark .badge-warning {
+    @apply bg-yellow-500/10 text-yellow-300 border-yellow-500/25;
+  }
+  .dark .badge-bahaya {
+    @apply bg-red-500/10 text-red-300 border-red-500/25;
   }
 
   /* Nav item */
