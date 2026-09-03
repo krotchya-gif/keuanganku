@@ -155,6 +155,28 @@ Snapshot otomatis tiap awal bulan via pg_cron (butuh Supabase Pro plan):
 
 ---
 
+## Tindak Lanjut Update Terakhir
+
+Redesain UI (IA 4 pilar) dan perbaikan hasil review sudah masuk repo, tetapi beberapa langkah berikut masih harus dilakukan agar perbaikan aktif di production:
+
+1. **Push ke GitHub** — commit redesain masih lokal; push memicu deploy otomatis di Vercel:
+   ```bash
+   git push origin main
+   ```
+2. **Redeploy edge function `snapshot`** (wajib) — handler kini memverifikasi `Authorization: Bearer <service_role_key>`, jadi deploy **tanpa** `--no-verify-jwt`:
+   ```bash
+   supabase functions deploy snapshot
+   ```
+3. **Verifikasi cron snapshot** — pastikan job `snapshot-networth-monthly` ada (`SELECT jobname FROM cron.job;`) dan command-nya mengirim header `Authorization` dari vault (lihat versi terbaru `supabase/migrations/003_cron_snapshot.sql`). Jika dijalankan ulang, isi placeholder `YOUR_SERVICE_ROLE_KEY` dan `https://YOUR_PROJECT.supabase.co`, dan lewati `vault.create_secret` bila secret-nya sudah ada.
+4. **Uji jadwal snapshot** (disarankan):
+   ```sql
+   SELECT cron.run_job('snapshot-networth-monthly');
+   ```
+   lalu pastikan baris baru muncul di tabel `net_worth_snapshots`.
+5. **(Opsional) Hapus akun QA** `qa-redesign@keuanganku.test` melalui Dashboard → Authentication → Users.
+
+---
+
 ## Lisensi
 
 MIT

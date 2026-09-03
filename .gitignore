@@ -75,4 +75,9 @@ next-env.d.ts
 
 # misc
 *.pem
+
+# referensi desain & data internal tool (jangan commit)
+screenshots/
+.zcode/
+
 screenshots-qa/
