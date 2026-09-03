@@ -1,22 +1,20 @@
 # Keuanganku — Manajemen Keuangan Personal
 
-Aplikasi manajemen keuangan personal berbasis **Next.js 14** + **PWA** + **Supabase**.
+Aplikasi manajemen keuangan personal berbasis **Next.js 16** + **PWA** + **Supabase**.
 Mengonversi perhitungan dari 3 file Excel (Financial Checkup, Simulasi KPR, Budgeting Sheet) menjadi platform web terpadu dengan tampilan mobile-first.
 
 ---
 
 ## Fitur
 
-- **Landing Page** — Halaman pemasaran di `/` (hero, fitur, testimoni, FAQ) untuk pengunjung yang belum login
-- **Net Worth & Snapshot** — Tracking aset, utang, dan kekayaan bersih bulanan
-- **Arus Kas** — Pencatatan pemasukan & pengeluaran, surplus/defisit
-- **Financial Checkup** — 6 rasio kesehatan keuangan (Dana Darurat, Arus Kas, Cicilan, Investasi, Biaya Hidup, Solvabilitas) dengan radar chart
-- **Simulasi KPR** — Kalkulasi amortisasi iterative, dukung bunga fix + floating berjenjang, biaya tambahan (BPHTB, PPN, AJB, BBN), tabel amortisasi 20 baris/halaman + Tampilkan Semua
-- **Budgeting (Amplop)** — Zero-based budgeting, jurnal harian, evaluasi rencana vs realisasi
-- **Tabungan & Investasi** — Progress tracker per target
-- **Kalender Pembayaran** — Ceklis tagihan & cicilan
-- **Evaluasi Tahunan** — Laporan komprehensif per bulan
-- **PWA** — Install prompt (1×/24 jam), offline fallback, service worker cache strategy
+Aplikasi tersusun atas **4 pilar** agar tidak membingungkan pengguna:
+
+- **Beranda** — ringkasan kekayaan bersih (hero card + mode privasi), arus kas aktual, progres anggaran, aktivitas pengeluaran, transaksi terbaru
+- **Arus Kas (mencatat)** — satu-satunya tempat pencatatan transaksi: buku besar per tanggal dengan sheet "Catat Transaksi" (chip kategori + keypad), Riwayat timeline, Pembayaran Tagihan (ceklis)
+- **Anggaran (merencanakan)** — Evaluasi rencana vs realisasi, Amplop anggaran, Kas Rutin Bulanan (dasar Checkup), Tabungan & Investasi
+- **KPR (simulasi)** — kalkulasi amortisasi, bunga tetap + floating tunggal/bertahap, biaya tambahan (BPHTB, PPN, AJB, BBN), tabel 20 baris/halaman
+- **Analisis** — Kekayaan Bersih & snapshot, Checkup 6 rasio (radar chart), Evaluasi Tahunan
+- **PWA** — install prompt (1×/24 jam), offline fallback, service worker cache strategy
 
 ---
 
@@ -24,11 +22,11 @@ Mengonversi perhitungan dari 3 file Excel (Financial Checkup, Simulasi KPR, Budg
 
 | Stack | Teknologi |
 |---|---|
-| Framework | Next.js 14.2.35 (App Router) |
-| Bahasa | TypeScript 5.9 |
+| Framework | Next.js 16 (App Router, proxy.ts) |
+| Bahasa | TypeScript 6 |
 | Styling | Tailwind CSS 3 (design tokens custom, tanpa shadcn/ui) |
-| Charts | Recharts 2.15 |
-| Forms | Hand-rolled `useState` (tanpa library form) |
+| Charts | Recharts 3 |
+| Forms | Hand-rolled `useState` + komponen chip picker & keypad kustom |
 | Database | Supabase (PostgreSQL) |
 | Auth | Supabase Auth (email) |
 | PWA | @serwist/next 9.5 |
@@ -39,31 +37,31 @@ Mengonversi perhitungan dari 3 file Excel (Financial Checkup, Simulasi KPR, Budg
 ## Struktur Project
 
 ```
-app keuangan/
+keuangan/
 ├── src/
 │   ├── app/
 │   │   ├── (main)/           # Protected routes + sidebar + bottom nav
-│   │   │   ├── dashboard/
-│   │   │   ├── net-worth/
-│   │   │   ├── arus-kas/
-│   │   │   ├── checkup/
-│   │   │   ├── kpr/
-│   │   │   ├── budgeting/
-│   │   │   ├── pembayaran/
-│   │   │   ├── kalendar/
-│   │   │   ├── tabungan/
-│   │   │   ├── evaluasi/
+│   │   │   ├── dashboard/    # Beranda (hero + aksi cepat)
+│   │   │   ├── arus-kas/     # Pilar Arus Kas: buku transaksi
+│   │   │   ├── kalendar/     # Riwayat (timeline)
+│   │   │   ├── pembayaran/   # Ceklis tagihan
+│   │   │   ├── budgeting/    # Pilar Anggaran: evaluasi + amplop
+│   │   │   ├── kas-rutin/    # Kas rutin bulanan (ex-Arus Kas lama)
+│   │   │   ├── tabungan/     # Tabungan & investasi
+│   │   │   ├── kpr/          # Pilar KPR: simulasi
+│   │   │   ├── net-worth/ checkup/ evaluasi/  # Analisis
 │   │   │   └── settings/
 │   │   ├── page.tsx          # Landing page (public)
 │   │   ├── login/ register/ lupa-password/ reset-password/
 │   │   └── auth/callback/
 │   ├── components/
-│   │   ├── auth/             # AuthShell (single-column app screen)
+│   │   ├── auth/             # AuthShell
 │   │   ├── charts/           # ChartTooltip, ChartTheme
-│   │   ├── layout/           # Sidebar (desktop), InstallPrompt
-│   │   └── ui/               # BottomSheet, StatCard, TableScroll, PageHeader, dll
+│   │   ├── layout/           # Sidebar, InstallPrompt
+│   │   ├── transactions/     # RecordTransactionSheet (form catat bersama)
+│   │   └── ui/               # BottomSheet, CategoryChipPicker, AmountKeypad, SegmentedControl, HeroCard, StatCard, dll
 │   ├── lib/
-│   │   ├── utils.ts          # formatRupiah, formatRupiahCompact, dll
+│   │   ├── utils.ts          # formatRupiah, tanggal lokal, dll
 │   │   ├── export.ts         # exportCSV, exportPDF
 │   │   └── queries/          # assets, debts, cashflow, transactions, dll
 │   ├── shared/
@@ -71,7 +69,7 @@ app keuangan/
 │   │   ├── types/            # Semua TypeScript interfaces
 │   │   └── constants/
 │   ├── utils/supabase/       # client, server, middleware
-│   └── middleware.ts         # Auth middleware (getClaims)
+│   └── proxy.ts              # Auth proxy Next 16 (updateSession)
 ├── supabase/
 │   ├── migrations/
 │   │   ├── 001_initial_schema.sql
