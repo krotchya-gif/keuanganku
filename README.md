@@ -155,24 +155,24 @@ Snapshot otomatis tiap awal bulan via pg_cron (butuh Supabase Pro plan):
 
 ---
 
-## Tindak Lanjut Update Terakhir
+## Status Deploy Terakhir (terverifikasi 2026-09-04)
 
-Redesain UI (IA 4 pilar) dan perbaikan hasil review sudah masuk repo, tetapi beberapa langkah berikut masih harus dilakukan agar perbaikan aktif di production:
+Redesain UI (IA 4 pilar) dan perbaikan hasil review sudah live di production:
 
-1. **Push ke GitHub** — commit redesain masih lokal; push memicu deploy otomatis di Vercel:
+1. **Push ke GitHub** — selesai, `main` sudah sinkron dengan `origin/main`; deploy Vercel berjalan otomatis.
+2. **Edge function `snapshot`** — sudah redeploy (versi 2, ACTIVE, `verify_jwt: true`, deploy **tanpa** `--no-verify-jwt`). Handler menolak request tanpa `Authorization: Bearer <service_role_key>` dengan 401 sebelum menyentuh database.
+3. **Cron snapshot** — job `snapshot-networth-monthly` ada (`0 0 1 * *`), command mengirim header `Authorization` dari vault (secret `service_role_key` + `project_url` ada), histori sukses tiap tanggal 1.
+4. **Uji handler snapshot** (tanpa menulis data produksi — `cron.run_job` tidak tersedia di versi pg_cron ini, jadi pakai curl):
    ```bash
-   git push origin main
+   # Tanpa header → 401 dari gateway (platform JWT gate aktif)
+   curl -X POST "https://<PROJECT_REF>.supabase.co/functions/v1/snapshot" \
+     -H "Content-Type: application/json"
+   # Dengan anon key (JWT valid tapi bukan service key) → 401 dari handler baru:
+   # {"ok":false,"error":"Tidak berwenang"}
+   curl -X POST "https://<PROJECT_REF>.supabase.co/functions/v1/snapshot" \
+     -H "Content-Type: application/json" \
+     -H "Authorization: Bearer <ANON_KEY>"
    ```
-2. **Redeploy edge function `snapshot`** (wajib) — handler kini memverifikasi `Authorization: Bearer <service_role_key>`, jadi deploy **tanpa** `--no-verify-jwt`:
-   ```bash
-   supabase functions deploy snapshot
-   ```
-3. **Verifikasi cron snapshot** — pastikan job `snapshot-networth-monthly` ada (`SELECT jobname FROM cron.job;`) dan command-nya mengirim header `Authorization` dari vault (lihat versi terbaru `supabase/migrations/003_cron_snapshot.sql`). Jika dijalankan ulang, isi placeholder `YOUR_SERVICE_ROLE_KEY` dan `https://YOUR_PROJECT.supabase.co`, dan lewati `vault.create_secret` bila secret-nya sudah ada.
-4. **Uji jadwal snapshot** (disarankan):
-   ```sql
-   SELECT cron.run_job('snapshot-networth-monthly');
-   ```
-   lalu pastikan baris baru muncul di tabel `net_worth_snapshots`.
 5. **(Opsional) Hapus akun QA** `qa-redesign@keuanganku.test` melalui Dashboard → Authentication → Users.
 
 ---
