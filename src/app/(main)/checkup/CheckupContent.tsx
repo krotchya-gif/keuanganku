@@ -74,7 +74,7 @@ export function CheckupContent() {
       <div className="flex flex-col h-64 items-center justify-center text-muted-foreground border border-dashed rounded-xl">
         <AlertCircle className="w-8 h-8 text-primary-500 mb-2 opacity-50" />
         <p className="font-medium">Belum ada data untuk dianalisa.</p>
-        <p className="text-sm mt-1">Isi Net Worth dan Arus Kas terlebih dahulu.</p>
+        <p className="text-sm mt-1">Isi Kekayaan Bersih dan Kas Rutin Bulanan terlebih dahulu.</p>
       </div>
     );
   }
@@ -137,12 +137,14 @@ export function CheckupContent() {
                 activeDot={{ r: 5, fill: '#635bff' }}
               />
               <Tooltip
-                formatter={(v, _name, props: any) => {
+                formatter={(v, _name, props: any, index?: number) => {
                   const score = typeof v === 'number' ? v : Number(v ?? 0);
-                  const item = radarData[props.payloadIndex];
+                  // recharts 3: data baris ada di props.payload (fallback ke argumen index)
+                  const item = props?.payload ?? radarData[index ?? -1];
                   const status = item?.status || 'unknown';
                   const color = getStatusColor(status as 'sehat' | 'warning' | 'bahaya') || '#64748b';
-                  return [<span key="v" style={{ color }}>{score}/100 — {status === 'sehat' ? 'Sehat' : status === 'warning' ? 'Warning' : 'Bahaya'}</span>, 'Skor'];
+                  const label = status === 'sehat' ? 'Sehat' : status === 'warning' ? 'Waspada' : status === 'bahaya' ? 'Bahaya' : '';
+                  return [<span key="v" style={{ color }}>{score}/100</span>, label ? `Skor (${label})` : 'Skor'];
                 }}
                 contentStyle={{
                   backgroundColor: 'hsl(var(--card))',

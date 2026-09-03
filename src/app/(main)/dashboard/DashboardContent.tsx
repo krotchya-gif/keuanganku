@@ -58,7 +58,8 @@ interface BudgetPreview {
 const PRIVACY_KEY = 'keuanganku:sembunyikan-nilai';
 
 export function DashboardContent() {
-  const now = new Date();
+  // Stabil agar efek & memo tidak berjalan ulang tiap render.
+  const [now] = useState(() => new Date());
   const currentMonth = now.getMonth() + 1;
   const currentYear = now.getFullYear();
 

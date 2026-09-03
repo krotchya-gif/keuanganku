@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { getCurrentUserId } from '@/lib/queries/users';
 import { fetchBudgetItemsByCategory } from '@/lib/queries/budget';
 import { fetchTransactionsByCategory } from '@/lib/queries/transactions';
-import { CalendarHeart, CheckCircle2, XCircle, CreditCard } from 'lucide-react';
+import { ReceiptText, CheckCircle2, XCircle, CreditCard } from 'lucide-react';
 import { Skeleton, ListSkeleton } from '@/components/ui/Skeleton';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -90,19 +90,19 @@ export function PembayaranContent() {
              <h3 className={`font-bold ${colorClass} uppercase tracking-wide truncate`}>{title}</h3>
              <p className="text-xs text-muted-foreground mt-0.5 font-numeric">Terkumpul: {formatRupiahCompact(totalPaid)} / {formatRupiahCompact(totalTarget)}</p>
            </div>
-           {totalPaid >= totalTarget && totalTarget > 0 && <span className="bg-emerald-100 text-emerald-700 text-xs font-bold px-2.5 py-1 rounded-full flex items-center gap-1 shrink-0"><CheckCircle2 className="w-3.5 h-3.5" /> Lunas</span>}
+           {totalPaid >= totalTarget && totalTarget > 0 && <span className="flex shrink-0 items-center gap-1 rounded-full bg-success/10 px-2.5 py-1 text-xs font-bold text-success"><CheckCircle2 className="h-3.5 w-3.5" /> Lunas</span>}
         </div>
         <div className="divide-y divide-border/30 bg-card">
            {enrichedList.map(item => (
              <div key={item.id} className="p-4 flex items-center justify-between gap-3 hover:bg-muted/10">
                <div className="min-w-0">
                   <p className="text-sm font-semibold text-foreground flex items-center gap-2">
-                     {item.isFullyPaid ? <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" /> : <XCircle className="w-4 h-4 text-muted-foreground shrink-0" />}
+                  {item.isFullyPaid ? <CheckCircle2 className="h-4 w-4 shrink-0 text-success" /> : <XCircle className="h-4 w-4 shrink-0 text-muted-foreground" />}
                      <span className="truncate">{item.name}</span>
                   </p>
                </div>
                <div className="text-right shrink-0">
-                  <p className={`text-sm font-numeric font-bold ${item.isFullyPaid ? 'text-emerald-600' : 'text-foreground'}`}>
+                  <p className={`text-sm font-numeric font-bold ${item.isFullyPaid ? 'text-success' : 'text-foreground'}`}>
                     {formatRupiahCompact(item.paid)}
                   </p>
                   <p className="text-[10px] font-numeric text-muted-foreground">Target: {formatRupiahCompact(item.target)}</p>
@@ -117,8 +117,8 @@ export function PembayaranContent() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Kalendar Pembayaran"
-        subtitle="Ceklis otomatis tagihan dan cicilan hutang yang harus dibayar bulan ini"
+        title="Pembayaran Tagihan"
+        subtitle="Ceklis tagihan dan cicilan yang harus dibayar bulan ini"
         icon={CreditCard}
         gradient="from-amber-500 to-orange-600"
         action={
@@ -136,10 +136,10 @@ export function PembayaranContent() {
       {items.length === 0 ? (
         <div className="card-premium border-dashed">
           <EmptyState
-            icon={CalendarHeart}
-            title="Belum ada kewajiban pembayaran."
-            description="Tambahkan Tagihan & Cicilan Hutang di fitur Budgeting → Amplop Master."
-            color="#f59e0b"
+            icon={ReceiptText}
+            title="Belum ada tagihan atau cicilan"
+            description="Buat amplop kategori Tagihan atau Hutang di halaman Anggaran."
+            action={<a href="/budgeting" className="btn-secondary text-xs">Buka Anggaran</a>}
           />
         </div>
       ) : (

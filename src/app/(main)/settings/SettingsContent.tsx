@@ -43,7 +43,7 @@ export function SettingsContent() {
      try {
        const supabase = createClient();
        const { data: { user } } = await supabase.auth.getUser();
-       if (!user) { setReseting(false); return alert('Unauthorized'); }
+       if (!user) { setReseting(false); return alert('Sesi berakhir. Silakan masuk kembali.'); }
 
        // Hapus data yang cuma milik user ini — jalankan paralel (mendekati atomik)
        const results = await Promise.all([
@@ -61,7 +61,7 @@ export function SettingsContent() {
          throw new Error('Salah satu tabel gagal dihapus');
        }
 
-       alert('Seluruh data berhasil dihapus. Aplikasi kembali bersih layaknya baru saja diinstall.');
+       alert('Seluruh data berhasil dihapus. Aplikasi kembali bersih seperti baru dibuat.');
        window.location.href = '/dashboard';
      } catch (err) {
        console.error(err);
@@ -97,13 +97,13 @@ export function SettingsContent() {
           </div>
           <div>
             <label className="text-xs font-semibold text-muted-foreground">Status Akun</label>
-            <p className="font-medium text-emerald-600 flex items-center gap-1 mt-1">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 block" /> Terhubung (Disinkronkan ke Supabase Cloud)
+            <p className="mt-1 flex items-center gap-1 font-medium text-success">
+              <span className="block h-2 w-2 rounded-full bg-success" /> Terhubung (tersinkron ke Supabase)
             </p>
           </div>
           <button
             onClick={handleLogout}
-            className="flex items-center gap-2 bg-red-50 text-red-600 hover:bg-red-100 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all active:scale-[0.98]"
+            className="flex items-center gap-2 bg-danger/10 text-danger hover:bg-danger/20 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all active:scale-[0.98]"
           >
             <LogOut className="w-4 h-4" /> Keluar dari Akun
           </button>
@@ -146,24 +146,24 @@ export function SettingsContent() {
       {/* Danger Zone */}
       <div className="card-premium border border-red-500/30 bg-red-50/10">
         <div className="px-6 py-4 border-b border-red-500/20 bg-red-500/5">
-           <h2 className="text-sm font-bold flex items-center gap-2 text-red-600">
-             <AlertTriangle className="w-4 h-4" /> Danger Zone (Zona Bahaya)
+           <h2 className="flex items-center gap-2 text-sm font-bold text-danger">
+             <AlertTriangle className="w-4 h-4" /> Zona Berbahaya
            </h2>
         </div>
         <div className="p-6">
-           <p className="text-sm text-foreground font-medium mb-1">Reset Total Seluruh Data Keuangan</p>
-           <p className="text-xs text-muted-foreground mb-6 leading-relaxed">
-             Tindakan ini akan menghapus semua catatan Jurnal Kas, Amplop Budgeting, Simulasi KPR, dan Portofolio Aset. 
-             Gunakan ini hanya jika Anda ingin mengulangi pencatatan aplikasi dari titik Nol (Titik Awal).
+           <p className="mb-1 text-sm font-medium text-foreground">Reset Total Seluruh Data Keuangan</p>
+           <p className="mb-6 text-xs leading-relaxed text-muted-foreground">
+             Tindakan ini menghapus semua catatan transaksi, amplop anggaran, simulasi KPR, dan portofolio aset.
+             Gunakan hanya jika Anda ingin memulai pencatatan kembali dari nol.
            </p>
-           
-           <button 
+
+           <button
              onClick={handleReset}
              disabled={reseting}
-             className="flex items-center gap-2 bg-white border border-red-200 hover:bg-red-50 hover:border-red-300 text-red-600 px-5 py-2.5 rounded-xl text-sm font-bold transition-all shadow-sm active:scale-[0.98]"
+             className="flex items-center gap-2 bg-card border border-danger/30 hover:bg-danger/10 hover:border-danger/50 text-danger px-5 py-2.5 rounded-xl text-sm font-bold transition-all shadow-sm active:scale-[0.98]"
            >
              {reseting ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCcw className="w-4 h-4" />}
-             {reseting ? 'Mereset Data...' : 'Hapus Semua Data Sekarang'}
+             {reseting ? 'Menghapus Data…' : 'Hapus Semua Data'}
            </button>
         </div>
       </div>

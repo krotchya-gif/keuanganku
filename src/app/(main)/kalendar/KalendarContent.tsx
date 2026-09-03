@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { getCurrentUserId } from '@/lib/queries/users';
 import { fetchTransactions } from '@/lib/queries/transactions';
-import { CalendarHeart } from 'lucide-react';
+import { History } from 'lucide-react';
 import { Skeleton, ListSkeleton } from '@/components/ui/Skeleton';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -58,9 +58,9 @@ export function KalendarContent() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Kalendar Transaksi"
-        subtitle="Timeline riwayat keluar-masuk uang Anda berdasarkan hari"
-        icon={CalendarHeart}
+        title="Riwayat Transaksi"
+        subtitle="Urutan transaksi masuk-keluar berdasarkan tanggal"
+        icon={History}
         gradient="from-rose-500 to-pink-600"
         action={
           <div className="flex items-center gap-2">
@@ -77,10 +77,10 @@ export function KalendarContent() {
       {dates.length === 0 ? (
         <div className="card-premium border-dashed">
           <EmptyState
-            icon={CalendarHeart}
-            title="Kalendar keuangan masih kosong."
-            description="Catat jurnal harian Anda di modul Budgeting."
-            color="#f43f5e"
+            icon={History}
+            title="Belum ada transaksi pada bulan ini"
+            description="Catat transaksi lewat tombol Catat di halaman Arus Kas."
+            action={<a href="/arus-kas" className="btn-secondary text-xs">Buka Arus Kas</a>}
           />
         </div>
       ) : (
@@ -104,9 +104,9 @@ export function KalendarContent() {
                 
                 {/* Daily Cards */}
                 <div className="flex-1 pb-6">
-                  <div className="flex items-center gap-3 mb-3">
-                     {totalIn > 0 && <span className="text-xs font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded font-numeric shrink-0">Masuk: {formatRupiahCompact(totalIn)}</span>}
-                     {totalOut > 0 && <span className="text-xs font-semibold text-red-500 bg-red-50 px-2 py-0.5 rounded font-numeric shrink-0">Keluar: {formatRupiahCompact(totalOut)}</span>}
+                  <div className="mb-3 flex items-center gap-3">
+                     {totalIn > 0 && <span className="shrink-0 rounded bg-success/10 px-2 py-0.5 font-numeric text-xs font-semibold text-success">Masuk: {formatRupiahCompact(totalIn)}</span>}
+                     {totalOut > 0 && <span className="shrink-0 rounded bg-danger/10 px-2 py-0.5 font-numeric text-xs font-semibold text-danger">Keluar: {formatRupiahCompact(totalOut)}</span>}
                   </div>
                   
                   <div className="space-y-2">
@@ -116,8 +116,8 @@ export function KalendarContent() {
                            <p className="text-sm font-bold text-foreground truncate">{tx.subcategory || 'Tanpa Kategori'}</p>
                            <p className="text-xs text-muted-foreground mt-0.5 truncate">{tx.description || '-'}</p>
                         </div>
-                        <p className={`text-base font-bold font-numeric shrink-0 ${tx.category === 'PENDAPATAN' ? 'text-emerald-500' : 'text-foreground'}`}>
-                           {tx.category === 'PENDAPATAN' ? '+' : '-'}{formatRupiahCompact(tx.amount)}
+                        <p className={`text-base font-bold font-numeric shrink-0 ${tx.category === 'PENDAPATAN' ? 'text-success' : 'text-foreground'}`}>
+                           {tx.category === 'PENDAPATAN' ? '+' : '−'}{formatRupiahCompact(tx.amount)}
                         </p>
                       </div>
                     ))}

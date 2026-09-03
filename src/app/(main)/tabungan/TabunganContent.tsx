@@ -19,9 +19,9 @@ import { ChartTooltip } from '@/components/charts/ChartTooltip';
 import { ChartGradients, chartGridStyle, chartAxisStyle, formatChartRupiah } from '@/components/charts/ChartTheme';
 
 const ICONS = ['🎯', '💰', '🏠', '🚗', '✈️', '📚', '💻', '🏥', '💍', '🎓', '🏦', '🛒'];
-const year = new Date().getFullYear();
 
 export function TabunganContent() {
+  const year = new Date().getFullYear();
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState('');
   const [goals, setGoals] = useState<SavingsGoal[]>([]);
@@ -29,7 +29,8 @@ export function TabunganContent() {
 
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState<SavingsGoal | null>(null);
-  const [form, setForm] = useState({ name: '', target_amount: 0, monthly_contribution: 0, icon: '🎯', color: '#635bff' });
+  const [formError, setFormError] = useState<string | null>(null);
+  const [form, setForm] = useState({ name: '', target_amount: 0, monthly_contribution: 0, saved: 0, icon: '🎯', color: '#635bff' });
 
   const fetchData = async () => {
     try {
@@ -65,31 +66,44 @@ export function TabunganContent() {
   }));
 
   const handleDelete = async (g: SavingsGoal) => {
-    if (!confirm('Hapus target ini?')) return;
-    try {
-      await createClient().from('savings_goals').delete().eq('id', g.id);
-      await fetchData();
-    } catch (err) {
-      console.error(err);
-      alert('Gagal menghapus target. Coba lagi.');
+    if (!window.confirm('Hapus target ini?')) return;
+    const { error } = await createClient().from('savings_goals').delete().eq('id', g.id);
+    if (error) {
+      console.error(error);
+      window.alert('Gagal menghapus target. Coba lagi.');
+      return;
     }
+    await fetchData();
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    try {
-      const supabase = createClient();
-      if (editing) {
-        await supabase.from('savings_goals').update({ name: form.name, target_amount: form.target_amount, monthly_contribution: form.monthly_contribution, icon: form.icon, color: form.color }).eq('id', editing.id);
-      } else {
-        await supabase.from('savings_goals').insert({ ...form, user_id: userId, initial_amount: 0, current_amount: 0 });
-      }
-      setShowModal(false);
-      await fetchData();
-    } catch (err) {
-      console.error(err);
-      alert('Gagal menyimpan target. Coba lagi.');
+    setFormError(null);
+    if (!form.name.trim()) { setFormError('Isi nama target terlebih dahulu.'); return; }
+    if (form.target_amount <= 0) { setFormError('Isi nominal target lebih dari nol.'); return; }
+
+    // Progres dihitung dari initial_amount + current_amount; simpan nilai
+    // terkumpul di initial_amount agar tidak terhitung ganda.
+    const payload = {
+      name: form.name.trim(),
+      target_amount: form.target_amount,
+      monthly_contribution: form.monthly_contribution,
+      icon: form.icon,
+      color: form.color,
+      initial_amount: form.saved,
+      current_amount: 0,
+    };
+    const supabase = createClient();
+    const { error } = editing
+      ? await supabase.from('savings_goals').update(payload).eq('id', editing.id)
+      : await supabase.from('savings_goals').insert({ ...payload, user_id: userId });
+    if (error) {
+      console.error(error);
+      setFormError('Gagal menyimpan target. Periksa koneksi lalu coba lagi.');
+      return;
     }
+    setShowModal(false);
+    await fetchData();
   };
 
   if (loading) return (
@@ -115,7 +129,7 @@ export function TabunganContent() {
         icon={PiggyBank}
         gradient="from-emerald-500 to-teal-600"
         action={
-          <button onClick={() => { setEditing(null); setForm({ name: '', target_amount: 0, monthly_contribution: 0, icon: '🎯', color: '#635bff' }); setShowModal(true); }} className="btn-primary">
+          <button onClick={() => { setEditing(null); setForm({ name: '', target_amount: 0, monthly_contribution: 0, saved: 0, icon: '🎯', color: '#635bff' }); setShowModal(true); }} className="btn-primary">
             <Plus className="w-4 h-4" /> Target Baru
           </button>
         }
@@ -161,7 +175,7 @@ export function TabunganContent() {
                         <span className="text-xs font-semibold flex items-center gap-1 min-w-0"><span className="shrink-0">{g.icon || '🎯'}</span> <span className="truncate">{g.name}</span></span>
                         <div className="flex items-center gap-1 shrink-0">
                           <span className="text-[10px] font-numeric text-muted-foreground">{formatRupiahCompact(prog.totalSaved)} / {formatRupiahCompact(g.target_amount)}</span>
-                          <button onClick={() => { setEditing(g); setForm({ name: g.name, target_amount: Number(g.target_amount), monthly_contribution: Number(g.monthly_contribution), icon: g.icon || '🎯', color: g.color || '#635bff' }); setShowModal(true); }} className="p-1.5 text-muted-foreground hover:text-primary-500 touch-target"><Edit2 className="w-3.5 h-3.5" /></button>
+                          <button onClick={() => { setEditing(g); setForm({ name: g.name, target_amount: Number(g.target_amount), monthly_contribution: Number(g.monthly_contribution), saved: Number(g.initial_amount || 0) + Number(g.current_amount || 0), icon: g.icon || '🎯', color: g.color || '#635bff' }); setShowModal(true); }} aria-label={`Ubah target ${g.name}`} className="p-1.5 text-muted-foreground hover:text-primary-500 touch-target"><Edit2 className="w-3.5 h-3.5" /></button>
                           <button onClick={() => handleDelete(g)} className="p-1.5 text-muted-foreground hover:text-red-500 touch-target"><Trash2 className="w-3.5 h-3.5" /></button>
                         </div>
                       </div>
@@ -237,31 +251,41 @@ export function TabunganContent() {
         </div>
       )}
 
-      <BottomSheet open={showModal} onClose={() => setShowModal(false)} title={editing ? 'Edit Target' : 'Target Baru'}>
+      <BottomSheet open={showModal} onClose={() => setShowModal(false)} title={editing ? 'Ubah Target' : 'Target Baru'}>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-xs font-semibold text-foreground mb-1.5 uppercase tracking-wide">Nama Target</label>
-            <input required value={form.name} onChange={e => setForm({...form, name: e.target.value})} type="text" className="input-field" placeholder="e.g. Dana Darurat 6x" />
+            <input required value={form.name} onChange={e => setForm({...form, name: e.target.value})} type="text" className="input-field" placeholder="misal: Dana Darurat 6x Pengeluaran" />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-foreground mb-1.5 uppercase tracking-wide">Target Amount (Rp)</label>
+            <label className="block text-xs font-semibold text-foreground mb-1.5 uppercase tracking-wide">Nominal Target (Rp)</label>
             <input required min={0} value={form.target_amount || ''} onChange={e => setForm({...form, target_amount: Number(e.target.value)})} type="number" className="input-field font-numeric" />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-foreground mb-1.5 uppercase tracking-wide">Target Nabung per Bulan (Rp)</label>
+            <label className="block text-xs font-semibold text-foreground mb-1.5 uppercase tracking-wide">Sudah Terkumpul (Rp)</label>
+            <input min={0} value={form.saved || ''} onChange={e => setForm({...form, saved: Number(e.target.value)})} type="number" className="input-field font-numeric" />
+            <p className="mt-1 text-[10px] text-muted-foreground">Total tabungan yang sudah Anda kumpulkan untuk target ini.</p>
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-foreground mb-1.5 uppercase tracking-wide">Rencana Menabung per Bulan (Rp)</label>
             <input min={0} value={form.monthly_contribution || ''} onChange={e => setForm({...form, monthly_contribution: Number(e.target.value)})} type="number" className="input-field font-numeric" />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-foreground mb-1.5 uppercase tracking-wide">Icon</label>
+            <label className="block text-xs font-semibold text-foreground mb-1.5 uppercase tracking-wide">Ikon</label>
             <div className="flex flex-wrap gap-2">
               {ICONS.map(ic => (
-                <button key={ic} type="button" onClick={() => setForm({...form, icon: ic})} className={`touch-target w-10 h-10 rounded-xl text-lg flex items-center justify-center border ${form.icon === ic ? 'border-primary-500 bg-primary-500/10' : 'border-border hover:border-muted-foreground'}`}>{ic}</button>
+                <button key={ic} type="button" onClick={() => setForm({...form, icon: ic})} className={`touch-target flex h-10 w-10 items-center justify-center rounded-xl border text-lg ${form.icon === ic ? 'border-primary-500 bg-primary-500/10' : 'border-border hover:border-muted-foreground'}`}>{ic}</button>
               ))}
             </div>
           </div>
+
+          {formError && (
+            <p role="alert" className="rounded-xl bg-red-50 px-3.5 py-2.5 text-sm text-red-600 dark:bg-red-500/10 dark:text-red-300">{formError}</p>
+          )}
+
           <div className="pt-2 flex justify-end gap-2">
             <button type="button" onClick={() => setShowModal(false)} className="btn-secondary">Batal</button>
-            <button type="submit" className="btn-primary">Simpan</button>
+            <button type="submit" className="btn-primary">{editing ? 'Simpan Perubahan' : 'Simpan Target'}</button>
           </div>
         </form>
       </BottomSheet>

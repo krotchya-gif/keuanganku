@@ -53,6 +53,7 @@ export function NetWorthContent() {
   const [debtForm, setDebtForm] = useState({ name: '', term: 'jangka_pendek', total_amount: 0, monthly_payment: 0, interest_rate: 0, due_date: 1 });
 
   const [savingSnapshot, setSavingSnapshot] = useState(false);
+  const [snapshotNotice, setSnapshotNotice] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   const fetchData = async () => {
     try {
@@ -174,10 +175,10 @@ export function NetWorthContent() {
       }, { onConflict: 'user_id,snapshot_date' });
       
       await fetchData();
-      alert('Snapshot bulan ini berhasil disimpan!');
+      setSnapshotNotice({ type: 'success', text: 'Snapshot bulan ini berhasil disimpan.' });
     } catch (err) {
       console.error(err);
-      alert('Gagal menyimpan snapshot');
+      setSnapshotNotice({ type: 'error', text: 'Gagal menyimpan snapshot. Periksa koneksi lalu coba lagi.' });
     } finally {
       setSavingSnapshot(false);
     }
@@ -221,8 +222,8 @@ export function NetWorthContent() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Net Worth"
-        subtitle="Pantau total kekayaan bersih Anda"
+        title="Kekayaan Bersih"
+        subtitle="Pantau total aset, kewajiban, dan perkembangannya"
         icon={TrendingUp}
         action={
           <button
@@ -237,11 +238,22 @@ export function NetWorthContent() {
         }
       />
 
+      {snapshotNotice && (
+        <p
+          role="status"
+          className={snapshotNotice.type === 'success'
+            ? 'rounded-xl bg-success/10 px-4 py-3 text-sm font-medium text-success'
+            : 'rounded-xl bg-danger/10 px-4 py-3 text-sm font-medium text-danger'}
+        >
+          {snapshotNotice.text}
+        </p>
+      )}
+
       {/* Summary cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-        {/* Net Worth */}
+        {/* Kekayaan bersih */}
         <div className="card-premium p-4 sm:p-6 bg-gradient-to-br from-primary-500 to-primary-600 border-primary-500 text-white">
-          <p className="text-sm font-medium text-white/80">Net Worth</p>
+          <p className="text-sm font-medium text-white/80">Kekayaan Bersih</p>
           <p className="kpi-value font-bold font-numeric mt-2">{formatRupiahCompact(result.netWorth)}</p>
           <div className={`flex items-center gap-1 mt-2 text-sm ${isPositive ? 'text-emerald-200' : 'text-red-200'}`}>
             {isPositive ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
@@ -287,7 +299,7 @@ export function NetWorthContent() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4">
         {/* Progress Chart */}
         <div className="card-premium p-4 sm:p-5 lg:col-span-2">
-          <h2 className="text-sm font-semibold text-foreground mb-4">Progress Net Worth</h2>
+          <h2 className="text-sm font-semibold text-foreground mb-4">Perkembangan Kekayaan Bersih</h2>
           <div className="h-56">
             {history.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
@@ -300,7 +312,7 @@ export function NetWorthContent() {
                   <Legend wrapperStyle={{ fontSize: 11 }} />
                   <Line name="Aset" type="monotone" dataKey="aset" stroke="#3ecf8e" strokeWidth={2} dot={{ r: 3 }} />
                   <Line name="Utang" type="monotone" dataKey="utang" stroke="#ef4444" strokeWidth={2} dot={{ r: 3 }} />
-                  <Line name="Net Worth" type="monotone" dataKey="netWorth" stroke="#635bff" strokeWidth={2.5} dot={{ r: 4 }} />
+                  <Line name="Kekayaan Bersih" type="monotone" dataKey="netWorth" stroke="#635bff" strokeWidth={2.5} dot={{ r: 4 }} />
                 </LineChart>
               </ResponsiveContainer>
             ) : (
@@ -476,7 +488,7 @@ export function NetWorthContent() {
         <form onSubmit={saveAsset} className="space-y-4">
           <div>
             <label className="block text-xs font-medium text-foreground mb-1.5">Nama Aset</label>
-            <input required value={assetForm.name} onChange={e => setAssetForm({...assetForm, name: e.target.value})} type="text" className="input-field" placeholder="e.g. Tabungan BCA" />
+            <input required value={assetForm.name} onChange={e => setAssetForm({...assetForm, name: e.target.value})} type="text" className="input-field" placeholder="misal: Tabungan BCA" />
           </div>
           <div>
             <label className="block text-xs font-medium text-foreground mb-1.5">Kategori</label>
@@ -502,7 +514,7 @@ export function NetWorthContent() {
         <form onSubmit={saveDebt} className="space-y-4">
           <div>
             <label className="block text-xs font-medium text-foreground mb-1.5">Nama Utang</label>
-            <input required value={debtForm.name} onChange={e => setDebtForm({...debtForm, name: e.target.value})} type="text" className="input-field" placeholder="e.g. KPR Mandiri" />
+            <input required value={debtForm.name} onChange={e => setDebtForm({...debtForm, name: e.target.value})} type="text" className="input-field" placeholder="misal: KPR Bank Mandiri" />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>

@@ -31,7 +31,7 @@ export const metadata: Metadata = {
 const FEATURES = [
   {
     icon: TrendingUp,
-    title: 'Net Worth Tracker',
+    title: 'Kekayaan Bersih (Net Worth)',
     desc: 'Pantau total aset, utang, dan kekayaan bersih Anda dengan grafik perkembangan bulanan.',
     color: '#635bff',
   },
@@ -44,13 +44,13 @@ const FEATURES = [
   {
     icon: Home,
     title: 'Simulasi KPR',
-    desc: 'Hitung cicilan KPR lurus maupun bunga berjenjang, lengkap dengan tabel amortisasi dan biaya siluman.',
+    desc: 'Hitung cicilan KPR bunga tetap maupun bertahap, lengkap dengan tabel amortisasi dan biaya tambahan.',
     color: '#06b6d4',
   },
   {
     icon: PiggyBank,
-    title: 'Budgeting Amplop',
-    desc: 'Sistem amplop digital: rencanakan, catat jurnal harian, dan evaluasi pengeluaran tanpa bocor.',
+    title: 'Anggaran Amplop',
+    desc: 'Sistem amplop digital: rencanakan, catat transaksi harian, dan evaluasi pengeluaran tanpa bocor.',
     color: '#f5a623',
   },
   {
@@ -94,7 +94,7 @@ const TESTIMONIALS = [
 const FAQS = [
   {
     q: 'Apakah Keuanganku gratis?',
-    a: 'Ya, semua fitur inti — Net Worth, Arus Kas, Checkup, Simulasi KPR, Budgeting, dan Tabungan — gratis digunakan.',
+    a: 'Ya, semua fitur inti (Kekayaan Bersih, Arus Kas, Checkup, Simulasi KPR, Anggaran, dan Tabungan) gratis digunakan.',
   },
   {
     q: 'Data keuangan saya aman tidak?',
