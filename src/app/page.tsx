@@ -1,95 +1,33 @@
 import type { Metadata } from 'next';
+import Image from 'next/image';
 import Link from 'next/link';
 import {
-  TrendingUp,
-  HeartPulse,
-  Home,
-  PiggyBank,
-  Target,
   ArrowRight,
-  Wallet,
-  ShieldCheck,
-  Smartphone,
-  CheckCircle2,
-  CalendarDays,
+  ArrowLeftRight,
   BarChart3,
+  Check,
+  ChevronDown,
+  History,
+  House,
+  PiggyBank,
+  Plus,
+  Smartphone,
+  TrendingUp,
+  Wallet,
 } from 'lucide-react';
 
 export const metadata: Metadata = {
   title: 'Keuanganku - Manajemen Keuangan Personal',
   description:
-    'Aplikasi manajemen keuangan personal lengkap: Net Worth, Arus Kas, Checkup Keuangan, Simulasi KPR, Budgeting, dan Tabungan. Gratis, cepat, dan bisa diakses offline.',
+    'Aplikasi manajemen keuangan personal lengkap: Kekayaan Bersih, Arus Kas, Checkup Keuangan, Simulasi KPR, Anggaran, dan Tabungan. Gratis, cepat, dan bisa diakses offline.',
   keywords: ['keuangan', 'budgeting', 'net worth', 'KPR', 'investasi', 'tabungan', 'PWA'],
   openGraph: {
     title: 'Keuanganku - Manajemen Keuangan Personal',
     description:
-      'Pantau net worth, arus kas, budgeting, dan kesehatan finansial dalam satu aplikasi. Gratis & offline.',
+      'Pantau kekayaan bersih, arus kas, anggaran, dan kesehatan finansial dalam satu aplikasi. Gratis & offline.',
     type: 'website',
   },
 };
-
-const FEATURES = [
-  {
-    icon: TrendingUp,
-    title: 'Kekayaan Bersih (Net Worth)',
-    desc: 'Pantau total aset, utang, dan kekayaan bersih Anda dengan grafik perkembangan bulanan.',
-    color: '#635bff',
-  },
-  {
-    icon: HeartPulse,
-    title: 'Checkup Keuangan',
-    desc: '6 rasio kesehatan finansial real-time: dana darurat, arus kas, cicilan, investasi, dan lainnya.',
-    color: '#3ecf8e',
-  },
-  {
-    icon: Home,
-    title: 'Simulasi KPR',
-    desc: 'Hitung cicilan KPR bunga tetap maupun bertahap, lengkap dengan tabel amortisasi dan biaya tambahan.',
-    color: '#06b6d4',
-  },
-  {
-    icon: PiggyBank,
-    title: 'Anggaran Amplop',
-    desc: 'Sistem amplop digital: rencanakan, catat transaksi harian, dan evaluasi pengeluaran tanpa bocor.',
-    color: '#f5a623',
-  },
-  {
-    icon: Target,
-    title: 'Target Tabungan',
-    desc: 'Buat goal menabung, pantau progres, dan hitung estimasi bulan mencapai target.',
-    color: '#ec4899',
-  },
-  {
-    icon: BarChart3,
-    title: 'Evaluasi Tahunan',
-    desc: 'Laporan komprehensif pemasukan, pengeluaran, dan pertumbuhan kekayaan Anda selama setahun.',
-    color: '#8b5cf6',
-  },
-];
-
-const TESTIMONIALS = [
-  {
-    name: 'Andi Pratama',
-    role: 'Karyawan Swasta, 29',
-    quote:
-      'Awalnya cuma buat simulasi KPR, ternyata ketagihan. Sekarang semua keuangan bulanan aku catat di Keuanganku. Fitur checkup-nya ngingetin aku buat perbaiki dana darurat.',
-    initial: 'A',
-  },
-  {
-    name: 'Sarah Wijaya',
-    role: 'Freelancer, 26',
-    quote:
-      'Sistem amplop-nya enak banget dipakai. Aku bisa liat realisasi vs rencana tiap kategori, jadi tahu pengeluaran mana yang harus dipangkas.',
-    initial: 'S',
-  },
-  {
-    name: 'Budi Santoso',
-    role: 'Wirausaha, 34',
-    quote:
-      'Pernah nyobain banyak aplikasi keuangan, ini paling simpel dan cepat. Bisa dipakai offline juga, jadi catatan tetap jalan walau sinyal lagi jelek.',
-    initial: 'B',
-  },
-];
 
 const FAQS = [
   {
@@ -109,118 +47,191 @@ const FAQS = [
     a: 'Keuanganku menggabungkan 3 alat sekaligus: checkup kesehatan finansial, simulasi KPR, dan anggaran amplop, jadi Anda tidak perlu berpindah aplikasi.',
   },
   {
-    q: 'Bagaimana cara menyimpan progres net worth?',
-    a: 'Cukup tekan tombol "Simpan Snapshot" di halaman Net Worth setiap awal bulan. Riwayatnya otomatis digambar menjadi grafik perkembangan.',
+    q: 'Bagaimana cara menyimpan progres kekayaan bersih?',
+    a: 'Cukup tekan tombol "Simpan Snapshot" di halaman Kekayaan Bersih setiap awal bulan. Riwayatnya otomatis digambar menjadi grafik perkembangan.',
   },
 ];
+
+/** Bingkai ponsel CSS untuk menampilkan screenshot produk asli. */
+function PhoneFrame({ src, alt, priority = false }: { src: string; alt: string; priority?: boolean }) {
+  return (
+    <div className="relative mx-auto w-[240px] sm:w-[270px]">
+      <div className="rounded-[2.6rem] border border-zinc-800/80 bg-zinc-900 p-[10px] shadow-[0_24px_60px_-16px_rgba(15,23,42,0.35)] dark:border-zinc-700 dark:shadow-[0_24px_60px_-16px_rgba(0,0,0,0.8)]">
+        <div className="relative overflow-hidden rounded-[2rem] bg-white">
+          {/* unoptimized: file lokal 390px, hindari ketergantungan pipeline optimizer */}
+          <Image
+            src={src}
+            alt={alt}
+            width={390}
+            height={844}
+            priority={priority}
+            unoptimized
+            className="block h-auto w-full"
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function LandingPage() {
   return (
     <div className="min-h-screen bg-background text-foreground">
       {/* ── NAVBAR ── */}
-      <header className="sticky top-0 z-40 bg-background/80 backdrop-blur-lg border-b border-border/60">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center shadow-glow-sm">
-              <Wallet className="w-5 h-5 text-white" />
+      <header className="sticky top-0 z-40 border-b border-border/60 bg-background/80 backdrop-blur-lg">
+        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
+          <Link href="/" className="flex items-center gap-2.5">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary-500">
+              <Wallet className="h-5 w-5 text-white" />
             </div>
-            <span className="font-bold text-lg">Keuanganku</span>
-          </div>
-          <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-muted-foreground">
-            <a href="#fitur" className="hover:text-foreground transition-colors">Fitur</a>
-            <a href="#testimoni" className="hover:text-foreground transition-colors">Testimoni</a>
-            <a href="#faq" className="hover:text-foreground transition-colors">FAQ</a>
-          </nav>
-          <Link href="/login" className="btn-primary !py-2">
-            Masuk <ArrowRight className="w-4 h-4" />
+            <span className="text-lg font-bold tracking-tight">Keuanganku</span>
           </Link>
+          <nav className="hidden items-center gap-6 text-sm font-medium text-muted-foreground md:flex">
+            <a href="#fitur" className="transition-colors hover:text-foreground">Fitur</a>
+            <a href="#faq" className="transition-colors hover:text-foreground">FAQ</a>
+          </nav>
+          <div className="flex items-center gap-2">
+            <Link href="/login" className="btn-secondary !px-4 !py-2 text-sm">Masuk</Link>
+            <Link href="/register" className="btn-primary !px-4 !py-2 text-sm">Daftar</Link>
+          </div>
         </div>
       </header>
 
-      {/* ── HERO ── */}
-      <section className="relative overflow-hidden">
-        <div className="absolute -top-32 -right-32 w-96 h-96 bg-primary-500/10 rounded-full blur-3xl" />
-        <div className="absolute -bottom-32 -left-32 w-96 h-96 bg-violet-500/10 rounded-full blur-3xl" />
-        <div className="relative max-w-6xl mx-auto px-4 sm:px-6 py-16 sm:py-24 text-center">
-          <div className="inline-flex items-center gap-2 bg-primary-500/10 text-primary-600 border border-primary-500/20 rounded-full px-4 py-1.5 text-xs font-semibold mb-6">
-            <Smartphone className="w-3.5 h-3.5" /> PWA · Gratis · Tanpa Iklan
+      {/* ── HERO: copy kiri, produk kanan ── */}
+      <section className="mx-auto max-w-6xl px-4 pb-16 pt-12 sm:px-6 sm:pt-20 lg:pb-24">
+        <div className="grid items-center gap-12 lg:grid-cols-2 lg:gap-8">
+          <div>
+            <h1 className="max-w-xl text-4xl font-extrabold leading-[1.08] tracking-tighter sm:text-5xl lg:text-6xl">
+              Uang Anda, tercatat rapi.
+            </h1>
+            <p className="mt-5 max-w-md text-base leading-relaxed text-muted-foreground sm:text-lg">
+              Catat arus kas, jalankan anggaran amplop, dan hitung KPR dari satu aplikasi ringan yang bisa dipakai offline.
+            </p>
+            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+              <Link href="/register" className="btn-primary px-7 py-3.5 text-base">
+                Mulai Gratis <ArrowRight className="h-4 w-4" />
+              </Link>
+              <Link href="/login" className="btn-secondary px-7 py-3.5 text-base">
+                Masuk
+              </Link>
+            </div>
+            <p className="mt-6 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+              <span className="flex items-center gap-1"><Check className="h-3.5 w-3.5 text-success" /> Gratis, tanpa iklan</span>
+              <span className="flex items-center gap-1"><Check className="h-3.5 w-3.5 text-success" /> Data hanya milik Anda</span>
+              <span className="flex items-center gap-1"><Check className="h-3.5 w-3.5 text-success" /> Bisa dipakai offline</span>
+            </p>
           </div>
-          <h1 className="text-4xl sm:text-6xl font-extrabold tracking-tight leading-tight">
-            Kelola Keuangan<br />
-            <span className="gradient-text">dengan Cerdas &amp; Tenang</span>
-          </h1>
-          <p className="mt-5 text-base sm:text-lg text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-            Pantau kekayaan bersih, arus kas, kesehatan finansial, simulasi KPR, dan anggaran amplop,
-            semuanya dalam satu aplikasi yang cepat dan bisa diakses offline.
-          </p>
-          <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
-            <Link href="/register" className="btn-primary w-full sm:w-auto px-8 py-3.5 text-base">
-              Daftar Gratis Sekarang
-            </Link>
-            <Link href="/login" className="btn-secondary w-full sm:w-auto px-8 py-3.5 text-base">
-              Sudah punya akun? Masuk
-            </Link>
-          </div>
-          <div className="mt-10 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs sm:text-sm text-muted-foreground">
-            <span className="flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4 text-emerald-500" /> 6 Rasio Kesehatan Finansial</span>
-            <span className="flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4 text-emerald-500" /> Simulasi KPR Akurat</span>
-            <span className="flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4 text-emerald-500" /> Budgeting Amplop</span>
-            <span className="flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4 text-emerald-500" /> Mode Offline</span>
+          <div className="relative">
+            <PhoneFrame src="/landing/beranda.png" alt="Tampilan Beranda aplikasi Keuanganku" priority />
           </div>
         </div>
       </section>
 
-      {/* ── FEATURES ── */}
-      <section id="fitur" className="max-w-6xl mx-auto px-4 sm:px-6 py-16 sm:py-20">
-        <div className="text-center mb-12">
-          <h2 className="text-3xl sm:text-4xl font-bold">Semua Alat Keuangan, Satu Tempat</h2>
-          <p className="text-muted-foreground mt-3 max-w-xl mx-auto">
-            Diambil dari 3 metode pencatatan klasik (checkup, simulasi KPR, budgeting amplop) dan disatukan dalam aplikasi yang mudah dipakai di HP.
-          </p>
+      {/* ── PILAR 1: Mencatat ── */}
+      <section id="fitur" className="border-t border-border/60 bg-muted/30">
+        <div className="mx-auto grid max-w-6xl items-center gap-10 px-4 py-16 sm:px-6 sm:py-20 lg:grid-cols-2 lg:gap-16">
+          <div className="order-2 lg:order-1">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary-500/10 text-primary-500">
+              <Plus className="h-5 w-5" />
+            </div>
+            <h2 className="mt-4 text-2xl font-bold tracking-tight sm:text-3xl">Mencatat sesingkat mungkin</h2>
+            <p className="mt-3 max-w-md leading-relaxed text-muted-foreground">
+              Pilih pemasukan atau pengeluaran, ketuk kategorinya, isi nominal lewat keypad. Selesai dalam hitungan detik,
+              bahkan saat sinyal hilang.
+            </p>
+            <ul className="mt-5 space-y-2 text-sm text-muted-foreground">
+              <li className="flex items-center gap-2"><Check className="h-4 w-4 text-success" /> Kategori berbentuk chip, tanpa dropdown</li>
+              <li className="flex items-center gap-2"><Check className="h-4 w-4 text-success" /> Riwayat terarsip rapi per tanggal</li>
+            </ul>
+          </div>
+          <div className="order-1 lg:order-2">
+            <PhoneFrame src="/landing/catat.png" alt="Form Catat Transaksi dengan pilihan kategori chip dan keypad" />
+          </div>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-          {FEATURES.map((f) => {
-            const Icon = f.icon;
-            return (
-              <div key={f.title} className="card-premium p-6 hover:border-primary-500/30">
-                <div
-                  className="w-11 h-11 rounded-2xl flex items-center justify-center mb-4"
-                  style={{ backgroundColor: `${f.color}15`, color: f.color }}
-                >
-                  <Icon className="w-5 h-5" />
-                </div>
-                <h3 className="font-semibold text-base mb-1.5">{f.title}</h3>
-                <p className="text-sm text-muted-foreground leading-relaxed">{f.desc}</p>
+      </section>
+
+      {/* ── PILAR 2: Anggaran ── */}
+      <section className="border-t border-border/60">
+        <div className="mx-auto grid max-w-6xl items-center gap-10 px-4 py-16 sm:px-6 sm:py-20 lg:grid-cols-2 lg:gap-16">
+          <div>
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-success/10 text-success">
+              <PiggyBank className="h-5 w-5" />
+            </div>
+            <h2 className="mt-4 text-2xl font-bold tracking-tight sm:text-3xl">Anggaran amplop yang disiplin</h2>
+            <p className="mt-3 max-w-md leading-relaxed text-muted-foreground">
+              Bagi gaji ke amplop bulanan, lalu bandingkan rencana dengan realisasi. Alokasi yang meleset langsung
+              kelihatan sebelum jadi kebocoran.
+            </p>
+          </div>
+          <div>
+            <PhoneFrame src="/landing/anggaran.png" alt="Evaluasi anggaran: rencana vs realisasi per kategori" />
+          </div>
+        </div>
+      </section>
+
+      {/* ── PILAR 3: KPR (full-width, komposisi berbeda) ── */}
+      <section className="border-t border-border/60 bg-muted/30">
+        <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20">
+          <div className="grid items-center gap-10 lg:grid-cols-5 lg:gap-16">
+            <div className="lg:col-span-2">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-warning/10 text-warning">
+                <House className="h-5 w-5" />
               </div>
-            );
-          })}
+              <h2 className="mt-4 text-2xl font-bold tracking-tight sm:text-3xl">Simulasi KPR yang serius</h2>
+              <p className="mt-3 max-w-md leading-relaxed text-muted-foreground">
+                Jadwal amortisasi bulanan sampai akhir tenor, dukungan bunga tetap dan bertahap, plus perkiraan total
+                biaya di luar uang muka. Semua angka dihitung lokal, tanpa dikirim ke mana pun.
+              </p>
+            </div>
+            <div className="lg:col-span-3">
+              <div className="overflow-hidden rounded-2xl border border-border/70 shadow-card">
+                <Image
+                  src="/landing/kpr.png"
+                  alt="Form dan hasil Simulasi KPR"
+                  width={780}
+                  height={844}
+                  unoptimized
+                  className="block h-auto w-full"
+                />
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
-      {/* ── TESTIMONIALS ── */}
-      <section id="testimoni" className="bg-muted/40 border-y border-border/60">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-16 sm:py-20">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl sm:text-4xl font-bold">Yang Kata Pengguna</h2>
-            <p className="text-muted-foreground mt-3">Mereka sudah mulai mengatur keuangannya lebih baik.</p>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
-            {TESTIMONIALS.map((t) => (
-              <div key={t.name} className="card-premium p-6 flex flex-col">
-                <div className="flex gap-1 text-amber-400 mb-4">
-                  {'★★★★★'.split('').map((s, i) => (
-                    <span key={i}>{s}</span>
-                  ))}
+      {/* ── FITUR PENDUKUNG (daftar ringkas, bukan kartu kembar) ── */}
+      <section className="border-t border-border/60">
+        <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20">
+          <div className="grid gap-x-12 gap-y-8 sm:grid-cols-2">
+            {[
+              {
+                icon: TrendingUp,
+                title: 'Kekayaan bersih terpantau',
+                desc: 'Aset, kewajiban, dan snapshot bulanan jadi grafik perkembangan.',
+              },
+              {
+                icon: BarChart3,
+                title: 'Checkup keuangan',
+                desc: 'Enam rasio kesehatan finansial dengan penilaian sehat hingga bahaya.',
+              },
+              {
+                icon: History,
+                title: 'Riwayat transparan',
+                desc: 'Semua transaksi terarsip per tanggal, bisa diekspor ke CSV.',
+              },
+              {
+                icon: Smartphone,
+                title: 'Pasang di layar utama',
+                desc: 'Berjalan seperti aplikasi biasa di Android, iPhone, dan desktop.',
+              },
+            ].map((f) => (
+              <div key={f.title} className="flex gap-4">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary-500/10 text-primary-500">
+                  <f.icon className="h-5 w-5" />
                 </div>
-                <p className="text-sm text-foreground/90 leading-relaxed flex-1 italic">&quot;{t.quote}&quot;</p>
-                <div className="flex items-center gap-3 mt-5 pt-4 border-t border-border/60">
-                  <div className="w-9 h-9 rounded-full bg-gradient-to-br from-primary-500/20 to-primary-600/20 flex items-center justify-center border border-primary-500/30 text-sm font-semibold text-primary-500">
-                    {t.initial}
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold">{t.name}</p>
-                    <p className="text-xs text-muted-foreground">{t.role}</p>
-                  </div>
+                <div>
+                  <h3 className="font-semibold">{f.title}</h3>
+                  <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{f.desc}</p>
                 </div>
               </div>
             ))}
@@ -228,55 +239,67 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── FAQ ── */}
-      <section id="faq" className="max-w-3xl mx-auto px-4 sm:px-6 py-16 sm:py-20">
-        <div className="text-center mb-12">
-          <h2 className="text-3xl sm:text-4xl font-bold">Pertanyaan yang Sering Diajukan</h2>
+      {/* ── KUTIPAN PENGGUNA ── */}
+      <section className="border-t border-border/60 bg-muted/30">
+        <div className="mx-auto max-w-3xl px-4 py-16 text-center sm:px-6 sm:py-20">
+          <blockquote className="text-xl font-medium leading-relaxed tracking-tight sm:text-2xl">
+            &ldquo;Aku bisa lihat realisasi vs rencana tiap kategori, jadi tahu pengeluaran mana yang harus dipangkas.&rdquo;
+          </blockquote>
+          <p className="mt-5 text-sm text-muted-foreground">
+            <span className="font-semibold text-foreground">Sarah Wijaya</span> · Freelancer, pengguna sejak 2026
+          </p>
         </div>
-        <div className="space-y-3">
+      </section>
+
+      {/* ── FAQ ── */}
+      <section id="faq" className="mx-auto max-w-3xl px-4 py-16 sm:px-6 sm:py-20">
+        <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">Pertanyaan yang sering diajukan</h2>
+        <div className="mt-8 divide-y divide-border/70 border-y border-border/70">
           {FAQS.map((f) => (
-            <details key={f.q} className="card-premium p-5 group">
-              <summary className="flex items-center justify-between cursor-pointer font-medium text-sm sm:text-base list-none">
+            <details key={f.q} className="group py-4">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-sm font-medium sm:text-base">
                 {f.q}
-                <span className="text-muted-foreground text-xs group-open:rotate-180 transition-transform ml-3 shrink-0">▼</span>
+                <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 group-open:rotate-180" />
               </summary>
-              <p className="mt-3 text-sm text-muted-foreground leading-relaxed">{f.a}</p>
+              <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{f.a}</p>
             </details>
           ))}
         </div>
       </section>
 
-      {/* ── CTA ── */}
-      <section className="max-w-6xl mx-auto px-4 sm:px-6 pb-16">
-        <div className="card-premium p-8 sm:p-12 text-center bg-gradient-to-br from-primary-500 to-violet-600 border-transparent text-white">
-          <ShieldCheck className="w-12 h-12 mx-auto mb-4 text-white/80" />
-          <h2 className="text-2xl sm:text-3xl font-bold">Mulai Atur Keuangan Anda Hari Ini</h2>
-          <p className="text-white/80 mt-3 max-w-lg mx-auto">
-            Gratis selamanya. Tanpa kartu kredit. Data pribadi hanya milik Anda.
+      {/* ── CTA AKHIR ── */}
+      <section className="mx-auto max-w-6xl px-4 pb-20 sm:px-6">
+        <div className="rounded-3xl bg-primary-600 px-6 py-12 text-center text-white sm:px-12 sm:py-16">
+          <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">Mulai malam ini.</h2>
+          <p className="mx-auto mt-3 max-w-md text-sm text-white/80 sm:text-base">
+            Daftar dalam dua menit. Gratis selamanya, tanpa kartu kredit.
           </p>
-          <Link href="/register" className="mt-6 inline-flex items-center gap-2 bg-white text-primary-600 hover:bg-white/90 px-8 py-3.5 rounded-xl font-semibold text-base shadow-lg active:scale-[0.98] transition-all">
-            Daftar Sekarang <ArrowRight className="w-4 h-4" />
+          <Link
+            href="/register"
+            className="mt-7 inline-flex items-center gap-2 rounded-xl bg-white px-7 py-3.5 text-base font-semibold text-primary-700 shadow-lg transition-all hover:bg-white/90 active:scale-[0.98]"
+          >
+            Daftar Gratis <ArrowRight className="h-4 w-4" />
           </Link>
         </div>
       </section>
 
       {/* ── FOOTER ── */}
       <footer className="border-t border-border/60">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10 flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-4 py-10 sm:flex-row sm:px-6">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center">
-              <Wallet className="w-4 h-4 text-white" />
+            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary-500">
+              <Wallet className="h-4 w-4 text-white" />
             </div>
             <div>
-              <p className="font-bold text-sm">Keuanganku</p>
-              <p className="text-xs text-muted-foreground flex items-center gap-1">
-                <CalendarDays className="w-3 h-3" /> Manajemen Keuangan Personal
+              <p className="text-sm font-bold">Keuanganku</p>
+              <p className="flex items-center gap-1 text-xs text-muted-foreground">
+                <ArrowLeftRight className="h-3 w-3" /> Manajemen Keuangan Personal
               </p>
             </div>
           </div>
           <div className="flex items-center gap-5 text-sm text-muted-foreground">
-            <Link href="/login" className="hover:text-foreground transition-colors">Masuk</Link>
-            <Link href="/register" className="hover:text-foreground transition-colors">Daftar</Link>
+            <Link href="/login" className="transition-colors hover:text-foreground">Masuk</Link>
+            <Link href="/register" className="transition-colors hover:text-foreground">Daftar</Link>
             <span>© {new Date().getFullYear()} Keuanganku</span>
           </div>
         </div>
