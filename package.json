@@ -6,7 +6,7 @@
     "dev": "next dev --webpack --port 3002",
     "build": "next build --webpack",
     "start": "next start",
-    "lint": "ESLINT_USE_FLAT_CONFIG=false eslint .",
+    "lint": "ESLINT_USE_FLAT_CONFIG=false eslint . --ignore-pattern public/sw.js",
     "type-check": "tsc --noEmit"
   },
   "dependencies": {

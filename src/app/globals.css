@@ -64,6 +64,16 @@
     @apply shadow-card-hover;
   }
 
+  .dashboard-summary-hero {
+    background: linear-gradient(135deg, #635bff 0%, #4f46b8 100%);
+    border-color: transparent;
+    color: white;
+  }
+  .dashboard-summary-hero .text-foreground { color: white; }
+  .dashboard-summary-hero .text-primary-500 { color: white; }
+  .dashboard-summary-hero .text-muted-foreground { color: rgba(255,255,255,.72); }
+  .dashboard-summary-hero .border-border\/40 { border-color: rgba(255,255,255,.18); }
+
   /* Card dengan aksen warna lembut */
   .card-soft {
     @apply rounded-2xl border border-border/60 shadow-card;

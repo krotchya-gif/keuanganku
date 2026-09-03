@@ -218,12 +218,12 @@ export function DashboardContent() {
       {/* Row 1: KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
         {/* Net Worth */}
-        <div className="relative overflow-hidden card-premium p-4 sm:p-5">
+        <div className="relative overflow-hidden card-premium p-4 sm:p-5 dashboard-summary-hero">
           <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-primary-500/5 to-transparent rounded-bl-full" />
           <div className="relative">
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-primary-500/10 flex items-center justify-center">
+                <div className="w-8 h-8 rounded-full bg-white/15 flex items-center justify-center">
                   <TrendingUp className="w-4 h-4 text-primary-500" />
                 </div>
                 <p className="text-sm font-medium text-foreground">Net Worth</p>
@@ -552,7 +552,7 @@ export function DashboardContent() {
               className="card-premium p-4 flex items-center gap-3 hover:border-primary-500/40 group transition-all active:scale-[0.98]"
             >
               <div
-                className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
+                className="w-11 h-11 rounded-full flex items-center justify-center shrink-0"
                 style={{ backgroundColor: `${action.color}15` }}
               >
                 <Icon className="w-4 h-4" style={{ color: action.color }} />
