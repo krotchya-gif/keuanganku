@@ -186,7 +186,7 @@ export function DashboardContent() {
       days.push({ hari: d.toLocaleDateString('id-ID', { weekday: 'short' }), total });
     }
     return days;
-  }, [transactions]);
+  }, [transactions, now]);
 
   const sisaPersen = cashFlow.masuk > 0 ? Math.max(0, Math.min(100, ((cashFlow.masuk - cashFlow.keluar) / cashFlow.masuk) * 100)) : null;
 
