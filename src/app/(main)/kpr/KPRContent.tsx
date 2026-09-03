@@ -20,7 +20,7 @@ import { getCurrentUserId } from '@/lib/queries/users';
 import { fetchKPRSimulations, type SavedSimulation } from '@/lib/queries/kpr';
 
 const statusColors: Record<string, string> = { sehat: '#3ecf8e', warning: '#f5a623', bahaya: '#ef4444' };
-const statusLabels: Record<string, string> = { sehat: '✅ Rasio Sehat', warning: '⚠️ Perlu Waspada', bahaya: '🔴 Tidak Sehat' };
+const statusLabels: Record<string, string> = { sehat: 'Rasio cicilan sehat', warning: 'Perlu diperhatikan', bahaya: 'Rasio berisiko tinggi' };
 
 const EMPTY_KPR_RESULT: KPRResult = {
   schedule: [],
@@ -128,6 +128,7 @@ export function KPRContent() {
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedSim, setSelectedSim] = useState<SavedSimulation | null>(null);
   const [simName, setSimName] = useState('');
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
   const fetchSimulations = useCallback(async () => {
@@ -180,12 +181,13 @@ export function KPRContent() {
 
   const saveSimulation = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!simName.trim()) return;
-    if (calcError) return;
+    setSaveError(null);
+    if (!simName.trim()) { setSaveError('Isi nama simulasi terlebih dahulu.'); return; }
+    if (calcError) { setSaveError('Perbaiki dulu input simulasi yang tidak valid di form.'); return; }
     setIsSaving(true);
     try {
       const supabase = createClient();
-      await supabase.from('kpr_simulations').insert({
+      const { error } = await supabase.from('kpr_simulations').insert({
         user_id: userId,
         name: simName,
         property_price: form.propertyPrice,
@@ -212,11 +214,13 @@ export function KPRContent() {
         total_interest: kprResult.summary.totalInterestPaid,
         remaining_principal_at_floating: kprResult.summary.remainingAtFloating,
       });
+      if (error) throw error;
       setShowSaveModal(false);
       setSimName('');
       fetchSimulations();
     } catch (err) {
       console.error(err);
+      setSaveError('Gagal menyimpan simulasi. Periksa koneksi lalu coba lagi.');
     } finally {
       setIsSaving(false);
     }
@@ -397,7 +401,7 @@ export function KPRContent() {
                     : 'bg-muted/50 border-transparent text-muted-foreground hover:bg-muted'
                 }`}
               >
-                Single Float
+                Bunga Tunggal
               </button>
               <button
                 onClick={() => setBerjenjang(true)}
@@ -407,7 +411,7 @@ export function KPRContent() {
                     : 'bg-muted/50 border-transparent text-muted-foreground hover:bg-muted'
                 }`}
               >
-                <Layers className="w-4 h-4" /> Berjenjang
+                <Layers className="w-4 h-4" /> Bunga Bertahap
               </button>
             </div>
 
@@ -449,7 +453,7 @@ export function KPRContent() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs font-semibold text-foreground block mb-1.5">Bunga Fix p.a (%)</label>
+                  <label className="text-xs font-semibold text-foreground block mb-1.5">Bunga Tetap (% per tahun)</label>
                   <input
                     type="number"
                     value={form.fixedRateAnnual ? parseFloat((form.fixedRateAnnual * 100).toFixed(2)) : ''}
@@ -458,7 +462,7 @@ export function KPRContent() {
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-semibold text-foreground block mb-1.5">Periode Fix (Thn)</label>
+                  <label className="text-xs font-semibold text-foreground block mb-1.5">Masa Bunga Tetap (tahun)</label>
                   <input
                     type="number"
                     value={form.fixedPeriodYears || ''}
@@ -470,7 +474,7 @@ export function KPRContent() {
 
               {!berjenjang && (
                 <div>
-                  <label className="text-xs font-semibold text-foreground block mb-1.5">Bunga Floating Cap p.a (%)</label>
+                  <label className="text-xs font-semibold text-foreground block mb-1.5">Bunga Floating (% per tahun)</label>
                   <input
                     type="number"
                     value={form.floatingRateAnnual ? parseFloat((form.floatingRateAnnual * 100).toFixed(2)) : ''}
@@ -548,7 +552,7 @@ export function KPRContent() {
 
                 {!isDurationValid && (
                   <p className="text-xs text-red-500 font-medium py-1.5 px-3 bg-red-500/10 rounded-lg">
-                    ⚠️ Total durasi fase ({totalTransitionYears}th) melebihi sisa tenor ({form.loanPeriodYears - form.fixedPeriodYears}th). Kurangi durasi transisi.
+                    Total durasi tahap ({totalTransitionYears} thn) melebihi sisa tenor ({form.loanPeriodYears - form.fixedPeriodYears} thn). Kurangi durasi tahapan.
                   </p>
                 )}
 
@@ -607,7 +611,7 @@ export function KPRContent() {
                 )}
 
                 <div className="pt-2">
-                  <label className="text-xs font-semibold text-foreground block mb-1.5">Bunga Floating Akhir p.a (%)</label>
+                  <label className="text-xs font-semibold text-foreground block mb-1.5">Bunga Floating Penutup (% per tahun)</label>
                   <div className="flex items-center gap-2">
                     <input
                       type="number"
@@ -623,7 +627,7 @@ export function KPRContent() {
 
                 {/* Ringkasan fase */}
                 <div className="text-xs text-muted-foreground pt-3 space-y-1.5 border-t border-border/60">
-                  <div className="flex justify-between"><span>Fix ({form.fixedPeriodYears} thn)</span><span className="font-numeric font-semibold">{formatPercent(form.fixedRateAnnual)}</span></div>
+                  <div className="flex justify-between"><span>Bunga Tetap ({form.fixedPeriodYears} thn)</span><span className="font-numeric font-semibold">{formatPercent(form.fixedRateAnnual)}</span></div>
                   {floatingPhases.map((p, i) => (
                     <div key={i} className="flex justify-between">
                       <span>Transisi {i + 1} ({p.durationYears} thn)</span>
@@ -647,8 +651,8 @@ export function KPRContent() {
             >
               {statusLabels[ratioResult.status]}
             </div>
-            <InfoRow label="Cicilan Min (fix)" value={formatRupiah(kprResult.summary.minInstallment)} />
-            <InfoRow label="Cicilan Maks" value={formatRupiah(kprResult.summary.maxInstallment)} />
+            <InfoRow label="Cicilan Terendah (Masa Bunga Tetap)" value={formatRupiah(kprResult.summary.minInstallment)} />
+            <InfoRow label="Cicilan Tertinggi (Masa Floating)" value={formatRupiah(kprResult.summary.maxInstallment)} />
             <InfoRow label="Rasio Min (vs Gaji)" value={formatPercent(ratioResult.minRatio)} />
             <InfoRow label="Rasio Maks (vs Gaji)" value={formatPercent(ratioResult.maxRatio)} />
             <p className="text-xs text-muted-foreground mt-4 leading-relaxed p-3 bg-muted/50 rounded-lg">{ratioResult.conclusion}</p>
@@ -681,9 +685,9 @@ export function KPRContent() {
             )}
             <div className="flex border-b border-border">
               {[
-                { key: 'ringkasan', label: '📊 Ringkasan' },
-                { key: 'amortisasi', label: '📋 Tabel Amortisasi' },
-                { key: 'biaya', label: '💰 Biaya Tambahan (Siluman)' },
+                { key: 'ringkasan', label: 'Ringkasan' },
+                { key: 'amortisasi', label: 'Tabel Amortisasi' },
+                { key: 'biaya', label: 'Biaya Tambahan' },
               ].map((t) => (
                 <button
                   key={t.key}
@@ -727,9 +731,9 @@ export function KPRContent() {
                   <InfoRow label="Total Bunga (Selama Tenor)" value={formatRupiah(kprResult.summary.totalInterestPaid)} />
                   <InfoRow label="Rasio Bunga terhadap Pokok" value={formatPercent(kprResult.summary.interestToPrincipalRatio)} highlight />
                   <InfoRow label={`Sisa Pokok Saat Bunga Floating (Setelah Tahun ke-${form.fixedPeriodYears})`} value={formatRupiah(kprResult.summary.remainingAtFloating)} />
-                  <InfoRow label="Total Biaya Siluman (Notaris, Pajak, dll)" value={formatRupiah(additionalCosts.total)} />
+                  <InfoRow label="Total Biaya Tambahan (di luar cicilan)" value={formatRupiah(additionalCosts.total)} />
                   <div className="bg-primary-500/5 p-3 rounded-lg border border-primary-500/10 mt-4">
-                    <InfoRow label="Modal Awal Yang Harus Disiapkan (DP + Biaya Tambahan)" value={formatRupiah(form.downPayment + additionalCosts.total)} highlight />
+                    <InfoRow label="Dana Awal yang Harus Disiapkan (DP + Biaya Tambahan)" value={formatRupiah(form.downPayment + additionalCosts.total)} highlight />
                   </div>
 
                   {/* Ringkasan fase berjenjang */}
@@ -894,8 +898,8 @@ export function KPRContent() {
 
                   <div className="flex justify-between items-center py-4 bg-primary-500/10 px-4 rounded-xl mt-4 border border-primary-500/20">
                     <div>
-                      <p className="text-sm font-bold text-foreground">TOTAL BIAYA SILUMAN</p>
-                      <p className="text-xs text-muted-foreground">Harus dibayar cash di luar DP KPR</p>
+                      <p className="text-sm font-bold text-foreground">TOTAL BIAYA TAMBAHAN</p>
+                      <p className="text-xs text-muted-foreground">Dibayar di muka, di luar uang muka KPR</p>
                     </div>
                     <p className="text-xl font-bold font-numeric text-primary-600">{formatRupiah(additionalCosts.total)}</p>
                   </div>
@@ -943,7 +947,7 @@ export function KPRContent() {
                 </h4>
                 <div className="bg-muted/30 rounded-lg p-3 space-y-2">
                   <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Fix ({selectedSim.fixed_period_years} thn)</span>
+                    <span className="text-muted-foreground">Bunga Tetap ({selectedSim.fixed_period_years} thn)</span>
                     <span className="font-numeric font-medium">{(Number(selectedSim.fixed_rate) * 100).toFixed(2)}%</span>
                   </div>
                   {selectedSim.floating_phases && (() => {
@@ -972,11 +976,11 @@ export function KPRContent() {
                 </h4>
                 <div className="bg-muted/30 rounded-lg p-3 space-y-2">
                   <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Cicilan Min (Fix)</span>
+                      <span className="text-muted-foreground">Cicilan Terendah</span>
                     <span className="font-numeric font-medium text-green-600">{formatRupiah(Number(selectedSim.monthly_installment_min || 0))}</span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Cicilan Max (Float)</span>
+                    <span className="text-muted-foreground">Cicilan Tertinggi</span>
                     <span className="font-numeric font-medium text-amber-600">{formatRupiah(Number(selectedSim.monthly_installment_max || 0))}</span>
                   </div>
                   {selectedSim.total_interest && (
@@ -1019,7 +1023,7 @@ export function KPRContent() {
                   onClick={() => { loadSimulation(selectedSim); setShowDetailModal(false); }}
                   className="btn-primary flex-1"
                 >
-                  <Calculator className="w-4 h-4" /> Load ke Form
+                  <Calculator className="w-4 h-4" /> Muat ke Form
                 </button>
                 <button 
                   onClick={(e) => { deleteSimulation(selectedSim.id, e); setShowDetailModal(false); }}
@@ -1037,8 +1041,11 @@ export function KPRContent() {
         <form onSubmit={saveSimulation} className="space-y-4">
           <div>
             <label className="block text-xs font-medium text-foreground mb-1.5">Nama Simulasi</label>
-            <input required autoFocus value={simName} onChange={e => setSimName(e.target.value)} type="text" className="input-field" placeholder="e.g. Cluster Bintaro Jaya" />
+            <input required autoFocus value={simName} onChange={e => setSimName(e.target.value)} type="text" className="input-field" placeholder="misal: Rumah Tipe 36 Bekasi" />
           </div>
+          {saveError && (
+            <p role="alert" className="rounded-xl bg-red-50 px-3.5 py-2.5 text-sm text-red-600 dark:bg-red-500/10 dark:text-red-300">{saveError}</p>
+          )}
           {berjenjang && (
             <p className="text-xs text-muted-foreground bg-muted/50 px-3 py-2 rounded-lg">
               Simulasi akan disimpan dengan <strong>{floatingPhases.length} fase bunga berjenjang</strong>.
