@@ -65,15 +65,15 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <Sidebar />
 
       <main className="flex-1 w-full min-w-0 mt-14 md:mt-0 md:ml-64 min-h-screen transition-transform">
-        <div className="p-3 sm:p-6 md:p-8 w-full max-w-[100vw] sm:max-w-7xl mx-auto animate-fade-in pb-[calc(9rem+env(safe-area-inset-bottom,0px))] md:pb-[calc(2rem+env(safe-area-inset-bottom,0px))]">
+        <div className="p-3.5 sm:p-6 md:p-8 w-full max-w-[100vw] sm:max-w-7xl mx-auto animate-fade-in pb-[calc(9rem+env(safe-area-inset-bottom,0px))] md:pb-[calc(2rem+env(safe-area-inset-bottom,0px))]">
           {children}
         </div>
       </main>
 
       {/* Mobile Top Bar (tanpa hamburger — navigasi via bottom nav) */}
-      <header className="md:hidden fixed top-0 w-full z-40 h-14 bg-card/95 backdrop-blur-lg border-b border-border/70 flex items-center justify-between px-3 safe-top">
+      <header className="md:hidden fixed top-0 w-full z-40 min-h-14 bg-card/95 backdrop-blur-lg border-b border-border/70 flex items-center justify-between px-3 pt-[env(safe-area-inset-top,0px)]">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center shadow-glow-sm">
+          <div className="w-8 h-8 rounded-xl bg-primary-500 flex items-center justify-center">
             <Wallet className="w-4 h-4 text-white" />
           </div>
           <p className="font-bold text-foreground text-base leading-none">Keuanganku</p>
@@ -101,7 +101,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             <Link
               href="/budgeting?catat=1"
               aria-label="Catat Transaksi"
-              className="absolute -top-7 w-14 h-14 rounded-full bg-gradient-to-br from-primary-500 to-primary-600 text-white flex items-center justify-center shadow-glow active:scale-95 transition-transform border-4 border-background"
+              className="absolute -top-7 w-14 h-14 rounded-full bg-primary-500 text-white flex items-center justify-center shadow-card-hover active:scale-95 transition-transform border-4 border-background"
             >
               <Plus className="w-6 h-6" strokeWidth={2.5} />
             </Link>

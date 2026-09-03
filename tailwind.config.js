@@ -9,8 +9,8 @@ module.exports = {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
-        mono: ['JetBrains Mono', 'monospace'],
+        sans: ['var(--font-inter)', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace'],
       },
       colors: {
         // Design system dari CLAUDE.md
@@ -52,8 +52,8 @@ module.exports = {
         sm: '8px',
       },
       boxShadow: {
-        card: '0 1px 2px rgba(0,0,0,0.04), 0 8px 24px rgba(0,0,0,0.05)',
-        'card-hover': '0 4px 12px rgba(0,0,0,0.08), 0 16px 32px rgba(0,0,0,0.08)',
+        card: '0 1px 2px rgba(15,23,42,0.03), 0 6px 18px rgba(15,23,42,0.04)',
+        'card-hover': '0 4px 12px rgba(15,23,42,0.07), 0 14px 28px rgba(15,23,42,0.06)',
         glow: '0 0 20px rgba(99, 91, 255, 0.3)',
         'glow-sm': '0 0 12px rgba(99, 91, 255, 0.25)',
       },

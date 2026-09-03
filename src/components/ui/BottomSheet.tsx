@@ -24,7 +24,7 @@ export function BottomSheet({ open, onClose, title, children, maxWidth = 'sm:max
         onClick={onClose}
       />
       <div
-        className={`relative w-full ${maxWidth} bg-card border border-border/60 rounded-t-3xl sm:rounded-2xl shadow-2xl animate-sheet-up flex flex-col max-h-[92dvh]`}
+        className={`relative w-full ${maxWidth} bg-card border border-border/70 rounded-t-2xl sm:rounded-2xl shadow-2xl animate-sheet-up flex flex-col max-h-[92dvh]`}
       >
         <div className="sm:hidden pt-3">
           <div className="sheet-handle" />

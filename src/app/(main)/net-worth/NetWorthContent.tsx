@@ -323,7 +323,7 @@ export function NetWorthContent() {
                       <Cell key={i} fill={entry.color} />
                     ))}
                   </Pie>
-                  <Tooltip formatter={(v: number) => formatRupiah(v)} />
+                  <Tooltip formatter={(v) => formatRupiah(typeof v === 'number' ? v : Number(v ?? 0))} />
                 </PieChart>
               </ResponsiveContainer>
             ) : (

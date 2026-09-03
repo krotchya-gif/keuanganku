@@ -137,11 +137,12 @@ export function CheckupContent() {
                 activeDot={{ r: 5, fill: '#635bff' }}
               />
               <Tooltip
-                formatter={(v: number, _name: string, props: any) => {
+                formatter={(v, _name, props: any) => {
+                  const score = typeof v === 'number' ? v : Number(v ?? 0);
                   const item = radarData[props.payloadIndex];
                   const status = item?.status || 'unknown';
                   const color = getStatusColor(status as 'sehat' | 'warning' | 'bahaya') || '#64748b';
-                  return [<span key="v" style={{ color }}>{v}/100 — {status === 'sehat' ? 'Sehat' : status === 'warning' ? 'Warning' : 'Bahaya'}</span>, 'Skor'];
+                  return [<span key="v" style={{ color }}>{score}/100 — {status === 'sehat' ? 'Sehat' : status === 'warning' ? 'Warning' : 'Bahaya'}</span>, 'Skor'];
                 }}
                 contentStyle={{
                   backgroundColor: 'hsl(var(--card))',
