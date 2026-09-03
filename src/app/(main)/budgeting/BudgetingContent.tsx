@@ -1,22 +1,34 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, Loader2, ArrowRightLeft, Target, Wallet, CalendarDays, Download, PiggyBank } from 'lucide-react';
-import { Skeleton, TableSkeleton } from '@/components/ui/Skeleton';
+import { Plus, Edit2, Trash2, Wallet, PiggyBank } from 'lucide-react';
+import { Skeleton } from '@/components/ui/Skeleton';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { BottomSheet } from '@/components/ui/BottomSheet';
-import { formatRupiah, formatRupiahCompact, formatPercent, getTodayString, getMonthRange, getYearOptions } from '@/lib/utils';
+import { CategoryChipPicker, type ChipGroup } from '@/components/ui/CategoryChipPicker';
+import { AmountKeypad } from '@/components/ui/AmountKeypad';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { formatRupiah, formatRupiahCompact, formatPercent, getMonthRange, getYearOptions, getMonthName, cn } from '@/lib/utils';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { ChartTooltip } from '@/components/charts/ChartTooltip';
-import { chartGridStyle, chartAxisStyle, formatChartRupiah } from '@/components/charts/ChartTheme';
+import { chartAxisStyle, formatChartRupiah } from '@/components/charts/ChartTheme';
 import { createClient } from '@/utils/supabase/client';
 import { getCurrentUserId } from '@/lib/queries/users';
 import { fetchBudgetItems } from '@/lib/queries/budget';
 import { fetchTransactions } from '@/lib/queries/transactions';
-import { exportCSV } from '@/lib/export';
 import { BUDGET_CATEGORY_LABELS, BUDGET_CATEGORY_COLORS } from '@/shared';
 import type { BudgetItem, Transaction, BudgetCategory } from '@/shared';
 
+const CATEGORY_GROUPS: ChipGroup[] = (Object.keys(BUDGET_CATEGORY_LABELS) as BudgetCategory[]).map((key) => ({
+  key,
+  label: BUDGET_CATEGORY_LABELS[key],
+  color: BUDGET_CATEGORY_COLORS[key],
+}));
+
+/**
+ * BudgetingContent — pilar Anggaran: evaluasi rencana vs realisasi
+ * dan pengelolaan amplop. Pencatatan harian berada di halaman Arus Kas.
+ */
 export function BudgetingContent() {
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState('');
@@ -24,46 +36,37 @@ export function BudgetingContent() {
   const [budgetItems, setBudgetItems] = useState<BudgetItem[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
 
-  const [activeTab, setActiveTab] = useState<'ringkasan' | 'amplop' | 'transaksi'>('ringkasan');
+  const [activeTab, setActiveTab] = useState<'evaluasi' | 'amplop'>('evaluasi');
 
   const [month, setMonth] = useState(new Date().getMonth() + 1);
   const [year, setYear] = useState(new Date().getFullYear());
 
-  // FAB "Catat Transaksi" → buka tab Jurnal Harian
+  // Tautan lama /budgeting?catat=1 dialihkan ke Arus Kas (satu tempat pencatatan).
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get('catat') === '1') {
-      setActiveTab('transaksi');
-      setShowTxModal(true);
-      window.history.replaceState(null, '', '/budgeting');
+      window.location.replace('/arus-kas?catat=1');
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Modals
+  // Form amplop
   const [showItemModal, setShowItemModal] = useState(false);
   const [editingItem, setEditingItem] = useState<BudgetItem | null>(null);
+  const [itemError, setItemError] = useState<string | null>(null);
   const [itemForm, setItemForm] = useState({ name: '', category: 'BIAYA_OPERASIONAL' as BudgetCategory, amount: 0 });
-
-  const [showTxModal, setShowTxModal] = useState(false);
-  const [editingTx, setEditingTx] = useState<Transaction | null>(null);
-  const [txForm, setTxForm] = useState({ transaction_date: getTodayString(), category: 'BIAYA_OPERASIONAL' as BudgetCategory, subcategory: '', amount: 0, description: '' });
 
   const fetchData = async () => {
     try {
       setLoading(true);
-      const userId = await getCurrentUserId();
-      if (!userId) return;
-      setUserId(userId);
+      const id = await getCurrentUserId();
+      if (!id) return;
+      setUserId(id);
 
-      // Fetch budget items (master envelopes)
-      const itemsData = await fetchBudgetItems(userId);
+      const itemsData = await fetchBudgetItems(id);
       setBudgetItems(itemsData);
 
-      // Fetch transactions for selected month/year
       const { startDate, endDate } = getMonthRange(year, month);
-
-      const txData = await fetchTransactions(userId, startDate, endDate);
+      const txData = await fetchTransactions(id, startDate, endDate);
       setTransactions(txData);
     } catch (err) {
       console.error(err);
@@ -77,93 +80,46 @@ export function BudgetingContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [month, year]);
 
-  const saveBudgetItem = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      const supabase = createClient();
-      if (editingItem) {
-        await supabase.from('budget_items').update({
-          name: itemForm.name, category: itemForm.category, amount: itemForm.amount
-        }).eq('id', editingItem.id);
-      } else {
-        await supabase.from('budget_items').insert({
-          user_id: userId, name: itemForm.name, category: itemForm.category, amount: itemForm.amount
-        });
-      }
-      setShowItemModal(false);
-      await fetchData();
-    } catch (err) {
-      console.error(err);
-      alert('Gagal menyimpan amplop. Coba lagi.');
+  const saveBudgetItem = async () => {
+    setItemError(null);
+    if (!itemForm.name.trim()) { setItemError('Isi nama amplop terlebih dahulu.'); return; }
+    if (itemForm.amount <= 0) { setItemError('Isi rencana nominal lebih dari nol.'); return; }
+
+    const supabase = createClient();
+    const payload = { name: itemForm.name.trim(), category: itemForm.category, amount: itemForm.amount };
+    const { error } = editingItem
+      ? await supabase.from('budget_items').update(payload).eq('id', editingItem.id)
+      : await supabase.from('budget_items').insert({ ...payload, user_id: userId });
+
+    if (error) {
+      setItemError('Gagal menyimpan amplop. Periksa koneksi lalu coba lagi.');
+      return;
     }
+    setShowItemModal(false);
+    await fetchData();
   };
 
   const deleteBudgetItem = async (id: string) => {
-    if (!confirm('Hapus Amplop Anggaran ini? Transaksi yang memakai sub-kategori ini mungkin akan kehilangan referensi nama amplopnya.')) return;
-    try {
-      const supabase = createClient();
-      await supabase.from('budget_items').delete().eq('id', id);
-      await fetchData();
-    } catch (err) {
-      console.error(err);
-      alert('Gagal menghapus amplop. Coba lagi.');
-    }
-  };
-
-  const saveTransaction = async (e: React.FormEvent) => {
-    e.preventDefault();
+    if (!window.confirm('Hapus amplop ini? Transaksi yang memakai amplop ini akan kehilangan referensinya.')) return;
     const supabase = createClient();
-    // In order for negative/positive signs to be correct: Tabungan/Tagihan/Biaya/Hutang are positive expenses mathematically in the input, but we might want PENDAPATAN to be income.
-    // The DB `amount` is just absolute, the `category` dictates if it's income or expense.
-    try {
-      if (editingTx) {
-        await supabase.from('transactions').update({
-          transaction_date: txForm.transaction_date,
-          category: txForm.category,
-          subcategory: txForm.subcategory,
-          amount: txForm.amount,
-          description: txForm.description
-        }).eq('id', editingTx.id);
-      } else {
-        await supabase.from('transactions').insert({
-          user_id: userId,
-          transaction_date: txForm.transaction_date,
-          category: txForm.category,
-          subcategory: txForm.subcategory,
-          amount: txForm.amount,
-          description: txForm.description
-        });
-      }
-      setShowTxModal(false);
-      await fetchData();
-    } catch (err) {
-      console.error(err);
-      alert('Gagal menyimpan transaksi. Coba lagi.');
+    const { error } = await supabase.from('budget_items').delete().eq('id', id);
+    if (error) {
+      window.alert('Gagal menghapus amplop. Coba lagi.');
+      return;
     }
+    await fetchData();
   };
 
-  const deleteTransaction = async (id: string) => {
-    if (!confirm('Hapus Transaksi Harian ini?')) return;
-    try {
-      const supabase = createClient();
-      await supabase.from('transactions').delete().eq('id', id);
-      await fetchData();
-    } catch (err) {
-      console.error(err);
-      alert('Gagal menghapus transaksi. Coba lagi.');
-    }
-  };
-
-  // ── Calculated View Data ──
-  const summaryByCategory = (Object.keys(BUDGET_CATEGORY_LABELS) as BudgetCategory[]).map(catKey => {
-    const plannedItems = budgetItems.filter(i => i.category === catKey);
+  // ── Data evaluasi ──
+  const summaryByCategory = (Object.keys(BUDGET_CATEGORY_LABELS) as BudgetCategory[]).map((catKey) => {
+    const plannedItems = budgetItems.filter((i) => i.category === catKey);
     const totalPlanned = plannedItems.reduce((s, i) => s + Number(i.amount), 0);
 
-    const actualTxs = transactions.filter(t => t.category === catKey);
+    const actualTxs = transactions.filter((t) => t.category === catKey);
     const totalActual = actualTxs.reduce((s, t) => s + Number(t.amount), 0);
 
-    const plannedNames = new Set(plannedItems.map(i => i.name));
-    const leakedTxs = actualTxs.filter(t => !t.subcategory || !plannedNames.has(t.subcategory));
+    const plannedNames = new Set(plannedItems.map((i) => i.name));
+    const leakedTxs = actualTxs.filter((t) => !t.subcategory || !plannedNames.has(t.subcategory));
     const leakedTotal = leakedTxs.reduce((s, t) => s + Number(t.amount), 0);
 
     return {
@@ -174,51 +130,53 @@ export function BudgetingContent() {
       totalActual,
       leakedTotal,
       leakedTxs,
-      plannedItems: plannedItems.map(pi => {
-        const matchingTxs = actualTxs.filter(t => t.subcategory === pi.name);
-        const actual = matchingTxs.reduce((s, t) => s + Number(t.amount), 0);
-        return {
-           id: pi.id,
-           name: pi.name,
-           planned: Number(pi.amount),
-           actual
-        };
-      })
+      plannedItems: plannedItems.map((pi) => {
+        const actual = actualTxs.filter((t) => t.subcategory === pi.name).reduce((s, t) => s + Number(t.amount), 0);
+        return { id: pi.id, name: pi.name, planned: Number(pi.amount), actual };
+      }),
     };
   });
 
-  const totalIncomePlanned = summaryByCategory.find(s => s.catKey === 'PENDAPATAN')?.totalPlanned || 0;
-  const totalIncomeActual = summaryByCategory.find(s => s.catKey === 'PENDAPATAN')?.totalActual || 0;
-  
-  const totalExpensePlanned = summaryByCategory.filter(s => s.catKey !== 'PENDAPATAN').reduce((s, g) => s + g.totalPlanned, 0);
-  const totalExpenseActual = summaryByCategory.filter(s => s.catKey !== 'PENDAPATAN').reduce((s, g) => s + g.totalActual, 0);
+  const totalIncomePlanned = summaryByCategory.find((s) => s.catKey === 'PENDAPATAN')?.totalPlanned || 0;
+  const totalIncomeActual = summaryByCategory.find((s) => s.catKey === 'PENDAPATAN')?.totalActual || 0;
+  const totalExpensePlanned = summaryByCategory.filter((s) => s.catKey !== 'PENDAPATAN').reduce((s, g) => s + g.totalPlanned, 0);
+  const totalExpenseActual = summaryByCategory.filter((s) => s.catKey !== 'PENDAPATAN').reduce((s, g) => s + g.totalActual, 0);
 
   const budgetRemaining = totalExpensePlanned - totalExpenseActual;
   const isOverbudget = totalExpenseActual > totalExpensePlanned;
 
+  const openItemModal = (item: BudgetItem | null) => {
+    setEditingItem(item);
+    setItemError(null);
+    setItemForm(item ? { name: item.name, category: item.category, amount: Number(item.amount) } : { name: '', category: 'BIAYA_OPERASIONAL', amount: 0 });
+    setShowItemModal(true);
+  };
+
   if (loading && budgetItems.length === 0) {
     return (
-      <div className="space-y-6 p-3 sm:p-6 animate-pulse">
+      <div className="space-y-6 animate-pulse">
         <Skeleton className="h-8 w-64" />
-        <TableSkeleton rows={4} />
+        <Skeleton className="h-24 w-full rounded-2xl" />
+        <Skeleton className="h-64 w-full rounded-2xl" />
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <PageHeader
-        title="Budgeting Harian"
-        subtitle="Sistem amplop digital: Rencanakan, Catat, dan Evaluasi"
+        title="Anggaran"
+        subtitle="Rencanakan amplop bulanan, lalu bandingkan dengan realisasi"
         icon={PiggyBank}
-        gradient="from-violet-500 to-purple-600"
         action={
           <div className="flex items-center gap-2">
-            <select value={month} onChange={(e) => setMonth(Number(e.target.value))} className="bg-card border border-border rounded-xl px-3 py-2.5 text-sm font-medium focus:ring-primary-500 touch-target">
-              {Array.from({length: 12}, (_, i) => (<option key={i+1} value={i+1}>{new Date(2000, i, 1).toLocaleDateString('id-ID', { month: 'long' })}</option>))}
+            <select value={month} onChange={(e) => setMonth(Number(e.target.value))} aria-label="Bulan" className="touch-target rounded-xl border border-border bg-card px-3 py-2.5 text-sm font-medium focus:ring-primary-500">
+              {Array.from({ length: 12 }, (_, i) => (
+                <option key={i + 1} value={i + 1}>{getMonthName(i + 1)}</option>
+              ))}
             </select>
-            <select value={year} onChange={(e) => setYear(Number(e.target.value))} className="bg-card border border-border rounded-xl px-3 py-2.5 text-sm font-medium inline-block w-24 focus:ring-primary-500 touch-target">
-              {getYearOptions().map(y => <option key={y} value={y}>{y}</option>)}
+            <select value={year} onChange={(e) => setYear(Number(e.target.value))} aria-label="Tahun" className="touch-target inline-block w-24 rounded-xl border border-border bg-card px-3 py-2.5 text-sm font-medium focus:ring-primary-500">
+              {getYearOptions().map((y) => <option key={y} value={y}>{y}</option>)}
             </select>
           </div>
         }
@@ -226,367 +184,239 @@ export function BudgetingContent() {
 
       {/* Tabs */}
       <div className="card-premium">
-        <div className="flex border-b border-border overflow-x-auto no-scrollbar">
+        <div className="flex overflow-x-auto border-b border-border no-scrollbar">
           {[
-            { key: 'ringkasan', icon: <Target className="w-4 h-4" />, label: '📊 Evaluasi Budget', mobileLabel: '📊 Evaluasi' },
-            { key: 'transaksi', icon: <ArrowRightLeft className="w-4 h-4" />, label: '📝 Jurnal Harian (Catat Pengeluaran)', mobileLabel: '📝 Jurnal' },
-            { key: 'amplop', icon: <Wallet className="w-4 h-4" />, label: '⚙️ Setup Amplop Master', mobileLabel: '⚙️ Setup' }
+            { key: 'evaluasi', label: 'Evaluasi', mobileLabel: 'Evaluasi' },
+            { key: 'amplop', label: 'Amplop Anggaran', mobileLabel: 'Amplop' },
           ].map((t) => (
             <button
               key={t.key}
-              onClick={() => setActiveTab(t.key as 'ringkasan' | 'amplop' | 'transaksi')}
-              className={`flex items-center gap-2 px-4 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm font-medium transition-colors whitespace-nowrap ${activeTab === t.key ? 'text-primary-500 border-b-2 border-primary-500 bg-primary-500/5' : 'text-muted-foreground hover:text-foreground'}`}
+              onClick={() => setActiveTab(t.key as 'evaluasi' | 'amplop')}
+              aria-selected={activeTab === t.key}
+              role="tab"
+              className={cn(
+                'whitespace-nowrap px-4 py-3 text-xs font-medium transition-colors sm:px-6 sm:py-4 sm:text-sm',
+                activeTab === t.key
+                  ? 'border-b-2 border-primary-500 bg-primary-500/5 text-primary-500'
+                  : 'text-muted-foreground hover:text-foreground'
+              )}
             >
-              {t.icon} <span className="hidden sm:inline">{t.label}</span><span className="sm:hidden">{t.mobileLabel}</span>
+              <span className="hidden sm:inline">{t.label}</span>
+              <span className="sm:hidden">{t.mobileLabel}</span>
             </button>
           ))}
         </div>
 
         <div className="p-0 sm:p-5">
-          {/* TAB 1: RINGKASAN */}
-          {activeTab === 'ringkasan' && (
-             <div className="space-y-4 sm:space-y-6 p-3 sm:p-0">
-               {/* KPI Rencana Vs Realita */}
-               <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-                 <div className="card-premium p-4 border-emerald-500/20 bg-emerald-500/5">
-                   <p className="text-xs text-muted-foreground font-medium mb-1">Total Pemasukan (Aktual)</p>
-                   <p className="text-lg sm:text-xl font-bold font-numeric text-emerald-600">{formatRupiahCompact(totalIncomeActual)} <span className="text-xs text-muted-foreground font-normal">/ {formatRupiahCompact(totalIncomePlanned)}</span></p>
-                 </div>
-                 <div className="card-premium p-4">
-                   <p className="text-xs text-muted-foreground font-medium mb-1">Total Pengeluaran (Aktual)</p>
-                   <p className="text-lg sm:text-xl font-bold font-numeric text-foreground">{formatRupiahCompact(totalExpenseActual)} <span className="text-xs text-muted-foreground font-normal">/ {formatRupiahCompact(totalExpensePlanned)}</span></p>
-                 </div>
-                 <div className={`card-premium p-4 ${isOverbudget ? 'border-red-500/30 bg-red-500/5' : ''}`}>
-                   <p className="text-xs text-muted-foreground font-medium mb-1">Sisa Anggaran Tersedia</p>
-                   <p className={`text-lg sm:text-xl font-bold font-numeric ${isOverbudget ? 'text-red-500' : 'text-primary-500'}`}>
-                     {isOverbudget ? '-' : ''}{formatRupiahCompact(Math.abs(budgetRemaining))}
-                     {isOverbudget && <span className="text-[10px] ml-2 px-1.5 py-0.5 rounded bg-red-100 text-red-600">Overbudget</span>}
-                   </p>
-                 </div>
-                 <div className="card-premium p-4">
-                   <p className="text-xs text-muted-foreground font-medium mb-1">% Pemakaian Anggaran</p>
-                   <div className="flex items-center gap-2 mt-1">
-                     <p className={`text-lg sm:text-xl font-bold font-numeric ${totalExpensePlanned > 0 && totalExpenseActual/totalExpensePlanned > 0.9 ? 'text-red-500' : 'text-foreground'}`}>
-                       {formatPercent(totalExpensePlanned > 0 ? totalExpenseActual/totalExpensePlanned : 0)}
-                     </p>
-                     <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
-                       <div className={`h-full ${isOverbudget ? 'bg-red-500' : 'bg-primary-500'}`} style={{ width: `${Math.min(100, totalExpensePlanned > 0 ? (totalExpenseActual/totalExpensePlanned)*100 : 0)}%` }} />
-                     </div>
-                   </div>
-                 </div>
-               </div>
-
-                {/* Budget vs Actual Chart */}
-                {summaryByCategory.filter(g => g.totalPlanned > 0 || g.totalActual > 0).length > 0 && (
-                  <div className="card-premium p-4 sm:p-5">
-                    <h3 className="text-sm font-bold text-foreground mb-4">Budget vs Realisasi per Kategori</h3>
-                    <div className="h-64">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={summaryByCategory.filter(g => g.totalPlanned > 0 || g.totalActual > 0)} barGap={4} barCategoryGap="20%">
-                          <XAxis dataKey="label" {...chartAxisStyle} />
-                          <YAxis {...chartAxisStyle} tickFormatter={formatChartRupiah} width={70} />
-                          <Tooltip content={<ChartTooltip />} />
-                          <Bar dataKey="totalPlanned" name="Anggaran" fill="#635bff" radius={[4, 4, 0, 0]} />
-                          <Bar dataKey="totalActual" name="Realisasi" fill="#3ecf8e" radius={[4, 4, 0, 0]} />
-                        </BarChart>
-                      </ResponsiveContainer>
+          {/* TAB EVALUASI */}
+          {activeTab === 'evaluasi' && (
+            <div className="space-y-4 p-3 sm:p-0">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+                <div className="card-premium border-success/20 bg-success/5 p-4">
+                  <p className="mb-1 text-xs font-medium text-muted-foreground">Pemasukan (Aktual)</p>
+                  <p className="font-numeric text-lg font-bold text-success sm:text-xl">
+                    {formatRupiahCompact(totalIncomeActual)} <span className="font-normal text-xs text-muted-foreground">/ {formatRupiahCompact(totalIncomePlanned)}</span>
+                  </p>
+                </div>
+                <div className="card-premium p-4">
+                  <p className="mb-1 text-xs font-medium text-muted-foreground">Pengeluaran (Aktual)</p>
+                  <p className="font-numeric text-lg font-bold text-foreground sm:text-xl">
+                    {formatRupiahCompact(totalExpenseActual)} <span className="font-normal text-xs text-muted-foreground">/ {formatRupiahCompact(totalExpensePlanned)}</span>
+                  </p>
+                </div>
+                <div className={cn('card-premium p-4', isOverbudget && 'border-danger/30 bg-danger/5')}>
+                  <p className="mb-1 text-xs font-medium text-muted-foreground">Sisa Anggaran</p>
+                  <p className={cn('font-numeric text-lg font-bold sm:text-xl', isOverbudget ? 'text-danger' : 'text-primary-500')}>
+                    {isOverbudget ? '−' : ''}{formatRupiahCompact(Math.abs(budgetRemaining))}
+                    {isOverbudget && <span className="ml-2 rounded bg-danger/10 px-1.5 py-0.5 text-[10px] text-danger">Melebihi Anggaran</span>}
+                  </p>
+                </div>
+                <div className="card-premium p-4">
+                  <p className="mb-1 text-xs font-medium text-muted-foreground">Pemakaian Anggaran</p>
+                  <div className="mt-1 flex items-center gap-2">
+                    <p className={cn('font-numeric text-lg font-bold sm:text-xl', totalExpensePlanned > 0 && totalExpenseActual / totalExpensePlanned > 0.9 ? 'text-danger' : 'text-foreground')}>
+                      {formatPercent(totalExpensePlanned > 0 ? totalExpenseActual / totalExpensePlanned : 0)}
+                    </p>
+                    <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+                      <div
+                        className={cn('h-full', isOverbudget ? 'bg-danger' : 'bg-primary-500')}
+                        style={{ width: `${Math.min(100, totalExpensePlanned > 0 ? (totalExpenseActual / totalExpensePlanned) * 100 : 0)}%` }}
+                      />
                     </div>
                   </div>
-                )}
-
-                {/* Envelope Bars */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-                 {summaryByCategory.map((group) => {
-                   if (group.plannedItems.length === 0 && group.totalActual === 0) return null; // Skip empty groups
-                   return (
-                     <div key={group.catKey} className="card-premium p-5 border border-border/50 shadow-sm">
-                       <h3 className="text-sm font-bold uppercase tracking-wide flex items-center justify-between mb-4 border-b border-border/50 pb-2">
-                         <div className="flex items-center gap-2">
-                           <span className="w-2.5 h-2.5 rounded-full" style={{ background: group.color }} />
-                           <span style={{ color: group.color }}>{group.label}</span>
-                         </div>
-                         <span className="font-numeric">{formatRupiahCompact(group.totalActual)} / {formatRupiahCompact(group.totalPlanned)}</span>
-                       </h3>
-                       <div className="space-y-4">
-                         {group.plannedItems.map(item => {
-                           const pct = item.planned > 0 ? (item.actual / item.planned) : (item.actual > 0 ? 1 : 0);
-                           const isOver = item.actual > item.planned;
-                           return (
-<div key={item.id} className="group/item">
-                                <div className="flex justify-between items-end mb-1 gap-2">
-                                  <p className="text-sm font-medium text-foreground truncate min-w-0">{item.name}</p>
-                                  <p className="text-xs font-numeric font-medium shrink-0 whitespace-nowrap">
-                                    <span className={isOver ? (group.catKey === 'PENDAPATAN' ? 'text-emerald-500' : 'text-red-500') : 'text-foreground'}>{formatRupiahCompact(item.actual)}</span>
-                                    <span className="text-muted-foreground"> / {formatRupiahCompact(item.planned)}</span>
-                                  </p>
-                                </div>
-                               <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden relative">
-                                 <div 
-                                   className={`absolute left-0 top-0 h-full rounded-full transition-all`} 
-                                   style={{ 
-                                     width: `${Math.min(100, pct * 100)}%`, 
-                                     backgroundColor: isOver && group.catKey !== 'PENDAPATAN' ? '#ef4444' : group.color 
-                                   }} 
-                                 />
-                               </div>
-                               {isOver && group.catKey !== 'PENDAPATAN' && (
-                                 <p className="text-[10px] text-red-500 text-right mt-1 font-medium italic animate-pulse">Melebihi jatah {formatRupiah(item.actual - item.planned)}</p>
-                               )}
-                             </div>
-                           );
-                         })}
-                          {/* Show unmapped transactions if any */}
-                          {group.leakedTxs.length > 0 && (
-                            <div className="mt-3 bg-red-50/50 p-2 rounded border border-red-100 border-dashed">
-                              <p className="text-xs text-red-600 font-medium mb-1">⚠️ Transaksi Tanpa Amplop Induk (Bocor)</p>
-                                <p className="text-lg font-bold text-red-600 font-numeric">{group.catKey === 'PENDAPATAN' ? '+' : '-'}{formatRupiahCompact(group.leakedTotal)}</p>
-                            </div>
-                          )}
-                       </div>
-                     </div>
-                   );
-                 })}
-               </div>
-             </div>
-          )}
-
-          {/* TAB 2: TRANSAKSI HARIAN */}
-          {activeTab === 'transaksi' && (
-             <div className="space-y-3 sm:space-y-4 p-3 sm:p-0">
-               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4 sm:mb-6">
-                  <div>
-                    <h2 className="text-base font-bold text-foreground">Buku Jurnal</h2>
-                    <p className="text-xs text-muted-foreground">Catat setiap uang yang masuk atau keluar di bulan ini.</p>
-                  </div>
-                  <div className="flex items-center gap-2 w-full sm:w-auto">
-                    <button onClick={() => exportCSV(`transaksi-${month}-${year}`, ['Tanggal', 'Kategori', 'Amplop', 'Keterangan', 'Jumlah'], transactions.map(t => [new Date(t.transaction_date).toLocaleDateString('id-ID'), BUDGET_CATEGORY_LABELS[t.category], t.subcategory || '-', t.description || '-', t.amount]))} className="flex items-center gap-1.5 bg-card border border-border hover:bg-muted text-foreground px-3 py-2.5 sm:py-2 rounded-xl sm:rounded-lg text-xs sm:text-sm font-medium transition-colors">
-                      <Download className="w-4 h-4" /> Export CSV
-                    </button>
-                    <button 
-                    onClick={() => {
-                     setEditingTx(null);
-                     setTxForm({ transaction_date: getTodayString(), category: 'BIAYA_OPERASIONAL', subcategory: budgetItems.find(i => i.category === 'BIAYA_OPERASIONAL')?.name || '', amount: 0, description: '' });
-                     setShowTxModal(true);
-                   }} 
-                   className="flex items-center gap-2 bg-primary-500 hover:bg-primary-600 text-white px-4 py-2.5 sm:py-2 rounded-xl sm:rounded-lg text-sm font-medium shadow-glow w-full sm:w-auto justify-center"
-                 >
-                   <Plus className="w-4 h-4" /> Catat Transaksi
-                 </button>
                 </div>
               </div>
 
-                {transactions.length === 0 ? (
-                 <div className="flex flex-col items-center justify-center p-8 sm:p-12 text-center border-2 border-dashed border-border rounded-xl bg-muted/20">
-                   <CalendarDays className="w-10 h-10 sm:w-12 sm:h-12 text-muted-foreground mb-3 opacity-20" />
-                   <p className="text-sm font-medium text-foreground">Belum ada transaksi di bulan ini.</p>
-                   <p className="text-xs text-muted-foreground mt-1">Mulai catat pengeluaran kopi pertama Anda!</p>
-                 </div>
-               ) : (
-                 <div className="space-y-3 sm:hidden">
-                   {/* Mobile Card View */}
-                   {transactions.map(t => (
-                     <div key={t.id} className="card-premium p-3 sm:p-4">
-                       <div className="flex items-start justify-between">
-                         <div className="flex-1 min-w-0">
-                           <div className="flex items-center gap-2 mb-1">
-                             <span className="text-xs text-muted-foreground tabular-nums">{new Date(t.transaction_date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short' })}</span>
-                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">{BUDGET_CATEGORY_LABELS[t.category]}</span>
-                           </div>
-                           <p className="font-medium text-foreground text-sm">{t.subcategory || '-'}</p>
-                           <p className="text-xs text-muted-foreground mt-0.5 truncate">{t.description || '-'}</p>
-                         </div>
-                         <div className="text-right ml-3">
-                           <p className={`text-sm font-numeric font-semibold ${t.category === 'PENDAPATAN' ? 'text-emerald-500' : 'text-foreground'}`}>
-                             {t.category === 'PENDAPATAN' ? '+' : '-'}{formatRupiah(t.amount)}
-                           </p>
-                            <div className="flex gap-1 justify-end mt-2">
-                              <button onClick={() => { setEditingTx(t); setTxForm({ transaction_date: String(t.transaction_date).slice(0, 10), category: t.category, subcategory: t.subcategory || '', amount: Number(t.amount), description: t.description || '' }); setShowTxModal(true); }} className="p-1.5 text-muted-foreground hover:bg-muted rounded"><Edit2 className="w-3.5 h-3.5" /></button>
-                              <button onClick={() => deleteTransaction(t.id)} className="p-1.5 text-muted-foreground hover:bg-red-50 hover:text-red-500 rounded"><Trash2 className="w-3.5 h-3.5" /></button>
+              {summaryByCategory.filter((g) => g.totalPlanned > 0 || g.totalActual > 0).length > 0 && (
+                <div className="card-premium p-4 sm:p-5">
+                  <h3 className="mb-4 text-sm font-bold text-foreground">Rencana vs Realisasi per Kategori</h3>
+                  <div className="h-64">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={summaryByCategory.filter((g) => g.totalPlanned > 0 || g.totalActual > 0)} barGap={4} barCategoryGap="20%">
+                        <XAxis dataKey="label" {...chartAxisStyle} />
+                        <YAxis {...chartAxisStyle} tickFormatter={formatChartRupiah} width={70} />
+                        <Tooltip content={<ChartTooltip />} cursor={{ fill: 'hsl(var(--muted))', opacity: 0.5 }} />
+                        <Bar dataKey="totalPlanned" name="Rencana" fill="#635bff" radius={[4, 4, 0, 0]} />
+                        <Bar dataKey="totalActual" name="Realisasi" fill="#3ecf8e" radius={[4, 4, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              )}
+
+              {/* Progres per amplop */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+                {summaryByCategory.map((group) => {
+                  if (group.plannedItems.length === 0 && group.totalActual === 0) return null;
+                  return (
+                    <div key={group.catKey} className="card-premium border border-border/50 p-5 shadow-sm">
+                      <h3 className="mb-4 flex items-center justify-between border-b border-border/50 pb-2 text-sm font-bold uppercase tracking-wide">
+                        <span className="flex items-center gap-2">
+                          <span className="h-2.5 w-2.5 rounded-full" style={{ background: group.color }} />
+                          <span style={{ color: group.color }}>{group.label}</span>
+                        </span>
+                        <span className="font-numeric">{formatRupiahCompact(group.totalActual)} / {formatRupiahCompact(group.totalPlanned)}</span>
+                      </h3>
+                      <div className="space-y-4">
+                        {group.plannedItems.map((item) => {
+                          const pct = item.planned > 0 ? item.actual / item.planned : item.actual > 0 ? 1 : 0;
+                          const isOver = item.actual > item.planned;
+                          return (
+                            <div key={item.id} className="group/item">
+                              <div className="mb-1 flex items-end justify-between gap-2">
+                                <p className="min-w-0 truncate text-sm font-medium text-foreground">{item.name}</p>
+                                <p className="shrink-0 whitespace-nowrap font-numeric text-xs font-medium">
+                                  <span className={isOver ? (group.catKey === 'PENDAPATAN' ? 'text-success' : 'text-danger') : 'text-foreground'}>
+                                    {formatRupiahCompact(item.actual)}
+                                  </span>
+                                  <span className="text-muted-foreground"> / {formatRupiahCompact(item.planned)}</span>
+                                </p>
+                              </div>
+                              <div className="relative h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                                <div
+                                  className="absolute left-0 top-0 h-full rounded-full transition-all"
+                                  style={{
+                                    width: `${Math.min(100, pct * 100)}%`,
+                                    backgroundColor: isOver && group.catKey !== 'PENDAPATAN' ? '#ef4444' : group.color,
+                                  }}
+                                />
+                              </div>
+                              {isOver && group.catKey !== 'PENDAPATAN' && (
+                                <p className="mt-1 text-right text-[10px] font-medium italic text-danger">
+                                  Melebihi alokasi {formatRupiah(item.actual - item.planned)}
+                                </p>
+                              )}
                             </div>
-                         </div>
-                       </div>
-                     </div>
-                   ))}
-                 </div>
-               )}
-               {/* Desktop Table View */}
-               {transactions.length > 0 && (
-                 <div className="card-premium overflow-hidden hidden sm:block">
-                   <table className="w-full text-sm">
-                     <thead>
-                       <tr className="border-b border-border bg-muted/40">
-                         <th className="py-3 px-4 text-left font-medium text-muted-foreground">Tanggal</th>
-                         <th className="py-3 px-4 text-left font-medium text-muted-foreground">Amplop (Sub-Kategori)</th>
-                         <th className="py-3 px-4 text-left font-medium text-muted-foreground">Keterangan</th>
-                         <th className="py-3 px-4 text-right font-medium text-muted-foreground">Nominal / Amount</th>
-                         <th className="py-3 px-4 text-center font-medium text-muted-foreground w-16">Aksi</th>
-                       </tr>
-                     </thead>
-                     <tbody className="divide-y divide-border/60">
-                       {transactions.map(t => (
-                         <tr key={t.id} className="hover:bg-muted/30 transition-colors group">
-                           <td className="py-3 px-4 tabular-nums text-foreground/80">{new Date(t.transaction_date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short' })}</td>
-                           <td className="py-3 px-4">
-                             <div className="flex flex-col">
-                                <span className="font-medium text-foreground">{t.subcategory || '-'}</span>
-                                <span className="text-[10px] text-muted-foreground">{BUDGET_CATEGORY_LABELS[t.category]}</span>
-                             </div>
-                           </td>
-                           <td className="py-3 px-4 text-foreground/80 break-words max-w-[200px]">{t.description || '-'}</td>
-                           <td className={`py-3 px-4 text-right font-numeric font-semibold ${t.category === 'PENDAPATAN' ? 'text-emerald-500' : 'text-foreground'}`}>
-                             {t.category === 'PENDAPATAN' ? '+' : '-'}{formatRupiah(t.amount)}
-                           </td>
-<td className="py-3 px-4">
-                                <div className="flex gap-1 justify-center opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-                                  <button onClick={() => { setEditingTx(t); setTxForm({ transaction_date: String(t.transaction_date).slice(0, 10), category: t.category, subcategory: t.subcategory || '', amount: Number(t.amount), description: t.description || '' }); setShowTxModal(true); }} className="p-2 text-muted-foreground hover:bg-muted rounded touch-target"><Edit2 className="w-3.5 h-3.5" /></button>
-                                  <button onClick={() => deleteTransaction(t.id)} className="p-2 text-muted-foreground hover:bg-red-50 hover:text-red-500 rounded touch-target"><Trash2 className="w-3.5 h-3.5" /></button>
-                                </div>
-                            </td>
-                         </tr>
-                       ))}
-                     </tbody>
-                   </table>
-                 </div>
-               )}
-             </div>
+                          );
+                        })}
+                        {group.leakedTxs.length > 0 && (
+                          <div className="mt-3 rounded border border-dashed border-danger/30 bg-danger/5 p-2">
+                            <p className="mb-1 text-xs font-medium text-danger">Transaksi di luar amplop</p>
+                            <p className="font-numeric text-lg font-bold text-danger">
+                              {group.catKey === 'PENDAPATAN' ? '+' : '−'}{formatRupiahCompact(group.leakedTotal)}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
           )}
 
-          {/* TAB 3: SETUP AMPLOP */}
+          {/* TAB AMPLOP */}
           {activeTab === 'amplop' && (
-             <div className="space-y-3 sm:space-y-4 p-3 sm:p-0">
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4 sm:mb-6">
-                 <div>
-                   <h2 className="text-base font-bold text-foreground">Setup Induk Amplop Anggaran</h2>
-                   <p className="text-xs text-muted-foreground">Definisikan rencana jatah (budget) ideal bulanan untuk semua kategori.</p>
-                 </div>
-                 <button 
-                   onClick={() => {
-                     setEditingItem(null);
-                     setItemForm({ name: '', category: 'BIAYA_OPERASIONAL', amount: 0 });
-                     setShowItemModal(true);
-                   }} 
-                   className="flex items-center gap-2 bg-primary-500 hover:bg-primary-600 text-white px-4 py-2.5 sm:py-2 rounded-xl sm:rounded-lg text-sm font-medium shadow-glow border border-primary-500 w-full sm:w-auto justify-center"
-                 >
-                   <Plus className="w-4 h-4" /> Bikin Amplop Baru
-                 </button>
-               </div>
+            <div className="space-y-3 p-3 sm:space-y-4 sm:p-0">
+              <div className="mb-4 flex flex-col items-start justify-between gap-3 sm:mb-6 sm:flex-row sm:items-center">
+                <div>
+                  <h2 className="text-base font-bold text-foreground">Kelola Amplop Anggaran</h2>
+                  <p className="text-xs text-muted-foreground">Tentukan rencana nominal bulanan untuk setiap pos pengeluaran.</p>
+                </div>
+                <button onClick={() => openItemModal(null)} className="btn-primary w-full justify-center sm:w-auto">
+                  <Plus className="h-4 w-4" /> Buat Amplop Baru
+                </button>
+              </div>
 
-               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-                 {(Object.keys(BUDGET_CATEGORY_LABELS) as BudgetCategory[]).map(catKey => {
-                   const items = budgetItems.filter(i => i.category === catKey);
-                   if (items.length === 0) return null;
-                   
-                   return (
-                     <div key={catKey} className="card-premium overflow-hidden border border-border/60">
-                       <div className="bg-muted/40 px-4 py-3 flex justify-between items-center border-b border-border">
-                         <h3 className="text-xs font-bold uppercase" style={{ color: BUDGET_CATEGORY_COLORS[catKey] }}>{BUDGET_CATEGORY_LABELS[catKey]}</h3>
-                         <p className="text-xs font-numeric font-bold bg-background px-2 py-0.5 rounded border border-border">{formatRupiahCompact(items.reduce((s, i) => s + Number(i.amount), 0))}</p>
-                       </div>
-                       <ul className="divide-y divide-border/60">
-                         {items.map(item => (
-<li key={item.id} className="px-4 py-3 flex justify-between items-center hover:bg-muted/20 group gap-3">
-                              <div className="min-w-0">
-                                <p className="text-sm font-medium text-foreground truncate">{item.name}</p>
-                                <p className="text-[10px] text-muted-foreground font-numeric tracking-wide mt-0.5 truncate">TARGET: {formatRupiahCompact(item.amount)}</p>
-                              </div>
-                              <div className="flex gap-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity shrink-0">
-                                  <button onClick={() => { setEditingItem(item); setItemForm({ name: item.name, category: item.category, amount: Number(item.amount) }); setShowItemModal(true); }} className="p-2 text-muted-foreground hover:text-primary-500 touch-target"><Edit2 className="w-3.5 h-3.5" /></button>
-                                 <button onClick={() => deleteBudgetItem(item.id)} className="p-2 text-muted-foreground hover:text-red-500 touch-target"><Trash2 className="w-3.5 h-3.5" /></button>
-                              </div>
-                            </li>
-                         ))}
-                       </ul>
-                     </div>
-                   );
-                 })}
-               </div>
-               
-               {budgetItems.length === 0 && (
-                 <div className="text-center py-10">
-                   <p className="text-muted-foreground text-sm">Anda belum membuat amplop anggaran sama sekali.</p>
-                   <button onClick={() => { setEditingItem(null); setItemForm({ name: '', category: 'BIAYA_OPERASIONAL', amount: 0 }); setShowItemModal(true); }} className="mt-3 text-sm text-primary-500 hover:underline">Buat Amplop Pertama 🪄</button>
-                 </div>
-               )}
-             </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+                {(Object.keys(BUDGET_CATEGORY_LABELS) as BudgetCategory[]).map((catKey) => {
+                  const items = budgetItems.filter((i) => i.category === catKey);
+                  if (items.length === 0) return null;
+                  return (
+                    <div key={catKey} className="card-premium overflow-hidden border border-border/60">
+                      <div className="flex items-center justify-between border-b border-border bg-muted/40 px-4 py-3">
+                        <h3 className="text-xs font-bold uppercase" style={{ color: BUDGET_CATEGORY_COLORS[catKey] }}>{BUDGET_CATEGORY_LABELS[catKey]}</h3>
+                        <p className="rounded border border-border bg-background px-2 py-0.5 font-numeric text-xs font-bold">{formatRupiahCompact(items.reduce((s, i) => s + Number(i.amount), 0))}</p>
+                      </div>
+                      <ul className="divide-y divide-border/60">
+                        {items.map((item) => (
+                          <li key={item.id} className="group flex items-center justify-between gap-3 px-4 py-3 hover:bg-muted/20">
+                            <div className="min-w-0">
+                              <p className="truncate text-sm font-medium text-foreground">{item.name}</p>
+                              <p className="mt-0.5 truncate font-numeric text-[10px] tracking-wide text-muted-foreground">Rencana: {formatRupiahCompact(item.amount)}</p>
+                            </div>
+                            <div className="flex shrink-0 gap-2 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100">
+                              <button onClick={() => openItemModal(item)} aria-label={`Ubah amplop ${item.name}`} className="touch-target p-2 text-muted-foreground hover:text-primary-500"><Edit2 className="h-3.5 w-3.5" /></button>
+                              <button onClick={() => deleteBudgetItem(item.id)} aria-label={`Hapus amplop ${item.name}`} className="touch-target p-2 text-muted-foreground hover:text-danger"><Trash2 className="h-3.5 w-3.5" /></button>
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {budgetItems.length === 0 && (
+                <EmptyState
+                  icon={Wallet}
+                  title="Belum ada amplop anggaran"
+                  description="Buat amplop pertama Anda, misalnya Konsumsi, Transportasi, atau Listrik."
+                  action={<button onClick={() => openItemModal(null)} className="btn-primary text-xs">Buat Amplop Pertama</button>}
+                />
+              )}
+            </div>
           )}
         </div>
       </div>
 
-      {/* ── MODALS ── */}
-
-      {/* 1. Modal Item (Amplop Master) */}
-      <BottomSheet open={showItemModal} onClose={() => setShowItemModal(false)} title={editingItem ? 'Edit Target Amplop' : 'Bikin Amplop Master Baru'}>
-        <form onSubmit={saveBudgetItem} className="space-y-4">
+      {/* Modal amplop */}
+      <BottomSheet open={showItemModal} onClose={() => setShowItemModal(false)} title={editingItem ? 'Ubah Amplop' : 'Buat Amplop Baru'}>
+        <div className="space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-foreground mb-1.5 uppercase tracking-wide">Nama Amplop</label>
-            <input required value={itemForm.name} onChange={e => setItemForm({...itemForm, name: e.target.value})} type="text" className="input-field" placeholder="e.g. Belanja Bulanan, Listrik PLN, Nongkrong" />
+            <label htmlFor="amplop-nama" className="mb-1.5 block text-xs font-medium text-foreground">Nama Amplop</label>
+            <input
+              id="amplop-nama"
+              required
+              value={itemForm.name}
+              onChange={(e) => setItemForm({ ...itemForm, name: e.target.value })}
+              type="text"
+              className="input-field"
+              placeholder="misal: Belanja Bulanan, Listrik, Makan Siang"
+            />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-foreground mb-1.5 uppercase tracking-wide">Kategori Induk</label>
-            <select value={itemForm.category} onChange={e => setItemForm({...itemForm, category: e.target.value as BudgetCategory})} className="input-field">
-              {Object.entries(BUDGET_CATEGORY_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-            </select>
+            <p className="mb-2 text-xs font-medium text-foreground">Kategori Induk</p>
+            <CategoryChipPicker
+              groups={CATEGORY_GROUPS}
+              options={CATEGORY_GROUPS.map((g) => ({ label: g.label, groupKey: g.key }))}
+              value={BUDGET_CATEGORY_LABELS[itemForm.category]}
+              onSelect={(opt) => setItemForm({ ...itemForm, category: opt.groupKey as BudgetCategory })}
+            />
           </div>
-          <div>
-            <label className="block text-xs font-semibold text-foreground mb-1.5 uppercase tracking-wide">Rencana Saldo (Rp)</label>
-            <input required min={0} value={itemForm.amount || ''} onChange={e => setItemForm({...itemForm, amount: Number(e.target.value)})} type="number" className="input-field font-numeric" />
-            <p className="text-[10px] text-muted-foreground mt-1">Berapa budget ideal yang ingin Anda sisihkan sebulan untuk dompet ini?</p>
-          </div>
-          <div className="pt-2 flex justify-end gap-2">
-            <button type="button" onClick={() => setShowItemModal(false)} className="btn-secondary">Batal</button>
-            <button type="submit" className="btn-primary">Simpan Master Amplop</button>
-          </div>
-        </form>
-      </BottomSheet>
+          <AmountKeypad value={itemForm.amount} onChange={(amount) => setItemForm({ ...itemForm, amount })} />
+          <p className="text-xs text-muted-foreground">Rencana nominal yang ingin disisihkan setiap bulan untuk amplop ini.</p>
 
-      {/* 2. Modal Transaksi (Jurnal) */}
-      <BottomSheet open={showTxModal} onClose={() => setShowTxModal(false)} title={editingTx ? 'Revisi Catatan Jurnal' : 'Input Catatan Transaksi Jurnal'}>
-        <form onSubmit={saveTransaction} className="space-y-4">
-          <div className="grid grid-cols-2 gap-3">
-            <div className="col-span-2">
-              <label className="block text-xs font-semibold text-foreground mb-1.5 uppercase tracking-wide">Tanggal Transaksi</label>
-              <input required value={txForm.transaction_date} onChange={e => setTxForm({...txForm, transaction_date: e.target.value})} type="date" className="input-field" />
-            </div>
+          {itemError && (
+            <p role="alert" className="rounded-xl bg-red-50 px-3.5 py-2.5 text-sm text-red-600 dark:bg-red-500/10 dark:text-red-300">
+              {itemError}
+            </p>
+          )}
 
-            <div className="col-span-2">
-              <label className="block text-xs font-semibold text-foreground mb-1.5 uppercase tracking-wide">Sumber/Tujuan Amplop</label>
-              <select
-                value={txForm.subcategory}
-                onChange={e => {
-                   const selectedName = e.target.value;
-                   const matchedItem = budgetItems.find(i => i.name === selectedName);
-                   setTxForm({...txForm, subcategory: selectedName, category: matchedItem ? matchedItem.category : 'BIAYA_OPERASIONAL' as BudgetCategory });
-                }}
-                className="input-field font-medium"
-              >
-                <option value="" disabled>-- Pilih Amplop --</option>
-                {Object.entries(BUDGET_CATEGORY_LABELS).map(([catKey, catLabel]) => {
-                   const options = budgetItems.filter(i => i.category === catKey);
-                   if (options.length === 0) return null;
-                   return (
-                     <optgroup key={catKey} label={catLabel.toUpperCase()}>
-                       {options.map(o => <option key={o.id} value={o.name}>{o.name}</option>)}
-                     </optgroup>
-                   );
-                })}
-              </select>
-            </div>
-
-            <div className="col-span-2">
-              <label className="block text-xs font-semibold text-foreground mb-1.5 uppercase tracking-wide">Nominal Mutasi (Rp)</label>
-              <input required min={0} value={txForm.amount || ''} onChange={e => setTxForm({...txForm, amount: Number(e.target.value)})} type="number" className="input-field font-numeric font-bold placeholder:font-normal" placeholder="150000" />
-            </div>
-
-            <div className="col-span-2">
-              <label className="block text-xs font-semibold text-foreground mb-1.5 uppercase tracking-wide">Keterangan / Catatan Pendek</label>
-              <input value={txForm.description} onChange={e => setTxForm({...txForm, description: e.target.value})} type="text" maxLength={100} className="input-field" placeholder="e.g. Beli kopi sama teman kantor" />
-            </div>
-          </div>
-          <div className="pt-3 flex justify-end gap-2 border-t border-border mt-2">
-            <button type="button" onClick={() => setShowTxModal(false)} className="btn-secondary">Batal</button>
-            <button type="submit" className="btn-primary">Simpan Jurnal</button>
-          </div>
-        </form>
+          <button type="button" onClick={saveBudgetItem} className="btn-primary w-full touch-target">
+            {editingItem ? 'Simpan Perubahan' : 'Simpan Amplop'}
+          </button>
+        </div>
       </BottomSheet>
     </div>
   );
