@@ -8,7 +8,7 @@ const inter = Inter({ subsets: ['latin'], variable: '--font-inter', display: 'sw
 
 export const metadata: Metadata = {
   title: {
-    default: 'Keuanganku — Manajemen Keuangan Personal',
+    default: 'Keuanganku - Manajemen Keuangan Personal',
     template: '%s | Keuanganku',
   },
   description:

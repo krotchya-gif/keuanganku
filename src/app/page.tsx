@@ -16,12 +16,12 @@ import {
 } from 'lucide-react';
 
 export const metadata: Metadata = {
-  title: 'Keuanganku — Manajemen Keuangan Personal',
+  title: 'Keuanganku - Manajemen Keuangan Personal',
   description:
     'Aplikasi manajemen keuangan personal lengkap: Net Worth, Arus Kas, Checkup Keuangan, Simulasi KPR, Budgeting, dan Tabungan. Gratis, cepat, dan bisa diakses offline.',
   keywords: ['keuangan', 'budgeting', 'net worth', 'KPR', 'investasi', 'tabungan', 'PWA'],
   openGraph: {
-    title: 'Keuanganku — Manajemen Keuangan Personal',
+    title: 'Keuanganku - Manajemen Keuangan Personal',
     description:
       'Pantau net worth, arus kas, budgeting, dan kesehatan finansial dalam satu aplikasi. Gratis & offline.',
     type: 'website',
@@ -106,7 +106,7 @@ const FAQS = [
   },
   {
     q: 'Apa bedanya dengan aplikasi budgeting lain?',
-    a: 'Keuanganku menggabungkan 3 alat sekaligus: checkup kesehatan finansial, simulasi KPR, dan budgeting amplop — jadi Anda tidak perlu berpindah aplikasi.',
+    a: 'Keuanganku menggabungkan 3 alat sekaligus: checkup kesehatan finansial, simulasi KPR, dan anggaran amplop, jadi Anda tidak perlu berpindah aplikasi.',
   },
   {
     q: 'Bagaimana cara menyimpan progres net worth?',
@@ -150,8 +150,8 @@ export default function LandingPage() {
             <span className="gradient-text">dengan Cerdas &amp; Tenang</span>
           </h1>
           <p className="mt-5 text-base sm:text-lg text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-            Pantau net worth, arus kas, kesehatan finansial, simulasi KPR, dan budgeting amplop —
-            semua dalam satu aplikasi yang cepat dan bisa diakses offline.
+            Pantau kekayaan bersih, arus kas, kesehatan finansial, simulasi KPR, dan anggaran amplop,
+            semuanya dalam satu aplikasi yang cepat dan bisa diakses offline.
           </p>
           <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
             <Link href="/register" className="btn-primary w-full sm:w-auto px-8 py-3.5 text-base">
