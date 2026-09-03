@@ -10,38 +10,59 @@ import {
   TrendingUp,
   ArrowLeftRight,
   HeartPulse,
-  Home,
+  House,
   PiggyBank,
-  CreditCard,
-  Calendar,
+  ReceiptText,
+  History,
   Target,
   BarChart3,
   Settings,
+  Repeat,
   Wallet,
   ChevronRight,
   Sun,
   Moon,
+  LogOut,
 } from 'lucide-react';
 import { createClient } from '@/utils/supabase/client';
 
+/**
+ * Struktur navigasi per pilar:
+ * - Arus Kas  : tempat mencatat (transaksi, riwayat, tagihan)
+ * - Anggaran  : tempat merencanakan (amplop, kas rutin, tabungan)
+ * - KPR       : simulasi, berdiri sendiri
+ * - Analisis  : kekayaan bersih, checkup, evaluasi tahunan
+ */
 const navGroups: { label: string; items: { href: string; label: string; icon: typeof LayoutDashboard }[] }[] = [
   {
-    label: 'Utama',
+    label: 'Menu',
+    items: [{ href: '/dashboard', label: 'Beranda', icon: LayoutDashboard }],
+  },
+  {
+    label: 'Arus Kas',
     items: [
-      { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-      { href: '/net-worth', label: 'Net Worth', icon: TrendingUp },
-      { href: '/arus-kas', label: 'Arus Kas', icon: ArrowLeftRight },
+      { href: '/arus-kas', label: 'Transaksi', icon: ArrowLeftRight },
+      { href: '/kalendar', label: 'Riwayat', icon: History },
+      { href: '/pembayaran', label: 'Pembayaran Tagihan', icon: ReceiptText },
     ],
   },
   {
-    label: 'Perencanaan',
+    label: 'Anggaran',
     items: [
+      { href: '/budgeting', label: 'Anggaran & Evaluasi', icon: PiggyBank },
+      { href: '/kas-rutin', label: 'Kas Rutin Bulanan', icon: Repeat },
+      { href: '/tabungan', label: 'Tabungan & Investasi', icon: Target },
+    ],
+  },
+  {
+    label: 'KPR',
+    items: [{ href: '/kpr', label: 'Simulasi KPR', icon: House }],
+  },
+  {
+    label: 'Analisis',
+    items: [
+      { href: '/net-worth', label: 'Kekayaan Bersih', icon: TrendingUp },
       { href: '/checkup', label: 'Checkup Keuangan', icon: HeartPulse },
-      { href: '/kpr', label: 'Simulasi KPR', icon: Home },
-      { href: '/budgeting', label: 'Budgeting', icon: PiggyBank },
-      { href: '/pembayaran', label: 'Pembayaran', icon: CreditCard },
-      { href: '/kalendar', label: 'Kalendar', icon: Calendar },
-      { href: '/tabungan', label: 'Tabungan', icon: Target },
       { href: '/evaluasi', label: 'Evaluasi Tahunan', icon: BarChart3 },
     ],
   },
@@ -56,7 +77,7 @@ export function Sidebar() {
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const [profile, setProfile] = useState<{ email: string; name: string; initial: string }>({
-    email: 'Memuat...',
+    email: 'Memuat…',
     name: 'Pengguna',
     initial: 'U',
   });
@@ -89,7 +110,7 @@ export function Sidebar() {
           </div>
           <div>
             <p className="font-bold text-foreground text-sm leading-none">Keuanganku</p>
-            <p className="text-muted-foreground text-xs mt-0.5">Manajemen Finansial</p>
+            <p className="text-muted-foreground text-xs mt-0.5">Keuangan Pribadi</p>
           </div>
         </Link>
       </div>
@@ -148,9 +169,9 @@ export function Sidebar() {
               window.location.href = '/login';
             }}
             className="p-1.5 shrink-0 hover:bg-muted text-muted-foreground hover:text-red-500 rounded-md transition-colors"
-            title="Keluar (Logout)"
+            title="Keluar"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+            <LogOut className="w-4 h-4" />
           </button>
         </div>
       </div>

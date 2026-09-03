@@ -1,30 +1,45 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import {
-  TrendingUp, TrendingDown, ArrowUpRight, ArrowDownRight,
-  Plus, Wallet, PiggyBank, Activity, LayoutDashboard,
-  ChevronRight, CalendarDays, ArrowRight
+  ArrowUpRight, ArrowDownRight, Plus, Wallet, PiggyBank, Activity,
+  ChevronRight, ArrowLeftRight, House, TrendingUp, HeartPulse,
+  Target, Repeat, History, BarChart3,
 } from 'lucide-react';
-import { formatRupiahCompact, formatPercent, getStatusColor, getMonthName, getMonthRange } from '@/lib/utils';
 import {
-  AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer,
-  RadarChart, Radar, PolarGrid, PolarAngleAxis,
+  PieChart, Pie, Cell, ResponsiveContainer, AreaChart, Area,
+  BarChart, Bar, XAxis, YAxis, Tooltip,
 } from 'recharts';
+import { formatRupiahCompact, formatPercent, getLocalDateString, cn } from '@/lib/utils';
 import { getCurrentUserId } from '@/lib/queries/users';
 import { fetchAssets } from '@/lib/queries/assets';
 import { fetchDebts } from '@/lib/queries/debts';
-import { fetchCashflowItems } from '@/lib/queries/cashflow';
 import { fetchSnapshots } from '@/lib/queries/snapshots';
 import { fetchTransactions } from '@/lib/queries/transactions';
 import { fetchSavingsGoals } from '@/lib/queries/savings';
 import { fetchBudgetItems } from '@/lib/queries/budget';
+import { RecordTransactionSheet } from '@/components/transactions/RecordTransactionSheet';
+import { HeroCard } from '@/components/ui/HeroCard';
+import { QuickActionCircle } from '@/components/ui/QuickActionCircle';
+import { SegmentedControl } from '@/components/ui/SegmentedControl';
+import { EmptyState } from '@/components/ui/EmptyState';
 import { ChartTooltip } from '@/components/charts/ChartTooltip';
-import { ChartGradients, chartGridStyle, chartAxisStyle, formatChartRupiah } from '@/components/charts/ChartTheme';
-import type { Asset, Debt, CashflowItem, SavingsGoal, Transaction, FinancialCheckupItem } from '@/shared';
-import { getDanaDarurat, calculateNetWorth, calculateCashFlow, calculateFinancialCheckup, calculateGrowth, checkupRadarScore, BUDGET_CATEGORY_LABELS, BUDGET_CATEGORY_COLORS } from '@/shared';
-import { Skeleton, CardSkeleton, ChartSkeleton, KPISkeleton } from '@/components/ui/Skeleton';
+import { ChartGradients, chartAxisStyle, formatChartRupiah } from '@/components/charts/ChartTheme';
+import type { SavingsGoal, Transaction } from '@/shared';
+import { calculateNetWorth, calculateGrowth, BUDGET_CATEGORY_LABELS, BUDGET_CATEGORY_COLORS } from '@/shared';
+import { Skeleton, ChartSkeleton } from '@/components/ui/Skeleton';
+
+const QUICK_ACTIONS = [
+  { label: 'Arus Kas', href: '/arus-kas', icon: ArrowLeftRight, color: '#3ecf8e' },
+  { label: 'Simulasi KPR', href: '/kpr', icon: House, color: '#f5a623' },
+  { label: 'Kekayaan Bersih', href: '/net-worth', icon: TrendingUp, color: '#635bff' },
+  { label: 'Checkup', href: '/checkup', icon: HeartPulse, color: '#06b6d4' },
+  { label: 'Tabungan', href: '/tabungan', icon: Target, color: '#ec4899' },
+  { label: 'Kas Rutin', href: '/kas-rutin', icon: Repeat, color: '#8b5cf6' },
+  { label: 'Riwayat', href: '/kalendar', icon: History, color: '#0ea5e9' },
+  { label: 'Evaluasi', href: '/evaluasi', icon: BarChart3, color: '#f59e0b' },
+];
 
 interface NetWorthHistoryPoint {
   bulan: string;
@@ -40,25 +55,35 @@ interface BudgetPreview {
   color: string;
 }
 
-interface CheckupRadarPoint {
-  name: string;
-  value: number;
-  status: 'sehat' | 'warning' | 'bahaya';
-}
+const PRIVACY_KEY = 'keuanganku:sembunyikan-nilai';
 
 export function DashboardContent() {
-  const [loading, setLoading] = useState(true);
   const now = new Date();
   const currentMonth = now.getMonth() + 1;
   const currentYear = now.getFullYear();
 
+  const [loading, setLoading] = useState(true);
+  const [hidden, setHidden] = useState(false);
+  const [recordOpen, setRecordOpen] = useState(false);
+  const [summaryTab, setSummaryTab] = useState<'kas' | 'anggaran'>('kas');
+  const [refreshKey, setRefreshKey] = useState(0);
+
   const [netWorth, setNetWorth] = useState({ current: 0, previous: 0, growth: 0, totalAssets: 0, totalDebts: 0 });
   const [netWorthHistory, setNetWorthHistory] = useState<NetWorthHistoryPoint[]>([]);
-  const [cashFlow, setCashFlow] = useState({ totalMasuk: 0, totalKeluar: 0, surplus: 0 });
   const [savingsGoals, setSavingsGoals] = useState<SavingsGoal[]>([]);
   const [budgetData, setBudgetData] = useState<BudgetPreview[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [checkupData, setCheckupData] = useState<CheckupRadarPoint[]>([]);
+
+  useEffect(() => {
+    setHidden(localStorage.getItem(PRIVACY_KEY) === '1');
+  }, []);
+
+  const toggleHidden = () => {
+    setHidden((h) => {
+      localStorage.setItem(PRIVACY_KEY, h ? '0' : '1');
+      return !h;
+    });
+  };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -66,18 +91,17 @@ export function DashboardContent() {
         const userId = await getCurrentUserId();
         if (!userId) return;
 
-        const { startDate, endDate } = getMonthRange(currentYear, currentMonth);
+        // 60 hari terakhir: mencakup bulan berjalan + aktivitas mingguan lintas bulan.
+        const from = new Date(now);
+        from.setDate(from.getDate() - 59);
+        const { startDate, endDate } = { startDate: getLocalDateString(from), endDate: getLocalDateString(now) };
 
-        const [
-          snapData, cashData, savingData, txData,
-          assetData, debtData, budgetRows
-        ] = await Promise.all([
+        const [snapData, txData, assetData, debtData, savingData, budgetRows] = await Promise.all([
           fetchSnapshots(userId, 12),
-          fetchCashflowItems(userId),
-          fetchSavingsGoals(userId),
           fetchTransactions(userId, startDate, endDate),
           fetchAssets(userId),
           fetchDebts(userId),
+          fetchSavingsGoals(userId),
           fetchBudgetItems(userId),
         ]);
 
@@ -93,7 +117,7 @@ export function DashboardContent() {
             totalDebts: Number(latest.total_debts),
           });
           setNetWorthHistory(snapData.map((s) => ({
-            bulan: new Date(s.snapshot_date).toLocaleDateString('id-ID', { month: 'short', year: '2-digit' }),
+            bulan: new Date(`${s.snapshot_date}T00:00:00`).toLocaleDateString('id-ID', { month: 'short', year: '2-digit' }),
             aset: Number(s.total_assets),
             utang: Number(s.total_debts),
             netWorth: Number(s.net_worth),
@@ -109,43 +133,18 @@ export function DashboardContent() {
           });
         }
 
-        const cashFlowResult = calculateCashFlow(cashData);
-        setCashFlow({
-          totalMasuk: cashFlowResult.totalKasMasuk,
-          totalKeluar: cashFlowResult.totalKasKeluar,
-          surplus: cashFlowResult.surplusDefisit,
-        });
-
-        if (savingData.length > 0) setSavingsGoals(savingData.slice(0, 4));
-
-        if (assetData.length > 0 || debtData.length > 0 || cashData.length > 0) {
-          const nw = calculateNetWorth(assetData, debtData);
-          const danaDarurat = getDanaDarurat(assetData);
-          const checkup = calculateFinancialCheckup({
-            danaDarurat,
-            pengeluaranBulanan: cashFlowResult.totalKasKeluar,
-            totalCicilan: cashFlowResult.totalKewajiban,
-            pendapatan: cashFlowResult.totalKasMasuk,
-            tabunganInvestasi: cashFlowResult.totalMasaDepan,
-            biayaHidup: cashFlowResult.totalKebutuhan,
-            totalAset: nw.totalAssets,
-            totalUtang: nw.totalDebts,
-          });
-
-          const radarNames = ['Dana Darurat', 'Arus Kas', 'Cicilan', 'Investasi', 'Biaya Hidup', 'Solvabilitas'];
-          setCheckupData(checkup.map((item: FinancialCheckupItem, i: number) => ({
-            name: radarNames[i],
-            value: checkupRadarScore(item) / 100,
-            status: item.status,
-          })));
-        }
-
         setTransactions(txData);
+        setSavingsGoals(savingData.slice(0, 4));
+
+        // Realisasi anggaran: transaksi bulan berjalan per kategori.
+        const monthPrefix = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
         setBudgetData(() => {
           const cats = Object.keys(BUDGET_CATEGORY_LABELS);
           return cats.map((cat) => {
             const planned = budgetRows.filter((b) => b.category === cat).reduce((s: number, b) => s + Number(b.amount), 0);
-            const actual = txData.filter((t) => t.category === cat).reduce((s: number, t) => s + Number(t.amount), 0);
+            const actual = txData
+              .filter((t) => t.category === cat && t.transaction_date.startsWith(monthPrefix))
+              .reduce((s: number, t) => s + Number(t.amount), 0);
             return {
               category: BUDGET_CATEGORY_LABELS[cat as keyof typeof BUDGET_CATEGORY_LABELS],
               planned,
@@ -161,252 +160,187 @@ export function DashboardContent() {
       }
     };
     fetchData();
-  }, [currentMonth, currentYear]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentMonth, currentYear, refreshKey]);
 
-  const worstStatus: 'sehat' | 'warning' | 'bahaya' = checkupData.some(d => d.status === 'bahaya')
-    ? 'bahaya'
-    : checkupData.some(d => d.status === 'warning')
-      ? 'warning'
-      : 'sehat';
-  const radarColor = getStatusColor(worstStatus);
+  // Arus kas aktual bulan berjalan (dari transaksi, bukan rencana).
+  const monthPrefix = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
+  const cashFlow = useMemo(() => {
+    const monthTx = transactions.filter((t) => t.transaction_date.startsWith(monthPrefix));
+    const masuk = monthTx.filter((t) => t.category === 'PENDAPATAN').reduce((s, t) => s + Number(t.amount), 0);
+    const keluar = monthTx.filter((t) => t.category !== 'PENDAPATAN').reduce((s, t) => s + Number(t.amount), 0);
+    return { masuk, keluar, surplus: masuk - keluar };
+  }, [transactions, monthPrefix]);
 
-  const isPositiveCF = cashFlow.surplus >= 0;
+  // Aktivitas pengeluaran 7 hari terakhir untuk grafik batang.
+  const weeklyActivity = useMemo(() => {
+    const days: Array<{ hari: string; total: number }> = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(now);
+      d.setDate(d.getDate() - i);
+      const key = getLocalDateString(d);
+      const total = transactions
+        .filter((t) => t.transaction_date === key && t.category !== 'PENDAPATAN')
+        .reduce((s, t) => s + Number(t.amount), 0);
+      days.push({ hari: d.toLocaleDateString('id-ID', { weekday: 'short' }), total });
+    }
+    return days;
+  }, [transactions]);
+
+  const sisaPersen = cashFlow.masuk > 0 ? Math.max(0, Math.min(100, ((cashFlow.masuk - cashFlow.keluar) / cashFlow.masuk) * 100)) : null;
+
   const isPositiveNW = netWorth.growth >= 0;
 
   if (loading) {
     return (
-      <div className="space-y-6 p-3 sm:p-6 animate-pulse">
+      <div className="space-y-6 animate-pulse">
         <Skeleton className="h-8 w-48" />
-        <KPISkeleton />
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-3 sm:gap-4">
-          <ChartSkeleton />
-          <CardSkeleton />
-        </div>
+        <Skeleton className="h-44 w-full rounded-2xl" />
+        <Skeleton className="h-24 w-full rounded-2xl" />
+        <ChartSkeleton />
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5 md:space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex items-center justify-between gap-3">
         <div>
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center shadow-glow">
-              <LayoutDashboard className="w-5 h-5 text-white" />
+          <p className="text-sm text-muted-foreground">Ikhtisar</p>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">Keuanganku</h1>
+        </div>
+        <button onClick={() => setRecordOpen(true)} className="btn-primary hidden md:flex">
+          <Plus className="w-4 h-4" />
+          Catat Transaksi
+        </button>
+      </div>
+
+      {/* Hero — Kekayaan Bersih */}
+      <HeroCard
+        label="Kekayaan Bersih"
+        value={netWorth.current === 0 ? 'Rp 0' : formatRupiahCompact(netWorth.current)}
+        hidden={hidden}
+        onToggleHidden={toggleHidden}
+        chips={
+          netWorthHistory.length > 0 ? (
+            <span className="flex w-fit items-center gap-1 rounded-full bg-white/15 px-2.5 py-1 text-xs font-semibold text-white">
+              {isPositiveNW ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
+              {formatPercent(Math.abs(netWorth.growth))}
+            </span>
+          ) : (
+            <span className="flex w-fit items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-1 text-xs font-medium text-white/90">
+              <TrendingUp className="w-3 h-3" /> {netWorthHistory.length || 0} snapshot tercatat
+            </span>
+          )
+        }
+        stats={[
+          { label: 'Aset', value: formatRupiahCompact(netWorth.totalAssets), icon: <ArrowUpRight className="w-3.5 h-3.5" /> },
+          { label: 'Kewajiban', value: formatRupiahCompact(netWorth.totalDebts), icon: <ArrowDownRight className="w-3.5 h-3.5" /> },
+        ]}
+      >
+        {netWorthHistory.length > 1 && (
+          <div className="mt-3 h-12">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={netWorthHistory}>
+                <defs>
+                  <linearGradient id="heroSpark" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#ffffff" stopOpacity={0.35} />
+                    <stop offset="95%" stopColor="#ffffff" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <Area type="monotone" dataKey="netWorth" stroke="rgba(255,255,255,0.9)" strokeWidth={2} fill="url(#heroSpark)" dot={false} />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+      </HeroCard>
+
+      {/* Aksi cepat */}
+      <nav aria-label="Aksi cepat" className="grid grid-cols-4 sm:grid-cols-8 gap-y-3 justify-items-center">
+        {QUICK_ACTIONS.map((action) => (
+          <QuickActionCircle key={action.href} href={action.href} label={action.label} icon={<action.icon className="h-5 w-5" />} color={action.color} />
+        ))}
+      </nav>
+
+      {/* Ringkasan: tab Arus Kas / Anggaran */}
+      <section className="card-premium p-4 sm:p-5">
+        <SegmentedControl
+          value={summaryTab}
+          onChange={setSummaryTab}
+          options={[
+            { value: 'kas', label: 'Arus Kas' },
+            { value: 'anggaran', label: 'Anggaran' },
+          ]}
+          className="mb-4"
+        />
+
+        {summaryTab === 'kas' ? (
+          <div className="flex flex-col sm:flex-row items-center gap-5">
+            <div className="relative h-36 w-36 shrink-0">
+              {sisaPersen !== null ? (
+                <>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={[
+                          { name: 'Tersisa', value: sisaPersen },
+                          { name: 'Terpakai', value: 100 - sisaPersen },
+                        ]}
+                        dataKey="value"
+                        innerRadius="72%"
+                        outerRadius="100%"
+                        startAngle={90}
+                        endAngle={-270}
+                        strokeWidth={0}
+                      >
+                        <Cell fill="#635bff" />
+                        <Cell fill="hsl(var(--muted))" />
+                      </Pie>
+                    </PieChart>
+                  </ResponsiveContainer>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center">
+                    <p className="font-numeric text-xl font-bold text-foreground">{Math.round(sisaPersen)}%</p>
+                    <p className="text-[10px] text-muted-foreground">dana tersisa</p>
+                  </div>
+                </>
+              ) : (
+                <div className="flex h-full items-center justify-center text-center text-xs text-muted-foreground">
+                  Belum ada pemasukan bulan ini
+                </div>
+              )}
             </div>
-            <div>
-              <h1 className="text-xl sm:text-2xl font-bold text-foreground">Dashboard</h1>
-              <p className="text-muted-foreground text-xs sm:text-sm">
-                {getMonthName(currentMonth)} {currentYear}
+
+            <div className="w-full space-y-2.5">
+              <div className="flex items-center justify-between rounded-xl border border-border/60 bg-card px-4 py-3">
+                <span className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <ArrowDownRight className="h-4 w-4 text-success" /> Pemasukan
+                </span>
+                <span className="font-numeric text-sm font-semibold text-success">
+                  {hidden ? 'Rp ••••••' : formatRupiahCompact(cashFlow.masuk)}
+                </span>
+              </div>
+              <div className="flex items-center justify-between rounded-xl border border-border/60 bg-card px-4 py-3">
+                <span className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <ArrowUpRight className="h-4 w-4 text-danger" /> Pengeluaran
+                </span>
+                <span className="font-numeric text-sm font-semibold text-danger">
+                  {hidden ? 'Rp ••••••' : formatRupiahCompact(cashFlow.keluar)}
+                </span>
+              </div>
+              <p className={cn('text-center text-xs font-medium', cashFlow.surplus >= 0 ? 'text-success' : 'text-danger')}>
+                {cashFlow.surplus >= 0 ? 'Surplus ' : 'Defisit '}
+                {hidden ? 'Rp ••••••' : formatRupiahCompact(Math.abs(cashFlow.surplus))}
               </p>
             </div>
           </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <Link
-            href="/budgeting"
-            className="flex items-center gap-2 bg-primary-500 hover:bg-primary-600 text-white px-4 py-2.5 sm:py-2 rounded-xl sm:rounded-lg text-sm font-medium transition-all shadow-glow active:scale-95"
-          >
-            <Plus className="w-4 h-4" />
-            <span className="hidden sm:inline">Catat Transaksi</span>
-            <span className="sm:hidden">Transaksi</span>
-          </Link>
-        </div>
-      </div>
-
-      {/* Row 1: KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-        {/* Net Worth */}
-        <div className="relative overflow-hidden card-premium p-4 sm:p-5 dashboard-summary-hero">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-primary-500/5 to-transparent rounded-bl-full" />
-          <div className="relative">
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-full bg-white/15 flex items-center justify-center">
-                  <TrendingUp className="w-4 h-4 text-primary-500" />
-                </div>
-                <p className="text-sm font-medium text-foreground">Net Worth</p>
-              </div>
-              {netWorthHistory.length > 0 && (
-                <span className={`flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full ${isPositiveNW ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-600'}`}>
-                  {isPositiveNW ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
-                  {formatPercent(Math.abs(netWorth.growth))}
-                </span>
-              )}
-            </div>
-            <p className="kpi-value font-bold font-numeric text-foreground mt-1">
-              {netWorth.current === 0 ? 'Rp 0' : formatRupiahCompact(netWorth.current)}
-            </p>
-            {netWorthHistory.length > 0 && (
-              <div className="mt-3 h-12">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={netWorthHistory}>
-                    <defs>
-                      <linearGradient id="nwGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#635bff" stopOpacity={0.25} />
-                        <stop offset="95%" stopColor="#635bff" stopOpacity={0} />
-                      </linearGradient>
-                    </defs>
-                    <Area type="monotone" dataKey="netWorth" stroke="#635bff" strokeWidth={2} fill="url(#nwGrad)" dot={false} />
-                    <Tooltip content={<ChartTooltip formatter={formatRupiahCompact} />} />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-            )}
-            <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground border-t border-border/40 pt-2">
-              <span>Aset <span className="font-semibold text-emerald-600">{formatRupiahCompact(netWorth.totalAssets)}</span></span>
-              <span>Utang <span className="font-semibold text-red-500">{formatRupiahCompact(netWorth.totalDebts)}</span></span>
-            </div>
-          </div>
-        </div>
-
-        {/* Arus Kas */}
-        <div className="relative overflow-hidden card-premium p-4 sm:p-5">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-emerald-500/5 to-transparent rounded-bl-full" />
-          <div className="relative">
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center">
-                  <Activity className="w-4 h-4 text-emerald-500" />
-                </div>
-                <p className="text-sm font-medium text-foreground">Arus Kas</p>
-              </div>
-              <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full ${isPositiveCF ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-600'}`}>
-                {isPositiveCF ? 'Surplus' : 'Defisit'}
-              </span>
-            </div>
-            <p className={`kpi-value font-bold font-numeric mt-1 ${isPositiveCF ? 'text-emerald-600' : 'text-red-500'}`}>
-              {isPositiveCF ? '+' : ''}{formatRupiahCompact(cashFlow.surplus)}
-            </p>
-            <div className="mt-4 space-y-2">
-              <div className="flex items-center justify-between text-xs">
-                <div className="flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                  <span className="text-muted-foreground">Pemasukan</span>
-                </div>
-                <span className="font-numeric font-semibold text-emerald-600">{formatRupiahCompact(cashFlow.totalMasuk)}</span>
-              </div>
-              <div className="flex items-center justify-between text-xs">
-                <div className="flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-red-400" />
-                  <span className="text-muted-foreground">Pengeluaran</span>
-                </div>
-                <span className="font-numeric font-semibold text-red-500">{formatRupiahCompact(cashFlow.totalKeluar)}</span>
-              </div>
-            </div>
-            {cashFlow.totalMasuk > 0 && (
-              <div className="mt-3">
-                <div className="h-2 bg-muted rounded-full overflow-hidden">
-                  <div
-                    className="h-full rounded-full transition-all duration-700"
-                    style={{
-                      width: `${Math.min(100, (cashFlow.totalKeluar / cashFlow.totalMasuk) * 100)}%`,
-                      background: `linear-gradient(90deg, #3ecf8e, ${(cashFlow.totalKeluar / cashFlow.totalMasuk) > 0.8 ? '#ef4444' : '#635bff'})`,
-                    }}
-                  />
-                </div>
-                <p className="text-[10px] text-muted-foreground mt-1 text-right">
-                  {formatPercent(cashFlow.totalKeluar / cashFlow.totalMasuk)} terpakai
-                </p>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Checkup Score */}
-        <div className="card-premium p-4 sm:p-5">
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center">
-                <Activity className="w-4 h-4 text-amber-500" />
-              </div>
-              <p className="text-sm font-medium text-foreground">Checkup</p>
-            </div>
-            <Link href="/checkup" className="group flex items-center gap-1 text-xs text-primary-500 font-medium hover:text-primary-600 transition-colors">
-              Detail
-              <ChevronRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
-            </Link>
-          </div>
-          <div className="h-[130px]">
-            {checkupData.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <RadarChart data={checkupData} cx="50%" cy="50%" outerRadius="70%">
-                  <PolarGrid stroke="hsl(var(--border))" strokeOpacity={0.4} />
-                  <PolarAngleAxis dataKey="name" tick={{ fontSize: 8.5, fill: 'hsl(var(--muted-foreground))' }} />
-                  <Radar
-                    name="Skor"
-                    dataKey="value"
-                    stroke={radarColor}
-                    fill={radarColor}
-                    fillOpacity={0.2}
-                    strokeWidth={2}
-                    dot={{ r: 2.5, fill: radarColor, strokeWidth: 0 }}
-                  />
-                </RadarChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="flex h-full items-center justify-center text-muted-foreground text-xs">
-                <p className="text-center">Data belum<br />tersedia</p>
-              </div>
-            )}
-          </div>
-          <div className="flex items-center justify-center gap-3 mt-1 pt-2 border-t border-border/40">
-            {(['sehat', 'warning', 'bahaya'] as const).map((s) => (
-              <span key={s} className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                <span className="w-2 h-2 rounded-full" style={{ background: getStatusColor(s) }} />
-                {s === 'sehat' ? 'Sehat' : s === 'warning' ? 'Waspada' : 'Bahaya'}
-              </span>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Row 2: Net Worth History + Budget */}
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-3 sm:gap-4">
-        {/* Net Worth History Chart */}
-        <div className="lg:col-span-3 card-premium p-4 sm:p-5">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-sm font-semibold text-foreground">Riwayat Kekayaan</h2>
-            <Link href="/net-worth" className="text-xs text-primary-500 hover:text-primary-600 font-medium transition-colors">
-              Kelola
-            </Link>
-          </div>
-          <div className="h-56 sm:h-64">
-            {netWorthHistory.length > 1 ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={netWorthHistory} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
-                  <ChartGradients prefix="dash" />
-                  <XAxis dataKey="bulan" {...chartAxisStyle} />
-                  <YAxis {...chartAxisStyle} tickFormatter={formatChartRupiah} width={65} />
-                  <Tooltip content={<ChartTooltip />} />
-                  <Area type="monotone" dataKey="aset" stroke="#3ecf8e" strokeWidth={2} fill="url(#dash-gradSuccess)" stackId="1" dot={false} />
-                  <Area type="monotone" dataKey="utang" stroke="#ef4444" strokeWidth={2} fill="url(#dash-gradDanger)" stackId="2" dot={false} />
-                  <Area type="monotone" dataKey="netWorth" stroke="#635bff" strokeWidth={3} fill="url(#dash-gradPrimary)" dot={{ r: 3, strokeWidth: 2, fill: '#fff' }} />
-                </AreaChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="flex h-full items-center justify-center text-muted-foreground text-sm border border-dashed rounded-xl">
-                <p className="text-center">Simpan snapshot di halaman Net Worth<br />untuk melihat grafik perkembangan</p>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Budget Preview */}
-        <div className="lg:col-span-2 card-premium p-4 sm:p-5">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-sm font-semibold text-foreground">Budget {getMonthName(currentMonth)}</h2>
-            <Link href="/budgeting" className="text-xs text-primary-500 hover:text-primary-600 font-medium transition-colors">
-              Detail
-            </Link>
-          </div>
+        ) : (
           <div className="space-y-3">
-            {budgetData.filter(b => b.planned > 0).map((item) => (
+            {budgetData.filter((b) => b.planned > 0).map((item) => (
               <div key={item.category}>
-                <div className="flex items-center justify-between mb-1">
+                <div className="mb-1 flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full" style={{ background: item.color }} />
+                    <span className="h-2.5 w-2.5 rounded-full" style={{ background: item.color }} />
                     <p className="text-xs font-medium text-foreground">{item.category}</p>
                   </div>
                   <div className="flex items-center gap-2 text-xs">
@@ -416,7 +350,7 @@ export function DashboardContent() {
                     </span>
                   </div>
                 </div>
-                <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                <div className="h-1.5 overflow-hidden rounded-full bg-muted">
                   <div
                     className="h-full rounded-full transition-all duration-500"
                     style={{
@@ -427,27 +361,92 @@ export function DashboardContent() {
                 </div>
               </div>
             ))}
-            {budgetData.every(b => b.planned === 0) && (
-              <div className="flex flex-col items-center justify-center py-6 text-muted-foreground">
-                <Wallet className="w-8 h-8 mb-2 opacity-30" />
-                <p className="text-xs">Belum ada anggaran</p>
-                <Link href="/budgeting" className="text-xs text-primary-500 mt-1 hover:underline">Atur Budget →</Link>
-              </div>
+            {budgetData.every((b) => b.planned === 0) && (
+              <EmptyState
+                icon={Wallet}
+                title="Belum ada anggaran"
+                description="Susun amplop anggaran bulan ini agar pengeluaran lebih terkendali."
+                action={<Link href="/budgeting" className="btn-secondary text-xs">Atur Anggaran</Link>}
+              />
             )}
           </div>
-        </div>
-      </div>
+        )}
+      </section>
 
-      {/* Row 3: Savings Goals + Transactions */}
+      {/* Aktivitas pengeluaran mingguan */}
+      <section className="card-premium p-4 sm:p-5">
+        <div className="mb-3 flex items-start justify-between">
+          <div>
+            <h2 className="text-sm font-semibold text-foreground">Aktivitas Pengeluaran</h2>
+            <p className="text-xs text-muted-foreground">7 hari terakhir</p>
+          </div>
+          <div className="flex gap-4 text-right">
+            <div>
+              <p className="text-[10px] uppercase text-muted-foreground">Total</p>
+              <p className="font-numeric text-sm font-semibold text-primary-500">
+                {hidden ? '••••' : formatRupiahCompact(weeklyActivity.reduce((s, d) => s + d.total, 0))}
+              </p>
+            </div>
+            <div>
+              <p className="text-[10px] uppercase text-muted-foreground">Rata-rata</p>
+              <p className="font-numeric text-sm font-semibold text-primary-500">
+                {hidden ? '••••' : formatRupiahCompact(weeklyActivity.reduce((s, d) => s + d.total, 0) / 7)}
+              </p>
+            </div>
+          </div>
+        </div>
+        <div className="h-36">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={weeklyActivity} margin={{ top: 5, right: 0, left: 0, bottom: 0 }}>
+              <XAxis dataKey="hari" {...chartAxisStyle} tickLine={false} axisLine={false} />
+              <Tooltip content={<ChartTooltip formatter={formatRupiahCompact} />} cursor={{ fill: 'hsl(var(--muted))', opacity: 0.5 }} />
+              <Bar dataKey="total" radius={[6, 6, 0, 0]} fill="#635bff" maxBarSize={28} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </section>
+
+      {/* Riwayat kekayaan */}
+      <section className="card-premium p-4 sm:p-5">
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-foreground">Riwayat Kekayaan Bersih</h2>
+          <Link href="/net-worth" className="text-xs font-medium text-primary-500 transition-colors hover:text-primary-600">
+            Kelola
+          </Link>
+        </div>
+        <div className="h-56 sm:h-64">
+          {netWorthHistory.length > 1 ? (
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={netWorthHistory} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
+                <ChartGradients prefix="dash" />
+                <XAxis dataKey="bulan" {...chartAxisStyle} />
+                <YAxis {...chartAxisStyle} tickFormatter={formatChartRupiah} width={65} />
+                <Tooltip content={<ChartTooltip />} />
+                <Area type="monotone" dataKey="aset" stroke="#3ecf8e" strokeWidth={2} fill="url(#dash-gradSuccess)" stackId="1" dot={false} />
+                <Area type="monotone" dataKey="utang" stroke="#ef4444" strokeWidth={2} fill="url(#dash-gradDanger)" stackId="2" dot={false} />
+                <Area type="monotone" dataKey="netWorth" stroke="#635bff" strokeWidth={3} fill="url(#dash-gradPrimary)" dot={{ r: 3, strokeWidth: 2, fill: '#fff' }} />
+              </AreaChart>
+            </ResponsiveContainer>
+          ) : (
+            <EmptyState
+              icon={TrendingUp}
+              title="Grafik belum tersedia"
+              description="Simpan snapshot di halaman Kekayaan Bersih untuk melihat perkembangan."
+              action={<Link href="/net-worth" className="btn-secondary text-xs">Buka Kekayaan Bersih</Link>}
+            />
+          )}
+        </div>
+      </section>
+
+      {/* Target tabungan + transaksi terbaru */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-3 sm:gap-4">
-        {/* Savings Goals */}
-        <div className="lg:col-span-2 card-premium p-4 sm:p-5">
-          <div className="flex items-center justify-between mb-4">
+        <section className="lg:col-span-2 card-premium p-4 sm:p-5">
+          <div className="mb-4 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <PiggyBank className="w-4 h-4 text-emerald-500" />
+              <PiggyBank className="h-4 w-4 text-success" />
               <h2 className="text-sm font-semibold text-foreground">Target Tabungan</h2>
             </div>
-            <Link href="/tabungan" className="text-xs text-primary-500 hover:text-primary-600 font-medium transition-colors">
+            <Link href="/tabungan" className="text-xs font-medium text-primary-500 transition-colors hover:text-primary-600">
               Kelola
             </Link>
           </div>
@@ -458,115 +457,91 @@ export function DashboardContent() {
               const pct = Math.min(100, (saved / target) * 100);
               return (
                 <div key={goal.id}>
-                  <div className="flex items-center justify-between mb-1.5 gap-2">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <span className="text-base shrink-0">{goal.icon || '🎯'}</span>
-                      <p className="text-sm font-medium text-foreground truncate">{goal.name}</p>
+                  <div className="mb-1.5 flex items-center justify-between gap-2">
+                    <div className="flex min-w-0 items-center gap-2">
+                      <span className="shrink-0 text-base">{goal.icon || '🎯'}</span>
+                      <p className="truncate text-sm font-medium text-foreground">{goal.name}</p>
                     </div>
-                    <div className="text-right shrink-0">
-                      <p className="text-xs font-numeric font-semibold" style={{ color: goal.color || '#635bff' }}>
+                    <div className="shrink-0 text-right">
+                      <p className="font-numeric text-xs font-semibold" style={{ color: goal.color || '#635bff' }}>
                         {formatRupiahCompact(saved)}
                       </p>
                       <p className="text-[10px] text-muted-foreground">dari {formatRupiahCompact(target)}</p>
                     </div>
                   </div>
-                  <div className="h-2 bg-muted rounded-full overflow-hidden">
+                  <div className="h-2 overflow-hidden rounded-full bg-muted">
                     <div
                       className="h-full rounded-full transition-all duration-700"
                       style={{ width: `${pct}%`, background: goal.color || '#635bff' }}
                     />
                   </div>
-                  <p className="text-[10px] text-muted-foreground mt-1">{pct.toFixed(0)}% terkumpul</p>
+                  <p className="mt-1 text-[10px] text-muted-foreground">{pct.toFixed(0)}% terkumpul</p>
                 </div>
               );
             }) : (
-              <div className="flex flex-col items-center justify-center py-6 text-muted-foreground">
-                <PiggyBank className="w-8 h-8 mb-2 opacity-30" />
-                <p className="text-xs">Belum ada target tabungan</p>
-                <Link href="/tabungan" className="text-xs text-primary-500 mt-1 hover:underline">Buat Target →</Link>
-              </div>
+              <EmptyState
+                icon={PiggyBank}
+                title="Belum ada target tabungan"
+                description="Tentukan tujuan menabung pertama Anda."
+                action={<Link href="/tabungan" className="btn-secondary text-xs">Buat Target</Link>}
+              />
             )}
           </div>
-        </div>
+        </section>
 
-        {/* Recent Transactions + Bills */}
-        <div className="lg:col-span-3 space-y-3">
-          {/* Recent Transactions */}
-          <div className="card-premium p-4 sm:p-5">
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-sm font-semibold text-foreground">Transaksi Terbaru</h2>
-              <Link href="/budgeting" className="text-xs text-primary-500 hover:text-primary-600 font-medium transition-colors">
-                Semua
-              </Link>
-            </div>
-            {transactions.length > 0 ? (
-              <div className="space-y-1">
-                {transactions.slice(0, 5).map((tx, i) => {
-                  const isIncome = tx.category === 'PENDAPATAN';
-                  return (
-                    <div key={tx.id || i} className="flex items-center justify-between px-3 py-2.5 rounded-xl hover:bg-muted/50 transition-colors gap-3">
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${isIncome ? 'bg-emerald-50' : 'bg-red-50'}`}>
-                          <span className={`text-xs font-bold ${isIncome ? 'text-emerald-600' : 'text-red-500'}`}>
-                            {isIncome ? '+' : '-'}
-                          </span>
-                        </div>
-                        <div className="min-w-0">
-                          <p className="text-sm font-medium text-foreground truncate">{tx.subcategory || tx.description || 'Transaksi'}</p>
-                          <p className="text-[10px] text-muted-foreground">
-                            {new Date(tx.transaction_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}
-                          </p>
-                        </div>
-                      </div>
-                      <p className={`text-sm font-numeric font-semibold ml-3 shrink-0 ${isIncome ? 'text-emerald-600' : 'text-red-500'}`}>
-                        {isIncome ? '+' : '-'}{formatRupiahCompact(tx.amount)}
-                      </p>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="flex flex-col items-center justify-center py-6 text-muted-foreground">
-                <Wallet className="w-8 h-8 mb-2 opacity-30" />
-                <p className="text-xs">Belum ada transaksi bulan ini</p>
-                <Link href="/budgeting" className="text-xs text-primary-500 mt-1 hover:underline">Catat transaksi →</Link>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Quick Actions */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        {[
-          { label: 'Net Worth', href: '/net-worth', icon: TrendingUp, desc: 'Aset & utang', color: '#635bff' },
-          { label: 'Arus Kas', href: '/arus-kas', icon: Activity, desc: 'Surplus & defisit', color: '#3ecf8e' },
-          { label: 'Simulasi KPR', href: '/kpr', icon: TrendingUp, desc: 'Cicilan KPR', color: '#f5a623' },
-          { label: 'Checkup', href: '/checkup', icon: Activity, desc: 'Kesehatan finansial', color: '#06b6d4' },
-        ].map((action) => {
-          const Icon = action.icon;
-          return (
-            <Link
-              key={action.href}
-              href={action.href}
-              className="card-premium p-4 flex items-center gap-3 hover:border-primary-500/40 group transition-all active:scale-[0.98]"
-            >
-              <div
-                className="w-11 h-11 rounded-full flex items-center justify-center shrink-0"
-                style={{ backgroundColor: `${action.color}15` }}
-              >
-                <Icon className="w-4 h-4" style={{ color: action.color }} />
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-foreground group-hover:text-primary-500 transition-colors">
-                  {action.label}
-                </p>
-                <p className="text-[10px] text-muted-foreground">{action.desc}</p>
-              </div>
+        <section className="lg:col-span-3 card-premium p-4 sm:p-5">
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-foreground">Transaksi Terbaru</h2>
+            <Link href="/arus-kas" className="flex items-center gap-0.5 text-xs font-medium text-primary-500 transition-colors hover:text-primary-600">
+              Lihat Semua
+              <ChevronRight className="h-3 w-3" />
             </Link>
-          );
-        })}
+          </div>
+          {transactions.length > 0 ? (
+            <div className="space-y-1">
+              {transactions.slice(0, 5).map((tx, i) => {
+                const isIncome = tx.category === 'PENDAPATAN';
+                return (
+                  <div key={tx.id || i} className="flex items-center justify-between gap-3 rounded-xl px-3 py-2.5 transition-colors hover:bg-muted/50">
+                    <div className="flex min-w-0 items-center gap-3">
+                      <div className={cn('flex h-9 w-9 shrink-0 items-center justify-center rounded-xl', isIncome ? 'bg-success/10 text-success' : 'bg-danger/10 text-danger')}>
+                        {isIncome ? <ArrowDownRight className="h-4 w-4" /> : <ArrowUpRight className="h-4 w-4" />}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium text-foreground">{tx.subcategory || tx.description || 'Transaksi'}</p>
+                        <p className="text-[10px] text-muted-foreground">
+                          {new Date(`${tx.transaction_date}T00:00:00`).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}
+                        </p>
+                      </div>
+                    </div>
+                    <p className={cn('ml-3 shrink-0 font-numeric text-sm font-semibold', isIncome ? 'text-success' : 'text-danger')}>
+                      {hidden ? 'Rp ••••••' : `${isIncome ? '+' : '−'}${formatRupiahCompact(tx.amount)}`}
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <EmptyState
+              icon={Activity}
+              title="Belum ada transaksi"
+              description="Catat pemasukan atau pengeluaran pertama Anda."
+              action={<button onClick={() => setRecordOpen(true)} className="btn-primary text-xs">Catat Sekarang</button>}
+            />
+          )}
+        </section>
       </div>
+
+      {/* CTA mobile — pengganti tombol header yang disembunyikan di layar kecil */}
+      <Link
+        href="/arus-kas?catat=1"
+        className="btn-primary w-full touch-target md:hidden"
+      >
+        <Plus className="h-4 w-4" />
+        Catat Transaksi
+      </Link>
+
+      <RecordTransactionSheet open={recordOpen} onClose={() => setRecordOpen(false)} onSaved={() => setRefreshKey((k) => k + 1)} />
     </div>
   );
 }

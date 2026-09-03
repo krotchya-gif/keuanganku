@@ -9,6 +9,10 @@ export async function fetchSnapshots(userId: string, limit = 12, year?: number):
     query = query.gte('snapshot_date', `${year}-01-01`).lte('snapshot_date', `${year}-12-31`);
   }
 
-  const { data } = await query.order('snapshot_date', { ascending: true }).limit(limit);
-  return (data ?? []) as NetWorthSnapshot[];
+  // Ambil snapshot TERBARU sebanyak `limit` (descending di DB, lalu dibalik
+  // menjadi ascending agar siap dipakai grafik kiri→kanan).
+  const { data } = await query
+    .order('snapshot_date', { ascending: false })
+    .limit(limit);
+  return ((data ?? []) as NetWorthSnapshot[]).reverse();
 }
