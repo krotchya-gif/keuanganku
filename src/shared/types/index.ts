@@ -121,6 +121,7 @@ export interface BudgetItem {
 export interface Transaction {
   id: string;
   user_id: string;
+  account_id?: string | null;
   transaction_date: string;
   amount: number;
   category: BudgetCategory;

@@ -10,6 +10,8 @@ import { createClient } from '@/utils/supabase/client';
 import { fetchBudgetItems } from '@/lib/queries/budget';
 import { DEFAULT_BUDGET_ITEMS, BUDGET_CATEGORY_COLORS, BUDGET_CATEGORY_LABELS } from '@/shared/constants';
 import type { BudgetCategory, Transaction } from '@/shared/types';
+import type { Account } from '@/shared';
+import { fetchAccounts } from '@/lib/queries/onboarding';
 import { getLocalDateString, getTodayString } from '@/lib/utils';
 
 type Direction = 'keluar' | 'masuk';
@@ -36,6 +38,8 @@ export function RecordTransactionSheet({ open, onClose, onSaved, editTransaction
   const [date, setDate] = useState(getTodayString());
   const [amount, setAmount] = useState(0);
   const [description, setDescription] = useState('');
+  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [accountId, setAccountId] = useState('');
   const [selected, setSelected] = useState<ChipOption | null>(null);
   const [wallets, setWallets] = useState<Array<{ name: string; category: BudgetCategory }>>([]);
   const [saving, setSaving] = useState(false);
@@ -51,8 +55,10 @@ export function RecordTransactionSheet({ open, onClose, onSaved, editTransaction
         const { data: { user } } = await supabase.auth.getUser();
         if (!user || cancelled) return;
         const items = await fetchBudgetItems(user.id);
+        const accountRows = await fetchAccounts(user.id);
         if (!cancelled) {
           setWallets(items.length > 0 ? items.map((i) => ({ name: i.name, category: i.category })) : DEFAULT_BUDGET_ITEMS);
+          setAccounts(accountRows);
         }
       } catch (err) {
         console.error(err);
@@ -71,6 +77,7 @@ export function RecordTransactionSheet({ open, onClose, onSaved, editTransaction
       setDate(editTransaction.transaction_date);
       setAmount(editTransaction.amount);
       setDescription(editTransaction.description ?? '');
+      setAccountId(editTransaction.account_id ?? '');
       setSelected(
         editTransaction.subcategory
           ? { label: editTransaction.subcategory, groupKey: editTransaction.category }
@@ -81,6 +88,7 @@ export function RecordTransactionSheet({ open, onClose, onSaved, editTransaction
       setDate(getTodayString());
       setAmount(0);
       setDescription('');
+      setAccountId('');
       setSelected(null);
     }
   }, [open, editTransaction]);
@@ -130,6 +138,7 @@ export function RecordTransactionSheet({ open, onClose, onSaved, editTransaction
       category,
       subcategory: wallet ? selected.label : null,
       description: description.trim() || null,
+      account_id: accountId || null,
     };
 
     try {
@@ -200,6 +209,16 @@ export function RecordTransactionSheet({ open, onClose, onSaved, editTransaction
             }
           />
         </div>
+
+        {accounts.length > 0 && (
+          <div>
+            <label htmlFor="transaction-account" className="mb-2 block text-xs font-medium uppercase tracking-wide text-muted-foreground">Sumber dana</label>
+            <select id="transaction-account" value={accountId} onChange={(e) => setAccountId(e.target.value)} className="input-field w-full">
+              <option value="">Pilih rekening (opsional)</option>
+              {accounts.map((account) => <option key={account.id} value={account.id}>{account.name}</option>)}
+            </select>
+          </div>
+        )}
 
         <AmountKeypad value={amount} onChange={setAmount} />
 

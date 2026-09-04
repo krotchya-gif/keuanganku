@@ -13,6 +13,7 @@
 \ir migrations/004_dana_darat_flag.sql
 \ir migrations/005_seed_default_categories.sql
 \ir migrations/20260904115104_add_onboarding_accounts.sql
+\ir migrations/20260904130039_add_transaction_accounts.sql
 
 -- Live-only operational objects from migration 003 (pg_cron/pg_net, Vault
 -- secrets, and the snapshot-networth-monthly job) are managed separately.

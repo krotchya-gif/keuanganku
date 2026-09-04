@@ -7,6 +7,12 @@ export interface OnboardingProfile {
   priorities: string[];
 }
 
+export async function fetchAccounts(userId: string): Promise<Account[]> {
+  const { data, error } = await createClient().from('accounts').select('*').eq('user_id', userId).eq('is_active', true).order('created_at');
+  if (error) throw new Error(error.message);
+  return (data ?? []) as Account[];
+}
+
 export async function getOnboardingProfile(userId: string): Promise<OnboardingProfile> {
   const { data, error } = await createClient().from('users').select('onboarding_status,onboarding_step,financial_priorities').eq('id', userId).single();
   if (error) throw new Error(error.message);
