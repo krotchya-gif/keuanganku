@@ -116,7 +116,7 @@ export function ArusKasContent() {
   const dayNet = (list: Transaction[]) =>
     list.reduce((s, t) => s + (t.category === 'PENDAPATAN' ? Number(t.amount) : -Number(t.amount)), 0);
 
-  /** Judul baris: amplop, lalu catatan. Info sekunder menampilkan sisanya. */
+  /** Judul baris: dompet, lalu catatan. Info sekunder menampilkan sisanya. */
   const rowTitle = (tx: Transaction) => tx.subcategory || tx.description || 'Transaksi';
   const rowMeta = (tx: Transaction) => {
     if (tx.subcategory && tx.description) return tx.description;

@@ -11,7 +11,7 @@ Aplikasi tersusun atas **4 pilar** agar tidak membingungkan pengguna:
 
 - **Beranda** — ringkasan kekayaan bersih (hero card + mode privasi), arus kas aktual, progres anggaran, aktivitas pengeluaran, transaksi terbaru
 - **Arus Kas (mencatat)** — satu-satunya tempat pencatatan transaksi: buku besar per tanggal dengan sheet "Catat Transaksi" (chip kategori + keypad), Riwayat timeline, Pembayaran Tagihan (ceklis)
-- **Anggaran (merencanakan)** — Evaluasi rencana vs realisasi, Amplop anggaran, Kas Rutin Bulanan (dasar Checkup), Tabungan & Investasi
+- **Anggaran (merencanakan)** — Evaluasi rencana vs realisasi, Dompet anggaran, Kas Rutin Bulanan (dasar Checkup), Tabungan & Investasi
 - **KPR (simulasi)** — kalkulasi amortisasi, bunga tetap + floating tunggal/bertahap, biaya tambahan (BPHTB, PPN, AJB, BBN), tabel 20 baris/halaman
 - **Analisis** — Kekayaan Bersih & snapshot, Checkup 6 rasio (radar chart), Evaluasi Tahunan
 - **PWA** — install prompt (1×/24 jam), offline fallback, service worker cache strategy
@@ -45,7 +45,7 @@ keuangan/
 │   │   │   ├── arus-kas/     # Pilar Arus Kas: buku transaksi
 │   │   │   ├── kalendar/     # Riwayat (timeline)
 │   │   │   ├── pembayaran/   # Ceklis tagihan
-│   │   │   ├── budgeting/    # Pilar Anggaran: evaluasi + amplop
+│   │   │   ├── budgeting/    # Pilar Anggaran: evaluasi + dompet
 │   │   │   ├── kas-rutin/    # Kas rutin bulanan (ex-Arus Kas lama)
 │   │   │   ├── tabungan/     # Tabungan & investasi
 │   │   │   ├── kpr/          # Pilar KPR: simulasi
@@ -75,7 +75,8 @@ keuangan/
 │   │   ├── 001_initial_schema.sql
 │   │   ├── 002_seed_data.sql
 │   │   ├── 003_cron_snapshot.sql
-│   │   └── 004_dana_darat_flag.sql
+│   │   ├── 004_dana_darat_flag.sql
+│   │   └── 005_seed_default_categories.sql
 │   └── functions/
 │       └── snapshot/           # Auto-snapshot (Deno)
 ├── sw.ts                     # Service worker (serwist)
@@ -112,6 +113,7 @@ NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY=your-anon-key
    - `supabase/migrations/002_seed_data.sql` — opsional (data contoh)
    - `supabase/migrations/003_cron_snapshot.sql` — opsional (auto-snapshot, butuh Pro plan)
    - `supabase/migrations/004_dana_darat_flag.sql` — opsional (is_emergency_fund untuk dana darurat)
+   - `supabase/migrations/005_seed_default_categories.sql` — wajib (seed kategori/dompet bawaan: trigger untuk user baru + backfill user lama yang belum punya kategori)
 
 ### 4. Run
 ```bash

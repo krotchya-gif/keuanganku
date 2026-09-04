@@ -37,7 +37,7 @@ const CHART_SHORT_LABELS: Record<BudgetCategory, string> = {
 
 /**
  * BudgetingContent — pilar Anggaran: evaluasi rencana vs realisasi
- * dan pengelolaan amplop. Pencatatan harian berada di halaman Arus Kas.
+ * dan pengelolaan dompet. Pencatatan harian berada di halaman Arus Kas.
  */
 export function BudgetingContent() {
   const [loading, setLoading] = useState(true);
@@ -47,7 +47,7 @@ export function BudgetingContent() {
   const [budgetItems, setBudgetItems] = useState<BudgetItem[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
 
-  const [activeTab, setActiveTab] = useState<'evaluasi' | 'amplop'>('evaluasi');
+  const [activeTab, setActiveTab] = useState<'evaluasi' | 'dompet'>('evaluasi');
 
   const [month, setMonth] = useState(new Date().getMonth() + 1);
   const [year, setYear] = useState(new Date().getFullYear());
@@ -60,7 +60,7 @@ export function BudgetingContent() {
     }
   }, []);
 
-  // Form amplop
+  // Form dompet
   const [showItemModal, setShowItemModal] = useState(false);
   const [editingItem, setEditingItem] = useState<BudgetItem | null>(null);
   const [itemError, setItemError] = useState<string | null>(null);
@@ -94,7 +94,7 @@ export function BudgetingContent() {
 
   const saveBudgetItem = async () => {
     setItemError(null);
-    if (!itemForm.name.trim()) { setItemError('Isi nama amplop terlebih dahulu.'); return; }
+    if (!itemForm.name.trim()) { setItemError('Isi nama dompet terlebih dahulu.'); return; }
     if (itemForm.amount <= 0) { setItemError('Isi rencana nominal lebih dari nol.'); return; }
 
     const supabase = createClient();
@@ -104,7 +104,7 @@ export function BudgetingContent() {
       : await supabase.from('budget_items').insert({ ...payload, user_id: userId });
 
     if (error) {
-      setItemError('Gagal menyimpan amplop. Periksa koneksi lalu coba lagi.');
+      setItemError('Gagal menyimpan dompet. Periksa koneksi lalu coba lagi.');
       return;
     }
     setShowItemModal(false);
@@ -112,11 +112,11 @@ export function BudgetingContent() {
   };
 
   const deleteBudgetItem = async (id: string) => {
-    if (!window.confirm('Hapus amplop ini? Transaksi yang memakai amplop ini akan kehilangan referensinya.')) return;
+    if (!window.confirm('Hapus dompet ini? Transaksi yang memakai dompet ini akan kehilangan referensinya.')) return;
     const supabase = createClient();
     const { error } = await supabase.from('budget_items').delete().eq('id', id);
     if (error) {
-      window.alert('Gagal menghapus amplop. Coba lagi.');
+      window.alert('Gagal menghapus dompet. Coba lagi.');
       return;
     }
     await fetchData();
@@ -178,7 +178,7 @@ export function BudgetingContent() {
     <div className="space-y-5">
       <PageHeader
         title="Anggaran"
-        subtitle="Rencanakan amplop bulanan, lalu bandingkan dengan realisasi"
+        subtitle="Rencanakan dompet bulanan, lalu bandingkan dengan realisasi"
         icon={PiggyBank}
         action={
           <div className="flex items-center gap-2">
@@ -203,11 +203,11 @@ export function BudgetingContent() {
         <div className="flex overflow-x-auto border-b border-border no-scrollbar">
           {[
             { key: 'evaluasi', label: 'Evaluasi', mobileLabel: 'Evaluasi' },
-            { key: 'amplop', label: 'Amplop Anggaran', mobileLabel: 'Amplop' },
+            { key: 'dompet', label: 'Dompet Anggaran', mobileLabel: 'Dompet' },
           ].map((t) => (
             <button
               key={t.key}
-              onClick={() => setActiveTab(t.key as 'evaluasi' | 'amplop')}
+              onClick={() => setActiveTab(t.key as 'evaluasi' | 'dompet')}
               aria-selected={activeTab === t.key}
               role="tab"
               className={cn(
@@ -289,7 +289,7 @@ export function BudgetingContent() {
                 </div>
               )}
 
-              {/* Progres per amplop */}
+              {/* Progres per dompet */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
                 {summaryByCategory.map((group) => {
                   if (group.plannedItems.length === 0 && group.totalActual === 0) return null;
@@ -336,7 +336,7 @@ export function BudgetingContent() {
                         })}
                         {group.leakedTxs.length > 0 && (
                           <div className="mt-3 rounded border border-dashed border-danger/30 bg-danger/5 p-2">
-                            <p className="mb-1 text-xs font-medium text-danger">Transaksi di luar amplop</p>
+                            <p className="mb-1 text-xs font-medium text-danger">Transaksi di luar dompet</p>
                             <p className="font-numeric text-lg font-bold text-danger">
                               {group.catKey === 'PENDAPATAN' ? '+' : '−'}{formatRupiahCompact(group.leakedTotal)}
                             </p>
@@ -350,16 +350,16 @@ export function BudgetingContent() {
             </div>
           )}
 
-          {/* TAB AMPLOP */}
-          {activeTab === 'amplop' && (
+          {/* TAB DOMPET */}
+          {activeTab === 'dompet' && (
             <div className="space-y-3 p-3 sm:space-y-4 sm:p-0">
               <div className="mb-4 flex flex-col items-start justify-between gap-3 sm:mb-6 sm:flex-row sm:items-center">
                 <div>
-                  <h2 className="text-base font-bold text-foreground">Kelola Amplop Anggaran</h2>
+                  <h2 className="text-base font-bold text-foreground">Kelola Dompet Anggaran</h2>
                   <p className="text-xs text-muted-foreground">Tentukan rencana nominal bulanan untuk setiap pos pengeluaran.</p>
                 </div>
                 <button onClick={() => openItemModal(null)} className="btn-primary w-full justify-center sm:w-auto">
-                  <Plus className="h-4 w-4" /> Buat Amplop Baru
+                  <Plus className="h-4 w-4" /> Buat Dompet Baru
                 </button>
               </div>
 
@@ -381,8 +381,8 @@ export function BudgetingContent() {
                               <p className="mt-0.5 truncate font-numeric text-[10px] tracking-wide text-muted-foreground">Rencana: {formatRupiahCompact(item.amount)}</p>
                             </div>
                             <div className="flex shrink-0 gap-2 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100">
-                              <button onClick={() => openItemModal(item)} aria-label={`Ubah amplop ${item.name}`} className="touch-target p-2 text-muted-foreground hover:text-primary-500"><Edit2 className="h-3.5 w-3.5" /></button>
-                              <button onClick={() => deleteBudgetItem(item.id)} aria-label={`Hapus amplop ${item.name}`} className="touch-target p-2 text-muted-foreground hover:text-danger"><Trash2 className="h-3.5 w-3.5" /></button>
+                              <button onClick={() => openItemModal(item)} aria-label={`Ubah dompet ${item.name}`} className="touch-target p-2 text-muted-foreground hover:text-primary-500"><Edit2 className="h-3.5 w-3.5" /></button>
+                              <button onClick={() => deleteBudgetItem(item.id)} aria-label={`Hapus dompet ${item.name}`} className="touch-target p-2 text-muted-foreground hover:text-danger"><Trash2 className="h-3.5 w-3.5" /></button>
                             </div>
                           </li>
                         ))}
@@ -395,9 +395,9 @@ export function BudgetingContent() {
               {budgetItems.length === 0 && (
                 <EmptyState
                   icon={Wallet}
-                  title="Belum ada amplop anggaran"
-                  description="Buat amplop pertama Anda, misalnya Konsumsi, Transportasi, atau Listrik."
-                  action={<button onClick={() => openItemModal(null)} className="btn-primary text-xs">Buat Amplop Pertama</button>}
+                  title="Belum ada dompet anggaran"
+                  description="Tambahkan dompet pertama Anda, misalnya Konsumsi, Transportasi, atau Listrik."
+                  action={<button onClick={() => openItemModal(null)} className="btn-primary text-xs">Buat Dompet Pertama</button>}
                 />
               )}
             </div>
@@ -405,13 +405,13 @@ export function BudgetingContent() {
         </div>
       </div>
 
-      {/* Modal amplop */}
-      <BottomSheet open={showItemModal} onClose={() => setShowItemModal(false)} title={editingItem ? 'Ubah Amplop' : 'Buat Amplop Baru'}>
+      {/* Modal dompet */}
+      <BottomSheet open={showItemModal} onClose={() => setShowItemModal(false)} title={editingItem ? 'Ubah Dompet' : 'Buat Dompet Baru'}>
         <div className="space-y-4">
           <div>
-            <label htmlFor="amplop-nama" className="mb-1.5 block text-xs font-medium text-foreground">Nama Amplop</label>
+            <label htmlFor="dompet-nama" className="mb-1.5 block text-xs font-medium text-foreground">Nama Dompet</label>
             <input
-              id="amplop-nama"
+              id="dompet-nama"
               required
               value={itemForm.name}
               onChange={(e) => setItemForm({ ...itemForm, name: e.target.value })}
@@ -430,7 +430,7 @@ export function BudgetingContent() {
             />
           </div>
           <AmountKeypad value={itemForm.amount} onChange={(amount) => setItemForm({ ...itemForm, amount })} />
-          <p className="text-xs text-muted-foreground">Rencana nominal yang ingin disisihkan setiap bulan untuk amplop ini.</p>
+          <p className="text-xs text-muted-foreground">Rencana nominal yang ingin disisihkan setiap bulan untuk dompet ini.</p>
 
           {itemError && (
             <p role="alert" className="rounded-xl bg-red-50 px-3.5 py-2.5 text-sm text-red-600 dark:bg-red-500/10 dark:text-red-300">
@@ -439,7 +439,7 @@ export function BudgetingContent() {
           )}
 
           <button type="button" onClick={saveBudgetItem} className="btn-primary w-full touch-target">
-            {editingItem ? 'Simpan Perubahan' : 'Simpan Amplop'}
+            {editingItem ? 'Simpan Perubahan' : 'Simpan Dompet'}
           </button>
         </div>
       </BottomSheet>

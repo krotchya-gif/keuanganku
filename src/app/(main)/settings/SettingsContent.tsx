@@ -36,7 +36,7 @@ export function SettingsContent() {
   };
 
   const handleReset = async () => {
-     if (!confirm('PERINGATAN KERAS!\n\nApakah Anda yakin ingin menghapus SEMUA data keuangan Anda? (Aset, Utang, KPR, Jurnal Transaksi, Amplop Budget, Target Tabungan). Aksi ini TIDAK BISA dibatalkan.')) return;
+     if (!confirm('PERINGATAN KERAS!\n\nApakah Anda yakin ingin menghapus SEMUA data keuangan Anda? (Aset, Utang, KPR, Jurnal Transaksi, Dompet Anggaran, Target Tabungan). Aksi ini TIDAK BISA dibatalkan.')) return;
      if (!confirm('Apakah Anda BENAR-BENAR YAKIN? Sekali lagi, semua data akan lenyap untuk selamanya.')) return;
 
      setReseting(true);
@@ -153,7 +153,7 @@ export function SettingsContent() {
         <div className="p-6">
            <p className="mb-1 text-sm font-medium text-foreground">Reset Total Seluruh Data Keuangan</p>
            <p className="mb-6 text-xs leading-relaxed text-muted-foreground">
-             Tindakan ini menghapus semua catatan transaksi, amplop anggaran, simulasi KPR, dan portofolio aset.
+             Tindakan ini menghapus semua catatan transaksi, dompet anggaran, simulasi KPR, dan portofolio aset.
              Gunakan hanya jika Anda ingin memulai pencatatan kembali dari nol.
            </p>
 

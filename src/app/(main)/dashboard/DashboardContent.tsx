@@ -373,7 +373,7 @@ export function DashboardContent() {
               <EmptyState
                 icon={Wallet}
                 title="Belum ada anggaran"
-                description="Susun amplop anggaran bulan ini agar pengeluaran lebih terkendali."
+                description="Susun dompet anggaran bulan ini agar pengeluaran lebih terkendali."
                 action={<Link href="/budgeting" className="btn-secondary text-xs">Atur Anggaran</Link>}
               />
             )}

@@ -9,7 +9,7 @@ export interface ChipGroup {
 }
 
 export interface ChipOption {
-  /** Nama kategori/amplop — sekaligus nilai yang dipilih. */
+  /** Nama kategori/dompet — sekaligus nilai yang dipilih. */
   label: string;
   groupKey: string;
 }
@@ -34,7 +34,7 @@ export function CategoryChipPicker({
   value,
   onSelect,
   className,
-  emptyMessage = 'Belum ada kategori. Tambahkan amplop terlebih dahulu.',
+  emptyMessage = 'Belum ada kategori. Tambahkan dompet terlebih dahulu.',
 }: CategoryChipPickerProps) {
   const visibleGroups = groups.filter((g) =>
     options.some((o) => o.groupKey === g.key)

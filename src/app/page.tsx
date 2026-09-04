@@ -44,7 +44,7 @@ const FAQS = [
   },
   {
     q: 'Apa bedanya dengan aplikasi budgeting lain?',
-    a: 'Keuanganku menggabungkan 3 alat sekaligus: checkup kesehatan finansial, simulasi KPR, dan anggaran amplop, jadi Anda tidak perlu berpindah aplikasi.',
+    a: 'Keuanganku menggabungkan 3 alat sekaligus: checkup kesehatan finansial, simulasi KPR, dan anggaran dompet, jadi Anda tidak perlu berpindah aplikasi.',
   },
   {
     q: 'Bagaimana cara menyimpan progres kekayaan bersih?',
@@ -52,10 +52,10 @@ const FAQS = [
   },
 ];
 
-/** Bingkai ponsel CSS untuk menampilkan screenshot produk asli. */
-function PhoneFrame({ src, alt, priority = false }: { src: string; alt: string; priority?: boolean }) {
+/** Bingkai ponsel CSS untuk menampilkan screenshot produk asli. `large` untuk section showcase. */
+function PhoneFrame({ src, alt, priority = false, large = false }: { src: string; alt: string; priority?: boolean; large?: boolean }) {
   return (
-    <div className="relative mx-auto w-[240px] sm:w-[270px]">
+    <div className={`relative mx-auto ${large ? 'w-[300px] sm:w-[340px]' : 'w-[240px] sm:w-[270px]'}`}>
       <div className="rounded-[2.6rem] border border-zinc-800/80 bg-zinc-900 p-[10px] shadow-[0_24px_60px_-16px_rgba(15,23,42,0.35)] dark:border-zinc-700 dark:shadow-[0_24px_60px_-16px_rgba(0,0,0,0.8)]">
         <div className="relative overflow-hidden rounded-[2rem] bg-white">
           {/* unoptimized: file lokal 390px, hindari ketergantungan pipeline optimizer */}
@@ -105,7 +105,7 @@ export default function LandingPage() {
               Uang Anda, tercatat rapi.
             </h1>
             <p className="mt-5 max-w-md text-base leading-relaxed text-muted-foreground sm:text-lg">
-              Catat arus kas, jalankan anggaran amplop, dan hitung KPR dari satu aplikasi ringan yang bisa dipakai offline.
+              Catat arus kas, jalankan anggaran dompet, dan hitung KPR dari satu aplikasi ringan yang bisa dipakai offline.
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <Link href="/register" className="btn-primary px-7 py-3.5 text-base">
@@ -157,9 +157,9 @@ export default function LandingPage() {
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-success/10 text-success">
               <PiggyBank className="h-5 w-5" />
             </div>
-            <h2 className="mt-4 text-2xl font-bold tracking-tight sm:text-3xl">Anggaran amplop yang disiplin</h2>
+            <h2 className="mt-4 text-2xl font-bold tracking-tight sm:text-3xl">Anggaran dompet yang disiplin</h2>
             <p className="mt-3 max-w-md leading-relaxed text-muted-foreground">
-              Bagi gaji ke amplop bulanan, lalu bandingkan rencana dengan realisasi. Alokasi yang meleset langsung
+              Bagi gaji ke dompet bulanan, lalu bandingkan rencana dengan realisasi. Alokasi yang meleset langsung
               kelihatan sebelum jadi kebocoran.
             </p>
           </div>
@@ -169,32 +169,25 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── PILAR 3: KPR (full-width, komposisi berbeda) ── */}
-      <section className="border-t border-border/60 bg-muted/30">
-        <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20">
-          <div className="grid items-center gap-10 lg:grid-cols-5 lg:gap-16">
-            <div className="lg:col-span-2">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-warning/10 text-warning">
-                <House className="h-5 w-5" />
-              </div>
-              <h2 className="mt-4 text-2xl font-bold tracking-tight sm:text-3xl">Simulasi KPR yang serius</h2>
-              <p className="mt-3 max-w-md leading-relaxed text-muted-foreground">
-                Jadwal amortisasi bulanan sampai akhir tenor, dukungan bunga tetap dan bertahap, plus perkiraan total
-                biaya di luar uang muka. Semua angka dihitung lokal, tanpa dikirim ke mana pun.
-              </p>
+      {/* ── PILAR 3: KPR (showcase penuh — foto tampil besar sendiri) ── */}
+      <section className="overflow-hidden border-t border-border/60 bg-muted/30">
+        <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-24">
+          <div className="mx-auto max-w-2xl text-center">
+            <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-xl bg-warning/10 text-warning">
+              <House className="h-5 w-5" />
             </div>
-            <div className="lg:col-span-3">
-              <div className="overflow-hidden rounded-2xl border border-border/70 shadow-card">
-                <Image
-                  src="/landing/kpr.png"
-                  alt="Form dan hasil Simulasi KPR"
-                  width={780}
-                  height={844}
-                  unoptimized
-                  className="block h-auto w-full"
-                />
-              </div>
-            </div>
+            <h2 className="mt-4 text-2xl font-bold tracking-tight sm:text-3xl">Simulasi KPR yang serius</h2>
+            <p className="mt-3 leading-relaxed text-muted-foreground">
+              Jadwal amortisasi bulanan sampai akhir tenor, bunga tetap dan bertahap, plus perkiraan total biaya di
+              luar uang muka. Semua angka dihitung lokal, tanpa dikirim ke mana pun.
+            </p>
+          </div>
+          <div className="relative mt-12 flex justify-center sm:mt-16">
+            <div
+              aria-hidden
+              className="absolute left-1/2 top-1/2 h-[420px] w-[min(92vw,620px)] -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary-500/10 blur-3xl"
+            />
+            <PhoneFrame large src="/landing/kpr.png" alt="Form dan hasil Simulasi KPR" />
           </div>
         </div>
       </section>

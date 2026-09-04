@@ -37,11 +37,11 @@ export function RecordTransactionSheet({ open, onClose, onSaved, editTransaction
   const [amount, setAmount] = useState(0);
   const [description, setDescription] = useState('');
   const [selected, setSelected] = useState<ChipOption | null>(null);
-  const [envelopes, setEnvelopes] = useState<Array<{ name: string; category: BudgetCategory }>>([]);
+  const [wallets, setWallets] = useState<Array<{ name: string; category: BudgetCategory }>>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Muat amplop milik user (chip kategori mengikuti data mereka; fallback ke bawaan).
+  // Muat dompet milik user (chip kategori mengikuti data mereka; fallback ke bawaan).
   useEffect(() => {
     if (!open) return;
     let cancelled = false;
@@ -52,11 +52,11 @@ export function RecordTransactionSheet({ open, onClose, onSaved, editTransaction
         if (!user || cancelled) return;
         const items = await fetchBudgetItems(user.id);
         if (!cancelled) {
-          setEnvelopes(items.length > 0 ? items.map((i) => ({ name: i.name, category: i.category })) : DEFAULT_BUDGET_ITEMS);
+          setWallets(items.length > 0 ? items.map((i) => ({ name: i.name, category: i.category })) : DEFAULT_BUDGET_ITEMS);
         }
       } catch (err) {
         console.error(err);
-        if (!cancelled) setEnvelopes(DEFAULT_BUDGET_ITEMS);
+        if (!cancelled) setWallets(DEFAULT_BUDGET_ITEMS);
       }
     })();
     return () => { cancelled = true; };
@@ -96,10 +96,10 @@ export function RecordTransactionSheet({ open, onClose, onSaved, editTransaction
 
   const options: ChipOption[] = useMemo(
     () =>
-      envelopes
+      wallets
         .filter((e) => groups.some((g) => g.key === e.category))
         .map((e) => ({ label: e.name, groupKey: e.category })),
-    [envelopes, groups]
+    [wallets, groups]
   );
 
   const shiftDate = (days: number) => {
@@ -120,15 +120,15 @@ export function RecordTransactionSheet({ open, onClose, onSaved, editTransaction
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { setError('Sesi berakhir. Silakan masuk kembali.'); setSaving(false); return; }
 
-    const envelope = envelopes.find((e) => e.name === selected.label);
-    const category = (envelope?.category ?? selected.groupKey) as BudgetCategory;
+    const wallet = wallets.find((e) => e.name === selected.label);
+    const category = (wallet?.category ?? selected.groupKey) as BudgetCategory;
 
     const payload = {
       user_id: user.id,
       transaction_date: date,
       amount,
       category,
-      subcategory: envelope ? selected.label : null,
+      subcategory: wallet ? selected.label : null,
       description: description.trim() || null,
     };
 
@@ -195,8 +195,8 @@ export function RecordTransactionSheet({ open, onClose, onSaved, editTransaction
             onSelect={pickOption}
             emptyMessage={
               direction === 'masuk'
-                ? 'Belum ada amplop pendapatan. Buat amplop di menu Anggaran.'
-                : 'Belum ada amplop pengeluaran. Buat amplop di menu Anggaran.'
+                ? 'Belum ada dompet pendapatan. Buat dompet di menu Anggaran.'
+                : 'Belum ada dompet pengeluaran. Buat dompet di menu Anggaran.'
             }
           />
         </div>

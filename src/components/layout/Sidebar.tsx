@@ -29,7 +29,7 @@ import { createClient } from '@/utils/supabase/client';
 /**
  * Struktur navigasi per pilar:
  * - Arus Kas  : tempat mencatat (transaksi, riwayat, tagihan)
- * - Anggaran  : tempat merencanakan (amplop, kas rutin, tabungan)
+ * - Anggaran  : tempat merencanakan (dompet, kas rutin, tabungan)
  * - KPR       : simulasi, berdiri sendiri
  * - Analisis  : kekayaan bersih, checkup, evaluasi tahunan
  */

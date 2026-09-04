@@ -138,7 +138,7 @@ export function PembayaranContent() {
           <EmptyState
             icon={ReceiptText}
             title="Belum ada tagihan atau cicilan"
-            description="Buat amplop kategori Tagihan atau Hutang di halaman Anggaran."
+            description="Buat dompet kategori Tagihan atau Hutang di halaman Anggaran."
             action={<a href="/budgeting" className="btn-secondary text-xs">Buka Anggaran</a>}
           />
         </div>
