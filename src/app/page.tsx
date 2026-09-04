@@ -102,10 +102,10 @@ export default function LandingPage() {
         <div className="grid items-center gap-12 lg:grid-cols-2 lg:gap-8">
           <div>
             <h1 className="max-w-xl text-4xl font-extrabold leading-[1.08] tracking-tighter sm:text-5xl lg:text-6xl">
-              Uang Anda, tercatat rapi.
+              Lebih tenang mengatur uang setiap hari.
             </h1>
             <p className="mt-5 max-w-md text-base leading-relaxed text-muted-foreground sm:text-lg">
-              Catat arus kas, jalankan anggaran dompet, dan hitung KPR dari satu aplikasi ringan yang bisa dipakai offline.
+              Satu tempat untuk mencatat transaksi, menyusun anggaran, dan memahami kondisi keuangan—tanpa rumit dan tetap bisa digunakan saat offline.
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <Link href="/register" className="btn-primary px-7 py-3.5 text-base">
@@ -134,10 +134,10 @@ export default function LandingPage() {
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary-500/10 text-primary-500">
               <Plus className="h-5 w-5" />
             </div>
-            <h2 className="mt-4 text-2xl font-bold tracking-tight sm:text-3xl">Mencatat sesingkat mungkin</h2>
+            <h2 className="mt-4 text-2xl font-bold tracking-tight sm:text-3xl">Catat transaksi tanpa mengganggu ritme</h2>
             <p className="mt-3 max-w-md leading-relaxed text-muted-foreground">
-              Pilih pemasukan atau pengeluaran, ketuk kategorinya, isi nominal lewat keypad. Selesai dalam hitungan detik,
-              bahkan saat sinyal hilang.
+              Pilih pemasukan atau pengeluaran, tentukan kategorinya, lalu masukkan nominal. Semua selesai dalam hitungan detik,
+              bahkan ketika koneksi sedang tidak tersedia.
             </p>
             <ul className="mt-5 space-y-2 text-sm text-muted-foreground">
               <li className="flex items-center gap-2"><Check className="h-4 w-4 text-success" /> Kategori berbentuk chip, tanpa dropdown</li>
@@ -157,10 +157,10 @@ export default function LandingPage() {
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-success/10 text-success">
               <PiggyBank className="h-5 w-5" />
             </div>
-            <h2 className="mt-4 text-2xl font-bold tracking-tight sm:text-3xl">Anggaran dompet yang disiplin</h2>
+            <h2 className="mt-4 text-2xl font-bold tracking-tight sm:text-3xl">Buat rencana yang mudah diikuti</h2>
             <p className="mt-3 max-w-md leading-relaxed text-muted-foreground">
-              Bagi gaji ke dompet bulanan, lalu bandingkan rencana dengan realisasi. Alokasi yang meleset langsung
-              kelihatan sebelum jadi kebocoran.
+              Atur alokasi bulanan, lalu lihat perbandingan rencana dan realisasinya. Anda bisa segera tahu pos mana yang
+              mulai melebar sebelum menjadi kebocoran.
             </p>
           </div>
           <div>
@@ -176,10 +176,10 @@ export default function LandingPage() {
             <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-xl bg-warning/10 text-warning">
               <House className="h-5 w-5" />
             </div>
-            <h2 className="mt-4 text-2xl font-bold tracking-tight sm:text-3xl">Simulasi KPR yang serius</h2>
+            <h2 className="mt-4 text-2xl font-bold tracking-tight sm:text-3xl">Rencanakan KPR dengan lebih percaya diri</h2>
             <p className="mt-3 leading-relaxed text-muted-foreground">
-              Jadwal amortisasi bulanan sampai akhir tenor, bunga tetap dan bertahap, plus perkiraan total biaya di
-              luar uang muka. Semua angka dihitung lokal, tanpa dikirim ke mana pun.
+              Lihat cicilan bulanan, perubahan bunga, jadwal amortisasi, dan perkiraan biaya tambahan sampai akhir tenor.
+              Perhitungannya dilakukan langsung di perangkat Anda.
             </p>
           </div>
           <div className="relative mt-12 flex justify-center sm:mt-16">
