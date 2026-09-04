@@ -9,6 +9,19 @@ export type CashflowCategory = 'pendapatan' | 'kewajiban_cicilan' | 'masa_depan_
 export type BudgetCategory = 'PENDAPATAN' | 'TABUNGAN_INVESTASI' | 'TAGIHAN' | 'BIAYA_OPERASIONAL' | 'HUTANG';
 export type BudgetFrequency = 'bulanan' | 'tahunan';
 export type HealthStatus = 'sehat' | 'warning' | 'bahaya';
+export type AccountType = 'cash' | 'bank' | 'ewallet' | 'other';
+export type OnboardingStatus = 'not_started' | 'in_progress' | 'completed' | 'skipped';
+
+export interface Account {
+  id: string;
+  user_id: string;
+  name: string;
+  type: AccountType;
+  balance: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
 
 export interface Asset {
   id: string;

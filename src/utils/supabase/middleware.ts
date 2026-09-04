@@ -55,6 +55,19 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
+  if (claims && !isPublicRoute && !request.nextUrl.pathname.startsWith('/onboarding')) {
+    const { data: profile } = await supabase
+      .from('users')
+      .select('onboarding_status')
+      .eq('id', claims.sub)
+      .maybeSingle();
+    if (profile?.onboarding_status === 'not_started' || profile?.onboarding_status === 'in_progress') {
+      const url = request.nextUrl.clone();
+      url.pathname = '/onboarding';
+      return NextResponse.redirect(url);
+    }
+  }
+
   if (claims && (request.nextUrl.pathname === '/login' || request.nextUrl.pathname === '/register' || request.nextUrl.pathname === '/')) {
     const url = request.nextUrl.clone();
     url.pathname = '/dashboard';
