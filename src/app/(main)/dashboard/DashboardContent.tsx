@@ -170,7 +170,7 @@ export function DashboardContent() {
   // Arus kas aktual bulan berjalan (dari transaksi, bukan rencana).
   const monthPrefix = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
   const cashFlow = useMemo(() => {
-    const monthTx = transactions.filter((t) => t.transaction_date.startsWith(monthPrefix));
+    const monthTx = transactions.filter((t) => t.transaction_date.startsWith(monthPrefix) && t.transaction_type !== 'transfer');
     const masuk = monthTx.filter((t) => t.category === 'PENDAPATAN').reduce((s, t) => s + Number(t.amount), 0);
     const keluar = monthTx.filter((t) => t.category !== 'PENDAPATAN').reduce((s, t) => s + Number(t.amount), 0);
     return { masuk, keluar, surplus: masuk - keluar };

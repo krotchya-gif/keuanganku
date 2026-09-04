@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { getCurrentUserId } from '@/lib/queries/users';
+import { fetchAccounts } from '@/lib/queries/onboarding';
+import { createClient } from '@/utils/supabase/client';
 import { fetchBudgetItemsByCategory } from '@/lib/queries/budget';
 import { fetchTransactionsByCategory } from '@/lib/queries/transactions';
 import { ReceiptText, CheckCircle2, XCircle, CreditCard } from 'lucide-react';
@@ -9,7 +11,7 @@ import { Skeleton, ListSkeleton } from '@/components/ui/Skeleton';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { formatRupiah, formatRupiahCompact, getMonthRange, getYearOptions } from '@/lib/utils';
-import type { BudgetItem, Transaction } from '@/shared';
+import type { Account, BudgetItem, Transaction } from '@/shared';
 
 export function PembayaranContent() {
   const [loading, setLoading] = useState(true);
@@ -17,6 +19,8 @@ export function PembayaranContent() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [year, setYear] = useState(new Date().getFullYear());
   const [month, setMonth] = useState(new Date().getMonth() + 1);
+  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [accountId, setAccountId] = useState('');
 
   useEffect(() => {
     async function fetchData() {
@@ -31,6 +35,9 @@ export function PembayaranContent() {
           fetchBudgetItemsByCategory(userId, 'HUTANG'),
         ]);
         setItems([...tagihanItems, ...hutangItems]);
+        const accountData = await fetchAccounts(userId);
+        setAccounts(accountData);
+        if (!accountId && accountData.length === 1) setAccountId(accountData[0].id);
 
         // Fetch transactions for the selected month to check if paid
         const { startDate, endDate } = getMonthRange(year, month);
@@ -49,6 +56,19 @@ export function PembayaranContent() {
     fetchData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [year, month]);
+
+  const markPaid = async (item: BudgetItem) => {
+    if (!accountId) { window.alert('Pilih rekening sumber terlebih dahulu.'); return; }
+    const userId = await getCurrentUserId();
+    if (!userId) return;
+    const { error } = await createClient().from('transactions').insert({
+      user_id: userId,
+      transaction_date: `${year}-${String(month).padStart(2, '0')}-${String(item.due_date || 1).padStart(2, '0')}`,
+      amount: Number(item.amount), category: item.category, subcategory: item.name,
+      description: `Pembayaran ${item.name}`, transaction_type: 'expense', account_id: accountId,
+    });
+    if (error) window.alert(error.message); else window.location.reload();
+  };
 
   if (loading && items.length === 0) {
     return (
@@ -106,6 +126,7 @@ export function PembayaranContent() {
                     {formatRupiahCompact(item.paid)}
                   </p>
                   <p className="text-[10px] font-numeric text-muted-foreground">Rencana: {formatRupiahCompact(item.target)}</p>
+                  {!item.isFullyPaid && item.target > 0 && <button onClick={() => markPaid(item)} className="mt-1 text-[10px] font-semibold text-primary-600 hover:underline">Tandai dibayar</button>}
                </div>
              </div>
            ))}
@@ -123,6 +144,7 @@ export function PembayaranContent() {
         gradient="from-amber-500 to-orange-600"
         action={
           <div className="flex items-center gap-2">
+            <select value={accountId} onChange={(e) => setAccountId(e.target.value)} className="bg-card border border-border rounded-xl px-3 py-2.5 text-sm font-medium max-w-40" aria-label="Rekening sumber pembayaran"><option value="">Rekening sumber</option>{accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}</select>
             <select value={month} onChange={(e) => setMonth(Number(e.target.value))} className="bg-card border border-border rounded-xl px-3 py-2.5 text-sm font-medium focus:ring-primary-500 touch-target">
               {Array.from({length: 12}, (_, i) => (<option key={i+1} value={i+1}>{new Date(2000, i, 1).toLocaleDateString('id-ID', { month: 'long' })}</option>))}
             </select>

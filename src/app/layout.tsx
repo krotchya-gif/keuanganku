@@ -7,6 +7,7 @@ import { Inter } from 'next/font/google';
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter', display: 'swap' });
 
 export const metadata: Metadata = {
+  metadataBase: new URL('https://keuanganku.fun'),
   title: {
     default: 'Keuanganku - Manajemen Keuangan Personal',
     template: '%s | Keuanganku',

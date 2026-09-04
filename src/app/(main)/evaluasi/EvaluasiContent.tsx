@@ -44,7 +44,8 @@ export function EvaluasiContent() {
         if (!userId) return;
 
         // Fetch all transactions for the year
-        const txs = await fetchTransactions(userId, `${year}-01-01`, `${year}-12-31`);
+        const allTxs = await fetchTransactions(userId, `${year}-01-01`, `${year}-12-31`);
+        const txs = allTxs.filter((tx) => tx.transaction_type !== 'transfer');
 
         // Group by month via shared formula (robust terhadap zona waktu)
         const breakdown = calculateMonthlyBreakdown(txs);

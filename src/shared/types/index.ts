@@ -11,6 +11,7 @@ export type BudgetFrequency = 'bulanan' | 'tahunan';
 export type HealthStatus = 'sehat' | 'warning' | 'bahaya';
 export type AccountType = 'cash' | 'bank' | 'ewallet' | 'other';
 export type OnboardingStatus = 'not_started' | 'in_progress' | 'completed' | 'skipped';
+export type TransactionType = 'income' | 'expense' | 'transfer';
 
 export interface Account {
   id: string;
@@ -122,6 +123,9 @@ export interface Transaction {
   id: string;
   user_id: string;
   account_id?: string | null;
+  transaction_type?: TransactionType;
+  transfer_to_account_id?: string | null;
+  savings_goal_id?: string | null;
   transaction_date: string;
   amount: number;
   category: BudgetCategory;

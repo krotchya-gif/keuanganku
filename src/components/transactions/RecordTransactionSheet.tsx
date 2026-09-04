@@ -14,7 +14,7 @@ import type { Account } from '@/shared';
 import { fetchAccounts } from '@/lib/queries/onboarding';
 import { getLocalDateString, getTodayString } from '@/lib/utils';
 
-type Direction = 'keluar' | 'masuk';
+type Direction = 'keluar' | 'masuk' | 'transfer';
 
 const EXPENSE_GROUPS: BudgetCategory[] = ['BIAYA_OPERASIONAL', 'TAGIHAN', 'HUTANG', 'TABUNGAN_INVESTASI'];
 const INCOME_GROUPS: BudgetCategory[] = ['PENDAPATAN'];
@@ -40,6 +40,7 @@ export function RecordTransactionSheet({ open, onClose, onSaved, editTransaction
   const [description, setDescription] = useState('');
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [accountId, setAccountId] = useState('');
+  const [transferToAccountId, setTransferToAccountId] = useState('');
   const [selected, setSelected] = useState<ChipOption | null>(null);
   const [wallets, setWallets] = useState<Array<{ name: string; category: BudgetCategory }>>([]);
   const [saving, setSaving] = useState(false);
@@ -73,11 +74,12 @@ export function RecordTransactionSheet({ open, onClose, onSaved, editTransaction
     if (!open) return;
     setError(null);
     if (editTransaction) {
-      setDirection(editTransaction.category === 'PENDAPATAN' ? 'masuk' : 'keluar');
+      setDirection(editTransaction.transaction_type === 'transfer' ? 'transfer' : editTransaction.category === 'PENDAPATAN' ? 'masuk' : 'keluar');
       setDate(editTransaction.transaction_date);
       setAmount(editTransaction.amount);
       setDescription(editTransaction.description ?? '');
       setAccountId(editTransaction.account_id ?? '');
+      setTransferToAccountId(editTransaction.transfer_to_account_id ?? '');
       setSelected(
         editTransaction.subcategory
           ? { label: editTransaction.subcategory, groupKey: editTransaction.category }
@@ -89,12 +91,13 @@ export function RecordTransactionSheet({ open, onClose, onSaved, editTransaction
       setAmount(0);
       setDescription('');
       setAccountId('');
+      setTransferToAccountId('');
       setSelected(null);
     }
   }, [open, editTransaction]);
 
   const groups: ChipGroup[] = useMemo(
-    () => (direction === 'masuk' ? INCOME_GROUPS : EXPENSE_GROUPS).map((key) => ({
+    () => (direction === 'masuk' ? INCOME_GROUPS : direction === 'transfer' ? [] : EXPENSE_GROUPS).map((key) => ({
       key,
       label: BUDGET_CATEGORY_LABELS[key],
       color: BUDGET_CATEGORY_COLORS[key],
@@ -120,7 +123,13 @@ export function RecordTransactionSheet({ open, onClose, onSaved, editTransaction
 
   const save = async () => {
     setError(null);
-    if (!selected) { setError('Pilih kategori terlebih dahulu.'); return; }
+    if (direction !== 'transfer' && !selected) { setError('Pilih kategori terlebih dahulu.'); return; }
+    if (!accountId) {
+      setError(direction === 'masuk' ? 'Pilih rekening tujuan pemasukan.' : 'Pilih sumber dana pengeluaran.');
+      return;
+    }
+    if (direction === 'transfer' && !transferToAccountId) { setError('Pilih rekening tujuan transfer.'); return; }
+    if (direction === 'transfer' && transferToAccountId === accountId) { setError('Rekening sumber dan tujuan harus berbeda.'); return; }
     if (amount <= 0) { setError('Isi nominal lebih dari nol.'); return; }
 
     setSaving(true);
@@ -128,17 +137,19 @@ export function RecordTransactionSheet({ open, onClose, onSaved, editTransaction
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { setError('Sesi berakhir. Silakan masuk kembali.'); setSaving(false); return; }
 
-    const wallet = wallets.find((e) => e.name === selected.label);
-    const category = (wallet?.category ?? selected.groupKey) as BudgetCategory;
+    const wallet = selected ? wallets.find((e) => e.name === selected.label) : null;
+    const category = (wallet?.category ?? selected?.groupKey ?? 'TABUNGAN_INVESTASI') as BudgetCategory;
 
     const payload = {
       user_id: user.id,
       transaction_date: date,
       amount,
       category,
-      subcategory: wallet ? selected.label : null,
+      transaction_type: direction === 'masuk' ? 'income' : direction === 'transfer' ? 'transfer' : 'expense',
+      transfer_to_account_id: direction === 'transfer' ? transferToAccountId : null,
+      subcategory: wallet && selected ? selected.label : null,
       description: description.trim() || null,
-      account_id: accountId || null,
+      account_id: accountId,
     };
 
     try {
@@ -167,6 +178,7 @@ export function RecordTransactionSheet({ open, onClose, onSaved, editTransaction
           options={[
             { value: 'keluar', label: 'Pengeluaran' },
             { value: 'masuk', label: 'Pemasukan' },
+            { value: 'transfer', label: 'Transfer' },
           ]}
         />
 
@@ -195,7 +207,17 @@ export function RecordTransactionSheet({ open, onClose, onSaved, editTransaction
           </button>
         </div>
 
-        <div>
+        {direction === 'transfer' && accounts.length > 0 && (
+          <div>
+            <label htmlFor="transfer-destination" className="mb-2 block text-xs font-medium uppercase tracking-wide text-muted-foreground">Rekening tujuan <span className="text-danger">*</span></label>
+            <select id="transfer-destination" required value={transferToAccountId} onChange={(e) => setTransferToAccountId(e.target.value)} className="input-field w-full">
+              <option value="">Pilih rekening tujuan</option>
+              {accounts.filter((a) => a.id !== accountId).map((account) => <option key={account.id} value={account.id}>{account.name}</option>)}
+            </select>
+          </div>
+        )}
+
+        {direction !== 'transfer' && <div>
           <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">Kategori</p>
           <CategoryChipPicker
             groups={groups}
@@ -208,17 +230,23 @@ export function RecordTransactionSheet({ open, onClose, onSaved, editTransaction
                 : 'Belum ada dompet pengeluaran. Buat dompet di menu Anggaran.'
             }
           />
-        </div>
+        </div>}
 
-        {accounts.length > 0 && (
-          <div>
-            <label htmlFor="transaction-account" className="mb-2 block text-xs font-medium uppercase tracking-wide text-muted-foreground">Sumber dana</label>
-            <select id="transaction-account" value={accountId} onChange={(e) => setAccountId(e.target.value)} className="input-field w-full">
-              <option value="">Pilih rekening (opsional)</option>
+        <div>
+          <label htmlFor="transaction-account" className="mb-2 block text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            {direction === 'masuk' ? 'Rekening tujuan' : 'Sumber dana'} <span className="text-danger">*</span>
+          </label>
+          {accounts.length > 0 ? (
+            <select id="transaction-account" required value={accountId} onChange={(e) => setAccountId(e.target.value)} className="input-field w-full">
+              <option value="">Pilih {direction === 'masuk' ? 'rekening tujuan' : 'sumber dana'}</option>
               {accounts.map((account) => <option key={account.id} value={account.id}>{account.name}</option>)}
             </select>
-          </div>
-        )}
+          ) : (
+            <p className="rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-3 text-sm text-amber-700">
+              Belum ada rekening. Tambahkan rekening saat setup onboarding terlebih dahulu.
+            </p>
+          )}
+        </div>
 
         <AmountKeypad value={amount} onChange={setAmount} />
 

@@ -3,9 +3,9 @@
 import { useState, useEffect } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import { getCurrentUserId } from '@/lib/queries/users';
-import { fetchSavingsGoals } from '@/lib/queries/savings';
+import { fetchSavingsGoals, fetchSavingsAccounts, addSavingsTransfer } from '@/lib/queries/savings';
 import { fetchTransactionsByCategory } from '@/lib/queries/transactions';
-import { PiggyBank, Target, ArrowUpRight, Plus, Edit2, Trash2 } from 'lucide-react';
+import { PiggyBank, Target, ArrowUpRight, Plus, Edit2, Trash2, ArrowLeftRight } from 'lucide-react';
 import { Skeleton, CardSkeleton, ChartSkeleton } from '@/components/ui/Skeleton';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -26,6 +26,10 @@ export function TabunganContent() {
   const [userId, setUserId] = useState('');
   const [goals, setGoals] = useState<SavingsGoal[]>([]);
   const [txs, setTxs] = useState<Transaction[]>([]);
+  const [accounts, setAccounts] = useState<import('@/shared').Account[]>([]);
+  const [showContribution, setShowContribution] = useState(false);
+  const [contribution, setContribution] = useState({ goalId: '', amount: 0, source: '', destination: '', date: new Date().toISOString().slice(0, 10) });
+  const [contributionError, setContributionError] = useState<string | null>(null);
 
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState<SavingsGoal | null>(null);
@@ -39,18 +43,31 @@ export function TabunganContent() {
       if (!userId) return;
       setUserId(userId);
 
-      const [goalData, txData] = await Promise.all([
+      const [goalData, txData, accountData] = await Promise.all([
         fetchSavingsGoals(userId),
         fetchTransactionsByCategory(userId, 'TABUNGAN_INVESTASI', `${year}-01-01`, `${year}-12-31`),
+        fetchSavingsAccounts(userId),
       ]);
 
       setGoals(goalData);
       setTxs(txData);
+      setAccounts(accountData);
     } catch (err) {
       console.error(err);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleContribution = async (e: React.FormEvent) => {
+    e.preventDefault(); setContributionError(null);
+    if (!contribution.goalId || !contribution.source || !contribution.destination) { setContributionError('Pilih target, rekening sumber, dan rekening tujuan.'); return; }
+    if (contribution.source === contribution.destination) { setContributionError('Rekening sumber dan tujuan harus berbeda.'); return; }
+    if (contribution.amount <= 0) { setContributionError('Nominal harus lebih dari nol.'); return; }
+    try {
+      await addSavingsTransfer({ userId, goalId: contribution.goalId, amount: contribution.amount, sourceAccountId: contribution.source, destinationAccountId: contribution.destination, date: contribution.date });
+      setShowContribution(false); setContribution({ goalId: '', amount: 0, source: '', destination: '', date: new Date().toISOString().slice(0, 10) }); await fetchData();
+    } catch (err) { setContributionError(err instanceof Error ? err.message : 'Gagal mencatat setoran.'); }
   };
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -129,9 +146,7 @@ export function TabunganContent() {
         icon={PiggyBank}
         gradient="from-emerald-500 to-teal-600"
         action={
-          <button onClick={() => { setEditing(null); setForm({ name: '', target_amount: 0, monthly_contribution: 0, saved: 0, icon: '🎯', color: '#635bff' }); setShowModal(true); }} className="btn-primary">
-            <Plus className="w-4 h-4" /> Target Baru
-          </button>
+          <div className="flex gap-2"><button onClick={() => { setContributionError(null); setShowContribution(true); }} className="btn-secondary"><ArrowLeftRight className="w-4 h-4" /> Tambah Dana</button><button onClick={() => { setEditing(null); setForm({ name: '', target_amount: 0, monthly_contribution: 0, saved: 0, icon: '🎯', color: '#635bff' }); setShowModal(true); }} className="btn-primary"><Plus className="w-4 h-4" /> Target Baru</button></div>
         }
       />
 
@@ -253,6 +268,19 @@ export function TabunganContent() {
             <button type="button" onClick={() => setShowModal(false)} className="btn-secondary">Batal</button>
             <button type="submit" className="btn-primary">{editing ? 'Simpan Perubahan' : 'Simpan Target'}</button>
           </div>
+        </form>
+      </BottomSheet>
+
+      <BottomSheet open={showContribution} onClose={() => setShowContribution(false)} title="Tambah Dana ke Target">
+        <form onSubmit={handleContribution} className="space-y-4">
+          <select required className="input-field" value={contribution.goalId} onChange={e => setContribution({ ...contribution, goalId: e.target.value })}><option value="">Pilih target tabungan</option>{goals.map(g => <option key={g.id} value={g.id}>{g.icon || '🎯'} {g.name}</option>)}</select>
+          <input required min={1} type="number" className="input-field font-numeric" placeholder="Nominal setoran" value={contribution.amount || ''} onChange={e => setContribution({ ...contribution, amount: Number(e.target.value) })} />
+          <input required type="date" className="input-field" value={contribution.date} onChange={e => setContribution({ ...contribution, date: e.target.value })} />
+          <select required className="input-field" value={contribution.source} onChange={e => setContribution({ ...contribution, source: e.target.value })}><option value="">Pilih rekening sumber</option>{accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}</select>
+          <select required className="input-field" value={contribution.destination} onChange={e => setContribution({ ...contribution, destination: e.target.value })}><option value="">Pilih rekening tujuan</option>{accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}</select>
+          {accounts.length < 2 && <p className="text-sm text-amber-700">Tambahkan minimal dua rekening untuk mencatat transfer tabungan.</p>}
+          {contributionError && <p role="alert" className="rounded-xl bg-red-50 px-3.5 py-2.5 text-sm text-red-600">{contributionError}</p>}
+          <button disabled={accounts.length < 2} className="btn-primary w-full">Catat Setoran</button>
         </form>
       </BottomSheet>
     </div>

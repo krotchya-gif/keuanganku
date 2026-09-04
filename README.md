@@ -10,8 +10,8 @@ Mengonversi perhitungan dari 3 file Excel (Financial Checkup, Simulasi KPR, Budg
 Aplikasi tersusun atas **4 pilar** agar tidak membingungkan pengguna:
 
 - **Beranda** — ringkasan kekayaan bersih (hero card + mode privasi), arus kas aktual, progres anggaran, aktivitas pengeluaran, transaksi terbaru
-- **Arus Kas (mencatat)** — satu-satunya tempat pencatatan transaksi: buku besar per tanggal dengan sheet "Catat Transaksi" (chip kategori + keypad), Riwayat timeline, Pembayaran Tagihan (ceklis)
-- **Anggaran (merencanakan)** — Evaluasi rencana vs realisasi, Dompet anggaran, Kas Rutin Bulanan (dasar Checkup), Tabungan & Investasi
+- **Arus Kas (mencatat)** — satu-satunya tempat pencatatan transaksi: buku besar per tanggal dengan sheet "Catat Transaksi" (kategori + rekening sumber/tujuan + keypad), Riwayat timeline, dan Pembayaran Tagihan otomatis
+- **Anggaran (merencanakan)** — Evaluasi rencana vs realisasi, Dompet anggaran, Kas Rutin Bulanan (dasar Checkup), dan Tabungan & Investasi berbasis transfer antar rekening
 - **KPR (simulasi)** — kalkulasi amortisasi, bunga tetap + floating tunggal/bertahap, biaya tambahan (BPHTB, PPN, AJB, BBN), tabel 20 baris/halaman
 - **Analisis** — Kekayaan Bersih & snapshot, Checkup 6 rasio (radar chart), Evaluasi Tahunan
 - **PWA** — install prompt (1×/24 jam), offline fallback, service worker cache strategy
@@ -88,6 +88,15 @@ keuangan/
 
 ## Setup Development
 
+### Database source of truth
+
+`supabase/fullschema.sql` adalah backup lokal sekaligus sumber perubahan schema
+yang canonical. Sebelum dan sesudah perubahan Supabase, bandingkan file ini
+dengan database live menggunakan Supabase MCP. DDL harus dilakukan melalui MCP,
+lalu file ini wajib diperbarui bersama migration terkait. Seed data, Vault
+secret, API key, dan konfigurasi cron environment-specific tidak boleh dimasukkan
+ke dalam file tersebut. Detail aturan agent ada di `AGENTS.md`.
+
 ### Prerequisites
 - Node.js 18+
 - Supabase account
@@ -114,6 +123,10 @@ NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY=your-anon-key
    - `supabase/migrations/003_cron_snapshot.sql` — opsional (auto-snapshot, butuh Pro plan)
    - `supabase/migrations/004_dana_darat_flag.sql` — opsional (is_emergency_fund untuk dana darurat)
    - `supabase/migrations/005_seed_default_categories.sql` — wajib (seed kategori/dompet bawaan: trigger untuk user baru + backfill user lama yang belum punya kategori)
+   - `supabase/migrations/20260904115104_add_onboarding_accounts.sql` — onboarding dan rekening
+   - `supabase/migrations/20260904130039_add_transaction_accounts.sql` — relasi transaksi ke rekening
+   - `supabase/migrations/20260904132915_add_savings_transfer_workflow.sql` — transfer tabungan dan target
+   - `supabase/migrations/20260904133352_enforce_account_balances.sql` — sinkronisasi saldo rekening otomatis
 
 ### 4. Run
 ```bash

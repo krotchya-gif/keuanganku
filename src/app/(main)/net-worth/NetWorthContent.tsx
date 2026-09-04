@@ -15,6 +15,7 @@ import {
 import { createClient } from '@/utils/supabase/client';
 import { getCurrentUserId } from '@/lib/queries/users';
 import { fetchAssets } from '@/lib/queries/assets';
+import { fetchAccounts } from '@/lib/queries/onboarding';
 import { fetchDebts } from '@/lib/queries/debts';
 import { fetchSnapshots } from '@/lib/queries/snapshots';
 import { ChartTooltip } from '@/components/charts/ChartTooltip';
@@ -61,13 +62,15 @@ export function NetWorthContent() {
       if (!userId) return;
       setUserId(userId);
 
-      const [assetData, debtData, snapData] = await Promise.all([
+      const [assetData, debtData, snapData, accountData] = await Promise.all([
         fetchAssets(userId),
         fetchDebts(userId),
         fetchSnapshots(userId),
+        fetchAccounts(userId),
       ]);
 
-      setAssets(assetData);
+      const accountAssets = accountData.map((a) => ({ ...a, id: `account-${a.id}`, name: `${a.name} (rekening)`, category: 'kas_setara_kas' as const, amount: Number(a.balance), notes: 'Saldo rekening' }));
+      setAssets([...assetData, ...accountAssets]);
       setDebts(debtData);
       
       if (snapData.length > 0) {
@@ -413,7 +416,7 @@ export function NetWorthContent() {
                           <p className="text-sm text-foreground truncate min-w-0">{asset.name}</p>
                           <div className="flex items-center gap-3 shrink-0">
                             <p className="text-sm font-numeric font-medium text-foreground whitespace-nowrap">{formatRupiahCompact(asset.amount)}</p>
-                            <div className="flex gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                            {!asset.id.startsWith('account-') && <div className="flex gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                               <button 
                                 onClick={() => {
                                   setEditingAsset(asset);
@@ -427,7 +430,7 @@ export function NetWorthContent() {
                               <button onClick={() => deleteAsset(asset.id)} className="p-2 text-muted-foreground hover:text-red-500 touch-target">
                                 <Trash2 className="w-3.5 h-3.5" />
                               </button>
-                            </div>
+                            </div>}
                           </div>
                         </div>
                       ))}

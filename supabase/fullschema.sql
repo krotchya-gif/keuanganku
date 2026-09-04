@@ -14,6 +14,8 @@
 \ir migrations/005_seed_default_categories.sql
 \ir migrations/20260904115104_add_onboarding_accounts.sql
 \ir migrations/20260904130039_add_transaction_accounts.sql
+\ir migrations/20260904132915_add_savings_transfer_workflow.sql
+\ir migrations/20260904133352_enforce_account_balances.sql
 
 -- Live-only operational objects from migration 003 (pg_cron/pg_net, Vault
 -- secrets, and the snapshot-networth-monthly job) are managed separately.

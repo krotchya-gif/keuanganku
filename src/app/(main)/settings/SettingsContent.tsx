@@ -2,7 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import { createClient } from '@/utils/supabase/client';
-import { Loader2, AlertTriangle, User, RefreshCcw, Settings as SettingsIcon, LogOut } from 'lucide-react';
+import { Loader2, AlertTriangle, User, RefreshCcw, Settings as SettingsIcon, LogOut, Plus, Trash2 } from 'lucide-react';
+import type { Account, AccountType } from '@/shared';
+import { fetchAccounts } from '@/lib/queries/onboarding';
 import { PageHeader } from '@/components/ui/PageHeader';
 
 export function SettingsContent() {
@@ -10,6 +12,8 @@ export function SettingsContent() {
   const [reseting, setReseting] = useState(false);
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
+  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [newAccount, setNewAccount] = useState({ name: '', type: 'bank' as AccountType, balance: 0 });
 
   useEffect(() => {
     async function fetchUser() {
@@ -19,6 +23,7 @@ export function SettingsContent() {
          if (user) {
            if (user.email) setEmail(user.email);
            setName(user.user_metadata?.full_name || user.email?.split('@')[0] || 'Pengguna');
+           setAccounts(await fetchAccounts(user.id));
          }
       } catch (err) {
          console.error(err);
@@ -55,6 +60,7 @@ export function SettingsContent() {
          supabase.from('net_worth_snapshots').delete().eq('user_id', user.id),
          supabase.from('kpr_simulations').delete().eq('user_id', user.id),
          supabase.from('savings_goals').delete().eq('user_id', user.id),
+         supabase.from('accounts').delete().eq('user_id', user.id),
        ]);
 
        if (results.some(r => r.error)) {
@@ -69,6 +75,21 @@ export function SettingsContent() {
      } finally {
        setReseting(false);
      }
+  };
+
+  const addAccount = async () => {
+    if (!newAccount.name.trim() || newAccount.balance < 0) return;
+    const supabase = createClient();
+    const { data: authData } = await supabase.auth.getUser();
+    if (!authData.user) return;
+    const { data, error } = await supabase.from('accounts').insert({ user_id: authData.user.id, ...newAccount, name: newAccount.name.trim() }).select().single();
+    if (!error && data) { setAccounts((a) => [...a, data as Account]); setNewAccount({ name: '', type: 'bank', balance: 0 }); }
+  };
+
+  const deleteAccount = async (id: string) => {
+    if (!confirm('Nonaktifkan rekening ini? Transaksi lama tetap tersimpan.')) return;
+    const { error } = await createClient().from('accounts').update({ is_active: false }).eq('id', id);
+    if (!error) setAccounts((a) => a.filter((x) => x.id !== id));
   };
 
   if (loading) return <div className="flex h-64 items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-primary-500" /></div>;
@@ -111,6 +132,13 @@ export function SettingsContent() {
       </div>
 
       {/* Ganti Sandi */}
+      <div className="card-premium p-6">
+        <h2 className="text-sm font-bold mb-4 border-b border-border pb-3">Rekening & Dompet</h2>
+        <div className="space-y-2 mb-4">{accounts.map((account) => <div key={account.id} className="flex items-center justify-between rounded-xl border border-border px-3 py-2.5"><div><p className="text-sm font-medium">{account.name}</p><p className="text-xs text-muted-foreground">{account.type} · Rp {Number(account.balance).toLocaleString('id-ID')}</p></div><button onClick={() => deleteAccount(account.id)} aria-label={`Nonaktifkan ${account.name}`} className="text-danger p-2"><Trash2 className="w-4 h-4" /></button></div>)}</div>
+        <div className="grid grid-cols-[1fr_auto] gap-2"><input className="input-field" placeholder="Nama rekening" value={newAccount.name} onChange={e => setNewAccount({ ...newAccount, name: e.target.value })} /><input className="input-field" type="number" min="0" placeholder="Saldo awal" value={newAccount.balance || ''} onChange={e => setNewAccount({ ...newAccount, balance: Number(e.target.value) })} /></div>
+        <div className="flex gap-2 mt-2"><select className="input-field" value={newAccount.type} onChange={e => setNewAccount({ ...newAccount, type: e.target.value as AccountType })}><option value="cash">Tunai</option><option value="bank">Bank</option><option value="ewallet">E-wallet</option><option value="other">Lainnya</option></select><button onClick={addAccount} className="btn-primary"><Plus className="w-4 h-4" /> Tambah</button></div>
+      </div>
+
       <div className="card-premium p-6">
         <h2 className="text-sm font-bold flex items-center gap-2 mb-4 border-b border-border pb-3">
            <AlertTriangle className="w-4 h-4 text-primary-500" /> Keamanan Akun
