@@ -141,9 +141,9 @@ export function PembayaranContent() {
         icon={CreditCard}
         gradient="from-amber-500 to-orange-600"
         action={
-          <div className="flex items-center gap-2">
-            <select value={accountId} onChange={(e) => setAccountId(e.target.value)} className="bg-card border border-border rounded-xl px-3 py-2.5 text-sm font-medium max-w-40" aria-label="Rekening sumber pembayaran"><option value="">Rekening sumber</option>{accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}</select>
-            <select value={month} onChange={(e) => setMonth(Number(e.target.value))} className="bg-card border border-border rounded-xl px-3 py-2.5 text-sm font-medium focus:ring-primary-500 touch-target">
+          <div className="grid w-full grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)_auto] items-center gap-2 sm:w-auto sm:flex sm:flex-wrap">
+            <select value={accountId} onChange={(e) => setAccountId(e.target.value)} className="min-w-0 w-full bg-card border border-border rounded-xl px-3 py-2.5 text-sm font-medium" aria-label="Rekening sumber pembayaran"><option value="">Rekening sumber</option>{accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}</select>
+            <select value={month} onChange={(e) => setMonth(Number(e.target.value))} className="min-w-0 w-full bg-card border border-border rounded-xl px-3 py-2.5 text-sm font-medium focus:ring-primary-500 touch-target">
               {Array.from({length: 12}, (_, i) => (<option key={i+1} value={i+1}>{new Date(2000, i, 1).toLocaleDateString('id-ID', { month: 'long' })}</option>))}
             </select>
             <select value={year} onChange={(e) => setYear(Number(e.target.value))} className="bg-card border border-border rounded-xl px-3 py-2.5 text-sm font-medium inline-block w-24 focus:ring-primary-500 touch-target">

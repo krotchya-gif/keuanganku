@@ -7,7 +7,7 @@ Mengonversi perhitungan dari 3 file Excel (Financial Checkup, Simulasi KPR, Budg
 
 ## Fitur
 
-Aplikasi tersusun atas **4 pilar** agar tidak membingungkan pengguna:
+Aplikasi tersusun atas beberapa area utama dengan satu jalur data keuangan:
 
 - **Beranda** — ringkasan kekayaan bersih (hero card + mode privasi), arus kas aktual, progres anggaran, aktivitas pengeluaran, transaksi terbaru
 - **Arus Kas (mencatat)** — satu-satunya tempat pencatatan transaksi aktual: buku besar per tanggal dengan sheet "Catat Transaksi" (kategori + rekening sumber/tujuan + keypad), Riwayat timeline, dan Pembayaran Tagihan otomatis
@@ -64,7 +64,7 @@ keuangan/
 │   ├── lib/
 │   │   ├── utils.ts          # formatRupiah, tanggal lokal, dll
 │   │   ├── export.ts         # exportCSV, exportPDF
-│   │   └── queries/          # assets, debts, recurring, transactions, dll
+│   │   └── queries/          # accounts, transactions, recurring, crypto, dll
 │   ├── shared/
 │   │   ├── formulas/         # networth, cashflow, checkup, kpr, budgeting
 │   │   ├── types/            # Semua TypeScript interfaces
@@ -103,6 +103,8 @@ accounts → transactions ← recurring_transactions → budget_items
 - Transfer antar rekening tidak dihitung sebagai pemasukan atau pengeluaran.
 - Saldo rekening menjadi sumber kas utama untuk Net Worth; aset kas manual yang duplikat tidak dihitung ulang.
 - `cashflow_items` hanya dipertahankan untuk kompatibilitas migration lama dan tidak digunakan oleh alur utama.
+- Crypto disimpan sebagai holding sederhana; pilihan coin memakai Top 50 market cap CoinGecko dan valuasi Net Worth tetap dalam IDR.
+- Harga memakai CoinGecko dengan cache 60 detik; jika tersedia `COINMARKETCAP_API_KEY` server, CoinMarketCap menjadi fallback. Jika keduanya gagal, aplikasi mempertahankan harga terakhir yang tersimpan.
 
 ## Setup Development
 
@@ -131,6 +133,8 @@ Buat `.env.local` di root:
 ```env
 NEXT_PUBLIC_SUPABASE_URL=https://project-id.supabase.co
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY=your-anon-key
+# Opsional — hanya dipakai server sebagai fallback harga crypto
+COINMARKETCAP_API_KEY=your-coinmarketcap-key
 ```
 
 ### 3. Database
@@ -150,6 +154,12 @@ NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY=your-anon-key
    - `supabase/migrations/20260905014254_link_recurring_to_budget.sql` — sinkronisasi template ke budgeting
    - `supabase/migrations/20260905014411_schedule_recurring_transactions.sql` — scheduler harian
    - `supabase/migrations/20260905015126_harden_rls_and_functions.sql` — hardening RLS dan privilege function
+   - `supabase/migrations/20260905020417_atomic_savings_transfer.sql` — transfer tabungan atomik dan sinkronisasi target
+   - `supabase/migrations/20260905020627_atomic_bill_payment.sql` — pembayaran tagihan atomik dan anti-duplikasi periode
+   - `supabase/migrations/20260905020810_link_bill_to_debt.sql` — kait pembayaran tagihan ke utang
+   - `supabase/migrations/20260905021145_harden_savings_consistency.sql` — rekalkulasi target tabungan dari transaksi
+   - `supabase/migrations/20260905021209_recurring_savings_generation.sql` — generator transfer tabungan berulang
+   - `supabase/migrations/20260905022957_add_crypto_holdings.sql` — holding crypto dan RLS per pengguna
 
 ### 4. Run
 ```bash
@@ -177,6 +187,7 @@ npm run dev          # http://localhost:3002
 3. Set environment variables:
    - `NEXT_PUBLIC_SUPABASE_URL`
    - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY`
+   - `COINMARKETCAP_API_KEY` (opsional, fallback harga crypto server-side)
 4. Deploy!
 
 ---
@@ -188,6 +199,24 @@ pukul 00:05 UTC (07:05 WIB). Job memproses template yang sudah jatuh tempo,
 membuat transaksi aktual, memperbarui saldo rekening melalui trigger, dan
 menggeser `next_run_date`. Generator juga dipanggil saat halaman Kas Rutin
 dibuka sebagai fallback agar data segera diperbarui.
+
+## Crypto di Net Worth
+
+Crypto dicatat sebagai holding (coin, jumlah, dan dompet/rekening opsional),
+bukan sebagai transaksi jual-beli. Dropdown mengambil Top 50 coin berdasarkan
+market cap dari CoinGecko. Nilai holding dikonversi ke IDR dan masuk ke Net
+Worth tanpa menggandakan saldo dompet. Harga disegarkan saat halaman Net Worth
+dibuka dan cache API berlaku 60 detik; data harga terakhir tetap dipakai jika
+refresh gagal. Jika `COINMARKETCAP_API_KEY` tersedia di server, CoinMarketCap
+digunakan sebagai fallback ketika CoinGecko gagal.
+
+Endpoint yang digunakan:
+
+- `GET /api/crypto/coins` — daftar Top 50 coin.
+- `GET /api/crypto/prices` — harga IDR CoinGecko dengan fallback CoinMarketCap.
+
+API key CoinMarketCap bersifat opsional, server-side, dan tidak boleh diberi
+prefix `NEXT_PUBLIC_`.
 
 ## Auto-Snapshot Net Worth
 
@@ -209,10 +238,11 @@ Arsitektur transaksi terpadu dan perbaikan hasil review sudah terverifikasi:
 2. **Database live** — template transaksi berulang, generator, sinkronisasi budgeting, scheduler, dan hardening RLS sudah diterapkan melalui Supabase MCP.
 3. **Jalur data** — onboarding, Kas Rutin, Arus Kas, Dashboard, Budgeting, Checkup, dan Net Worth mengikuti sumber transaksi yang sama.
 
-4. **Push ke GitHub** — dilakukan sesuai workflow repository; deploy Vercel berjalan otomatis setelah perubahan dipush.
-5. **Edge function `snapshot`** — tetap digunakan untuk snapshot net worth bulanan.
-6. **Cron snapshot** — job `snapshot-networth-monthly` ada (`0 0 1 * *`), command mengirim header `Authorization` dari vault (secret `service_role_key` + `project_url` ada), histori sukses tiap tanggal 1.
-7. **Uji handler snapshot** (tanpa menulis data produksi — `cron.run_job` tidak tersedia di versi pg_cron ini, jadi pakai curl):
+4. **Crypto** — holding Top 50, valuasi IDR, refresh harga, dan fallback CoinMarketCap sudah tersedia.
+5. **Deployment** — perubahan yang sudah di-commit dan dipush ke GitHub akan memicu deploy Vercel otomatis.
+6. **Edge function `snapshot`** — tetap digunakan untuk snapshot net worth bulanan.
+7. **Cron snapshot** — job `snapshot-networth-monthly` ada (`0 0 1 * *`), command mengirim header `Authorization` dari vault (secret `service_role_key` + `project_url` ada), histori sukses tiap tanggal 1.
+8. **Uji handler snapshot** (tanpa menulis data produksi — `cron.run_job` tidak tersedia di versi pg_cron ini, jadi pakai curl):
    ```bash
    # Tanpa header → 401 dari gateway (platform JWT gate aktif)
    curl -X POST "https://<PROJECT_REF>.supabase.co/functions/v1/snapshot" \
@@ -223,7 +253,7 @@ Arsitektur transaksi terpadu dan perbaikan hasil review sudah terverifikasi:
      -H "Content-Type: application/json" \
      -H "Authorization: Bearer <ANON_KEY>"
    ```
-5. **(Opsional) Hapus akun QA** `qa-redesign@keuanganku.test` melalui Dashboard → Authentication → Users.
+9. **(Opsional) Hapus akun QA** `qa-redesign@keuanganku.test` melalui Dashboard → Authentication → Users.
 
 ---
 

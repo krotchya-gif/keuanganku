@@ -1,6 +1,6 @@
 -- Keuanganku canonical schema backup / source of truth
 --
--- Checked against the live Supabase project on 2026-09-04 using Supabase MCP.
+-- Checked against the live Supabase project on 2026-09-05 using Supabase MCP.
 -- Keep this file synchronized after every live database mutation. The included
 -- migrations define the current live state; local migration history may be
 -- incomplete because the original baseline was applied manually.
@@ -28,6 +28,7 @@
 \ir migrations/20260905020810_link_bill_to_debt.sql
 \ir migrations/20260905021145_harden_savings_consistency.sql
 \ir migrations/20260905021209_recurring_savings_generation.sql
+\ir migrations/20260905022957_add_crypto_holdings.sql
 
 -- Live-only operational objects from migration 003 (pg_cron/pg_net, Vault
 -- secrets, and the snapshot-networth-monthly job) are managed separately.

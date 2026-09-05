@@ -7,7 +7,7 @@ import { PageHeader } from '@/components/ui/PageHeader';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { formatRupiah, formatRupiahCompact, formatPercent, getLocalDateString } from '@/lib/utils';
 import { calculateNetWorth, calculateGrowth, excludeDuplicatedCashAssets, ASSET_CATEGORY_LABELS } from '@/shared';
-import type { Asset, Debt } from '@/shared';
+import type { Asset, Debt, Account } from '@/shared';
 import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend,
   PieChart, Pie, Cell,
@@ -18,6 +18,8 @@ import { fetchAssets } from '@/lib/queries/assets';
 import { fetchAccounts } from '@/lib/queries/onboarding';
 import { fetchDebts } from '@/lib/queries/debts';
 import { fetchSnapshots } from '@/lib/queries/snapshots';
+import { fetchCryptoHoldings, refreshCryptoPrices } from '@/lib/queries/crypto';
+import type { CryptoHolding } from '@/lib/queries/crypto';
 import { ChartTooltip } from '@/components/charts/ChartTooltip';
 import { ChartGradients, chartGridStyle, chartAxisStyle, formatChartRupiah } from '@/components/charts/ChartTheme';
 
@@ -40,6 +42,8 @@ export function NetWorthContent() {
   const [userId, setUserId] = useState('');
   const [assets, setAssets] = useState<Asset[]>([]);
   const [debts, setDebts] = useState<Debt[]>([]);
+  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [cryptoHoldings, setCryptoHoldings] = useState<CryptoHolding[]>([]);
   const [history, setHistory] = useState<HistoryPoint[]>([]);
   
   const [activeTab, setActiveTab] = useState<'aset' | 'utang'>('aset');
@@ -48,6 +52,9 @@ export function NetWorthContent() {
   const [showAssetModal, setShowAssetModal] = useState(false);
   const [editingAsset, setEditingAsset] = useState<Asset | null>(null);
   const [assetForm, setAssetForm] = useState({ name: '', category: 'kas_setara_kas', amount: 0 });
+  const [showCryptoModal, setShowCryptoModal] = useState(false);
+  const [cryptoCoins, setCryptoCoins] = useState<{ id: string; symbol: string; name: string }[]>([]);
+  const [cryptoForm, setCryptoForm] = useState({ coin_id: '', quantity: 0, account_id: '' });
 
   const [showDebtModal, setShowDebtModal] = useState(false);
   const [editingDebt, setEditingDebt] = useState<Debt | null>(null);
@@ -62,15 +69,20 @@ export function NetWorthContent() {
       if (!userId) return;
       setUserId(userId);
 
-      const [assetData, debtData, snapData, accountData] = await Promise.all([
+      const [assetData, debtData, snapData, accountData, cryptoData] = await Promise.all([
         fetchAssets(userId),
         fetchDebts(userId),
         fetchSnapshots(userId),
         fetchAccounts(userId),
+        fetchCryptoHoldings(userId),
       ]);
 
       const accountAssets = accountData.map((a) => ({ ...a, id: `account-${a.id}`, name: `${a.name} (rekening)`, category: 'kas_setara_kas' as const, amount: Number(a.balance), notes: 'Saldo rekening' }));
-      setAssets([...excludeDuplicatedCashAssets(assetData, accountData.length > 0), ...accountAssets]);
+      setAccounts(accountData);
+      const pricedCrypto = await refreshCryptoPrices(cryptoData);
+      setCryptoHoldings(pricedCrypto);
+      const cryptoAssets = pricedCrypto.map((h) => ({ id: `crypto-${h.id}`, user_id: h.user_id, name: `${h.name} (${h.symbol.toUpperCase()})`, category: 'investasi' as const, amount: Number(h.quantity) * Number(h.current_price_idr), notes: `${h.quantity} ${h.symbol.toUpperCase()} · CoinGecko`, created_at: h.created_at, updated_at: h.updated_at }));
+      setAssets([...excludeDuplicatedCashAssets(assetData, accountData.length > 0), ...accountAssets, ...cryptoAssets]);
       setDebts(debtData);
       
       if (snapData.length > 0) {
@@ -87,6 +99,35 @@ export function NetWorthContent() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const openCryptoModal = async () => {
+    setShowCryptoModal(true);
+    if (cryptoCoins.length) return;
+    const response = await fetch('/api/crypto/coins');
+    if (response.ok) setCryptoCoins(await response.json());
+  };
+
+  useEffect(() => {
+    if (showCryptoModal && cryptoCoins.length === 0) {
+      fetch('/api/crypto/coins').then((response) => response.ok ? response.json() : []).then(setCryptoCoins).catch(() => undefined);
+    }
+  }, [showCryptoModal, cryptoCoins.length]);
+
+  const saveCrypto = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const coin = cryptoCoins.find((c) => c.id === cryptoForm.coin_id);
+    if (!coin || cryptoForm.quantity <= 0) return;
+    const { error } = await createClient().from('crypto_holdings').upsert({ user_id: userId, coin_id: coin.id, symbol: coin.symbol, name: coin.name, quantity: cryptoForm.quantity, account_id: cryptoForm.account_id || null }, { onConflict: 'user_id,coin_id,account_id' });
+    if (error) { window.alert(error.message); return; }
+    setShowCryptoModal(false); setCryptoForm({ coin_id: '', quantity: 0, account_id: '' }); await fetchData();
+  };
+
+  const deleteCrypto = async (id: string) => {
+    if (!confirm('Hapus kepemilikan crypto ini?')) return;
+    const { error } = await createClient().from('crypto_holdings').delete().eq('id', id).eq('user_id', userId);
+    if (error) { window.alert(error.message); return; }
+    await fetchData();
   };
 
   useEffect(() => {
@@ -390,6 +431,7 @@ export function NetWorthContent() {
             >
               <Plus className="w-3 h-3" /> Tambah {activeTab === 'aset' ? 'Aset' : 'Utang'}
             </button>
+            {activeTab === 'aset' && <button onClick={openCryptoModal} className="ml-3 flex items-center gap-1.5 text-xs text-primary-500 hover:underline"><Plus className="w-3 h-3" /> Crypto</button>}
           </div>
         </div>
 
@@ -419,6 +461,11 @@ export function NetWorthContent() {
                             {!asset.id.startsWith('account-') && <div className="flex gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                               <button 
                                 onClick={() => {
+                                  if (asset.id.startsWith('crypto-')) {
+                                    const holding = cryptoHoldings.find((h) => `crypto-${h.id}` === asset.id);
+                                    if (holding) { setCryptoForm({ coin_id: holding.coin_id, quantity: Number(holding.quantity), account_id: holding.account_id ?? '' }); setShowCryptoModal(true); }
+                                    return;
+                                  }
                                   setEditingAsset(asset);
                                   setAssetForm({ name: asset.name, category: asset.category, amount: asset.amount });
                                   setShowAssetModal(true);
@@ -427,7 +474,7 @@ export function NetWorthContent() {
                               >
                                 <Edit2 className="w-3.5 h-3.5" />
                               </button>
-                              <button onClick={() => deleteAsset(asset.id)} className="p-2 text-muted-foreground hover:text-red-500 touch-target">
+                              <button onClick={() => asset.id.startsWith('crypto-') ? deleteCrypto(asset.id.replace('crypto-', '')) : deleteAsset(asset.id)} className="p-2 text-muted-foreground hover:text-red-500 touch-target">
                                 <Trash2 className="w-3.5 h-3.5" />
                               </button>
                             </div>}
@@ -509,6 +556,15 @@ export function NetWorthContent() {
             <button type="button" onClick={() => setShowAssetModal(false)} className="btn-secondary">Batal</button>
             <button type="submit" className="btn-primary">Simpan</button>
           </div>
+        </form>
+      </BottomSheet>
+
+      <BottomSheet open={showCryptoModal} onClose={() => setShowCryptoModal(false)} title="Tambah Kepemilikan Crypto">
+        <form onSubmit={saveCrypto} className="space-y-4">
+          <div><label className="block text-xs font-medium text-foreground mb-1.5">Coin (Top 50)</label><select required value={cryptoForm.coin_id} onChange={e => setCryptoForm({ ...cryptoForm, coin_id: e.target.value })} className="input-field"><option value="">Pilih coin</option>{cryptoCoins.map(c => <option key={c.id} value={c.id}>{c.name} ({c.symbol.toUpperCase()})</option>)}</select></div>
+          <div><label className="block text-xs font-medium text-foreground mb-1.5">Jumlah coin</label><input required min={0} step="any" type="number" value={cryptoForm.quantity || ''} onChange={e => setCryptoForm({ ...cryptoForm, quantity: Number(e.target.value) })} className="input-field font-numeric" /></div>
+          <div><label className="block text-xs font-medium text-foreground mb-1.5">Dompet (opsional)</label><select value={cryptoForm.account_id} onChange={e => setCryptoForm({ ...cryptoForm, account_id: e.target.value })} className="input-field"><option value="">Tidak ditentukan</option>{accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}</select></div>
+          <button type="submit" className="btn-primary w-full">Simpan Crypto</button>
         </form>
       </BottomSheet>
 
