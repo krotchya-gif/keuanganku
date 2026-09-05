@@ -41,7 +41,7 @@ serve(async (req: Request) => {
       // Ambil aset user — gagal? lewati user ini, JANGAN menimpa snapshot dengan nol.
       const { data: assets, error: assetsErr } = await supabase
         .from("assets")
-        .select("category, amount")
+        .select("category, amount, name, is_emergency_fund")
         .eq("user_id", user.id);
       if (assetsErr) {
         console.error(`Gagal membaca aset user ${user.id}, dilewati:`, assetsErr.message);
@@ -58,18 +58,38 @@ serve(async (req: Request) => {
         continue;
       }
 
+      // Rekening adalah sumber kebenaran untuk kas. Crypto disimpan terpisah
+      // dari assets, jadi masukkan nilai terakhir yang berhasil disimpan.
+      const [{ data: accounts, error: accountsErr }, { data: cryptoHoldings, error: cryptoErr }] = await Promise.all([
+        supabase.from("accounts").select("balance").eq("user_id", user.id),
+        supabase.from("crypto_holdings").select("quantity, current_price_idr").eq("user_id", user.id),
+      ]);
+      if (accountsErr || cryptoErr) {
+        console.error(`Gagal membaca rekening/crypto user ${user.id}, dilewati:`, accountsErr?.message ?? cryptoErr?.message);
+        continue;
+      }
+
       const assetsList = assets ?? [];
       const debtsList = debts ?? [];
 
-      const assetsKas = assetsList
+      // Saat ada rekening, aset kas manual biasa sudah terwakili oleh saldo
+      // rekening. Dana darurat tetap dipertahankan sebagai aset manual.
+      const manualAssets = accounts && accounts.length > 0
+        ? assetsList.filter((a) => a.category !== "kas_setara_kas" || a.is_emergency_fund === true || a.name.toLowerCase().includes("dana darurat"))
+        : assetsList;
+
+      const assetsKas = manualAssets
         .filter((a) => a.category === "kas_setara_kas")
         .reduce((sum, a) => sum + Number(a.amount), 0);
 
-      const assetsInvestasi = assetsList
-        .filter((a) => a.category === "investasi")
-        .reduce((sum, a) => sum + Number(a.amount), 0);
+      const accountKas = (accounts ?? []).reduce((sum, a) => sum + Number(a.balance), 0);
 
-      const assetsTetap = assetsList
+      const assetsInvestasi = manualAssets
+        .filter((a) => a.category === "investasi")
+        .reduce((sum, a) => sum + Number(a.amount), 0) +
+        (cryptoHoldings ?? []).reduce((sum, h) => sum + Number(h.quantity) * Number(h.current_price_idr), 0);
+
+      const assetsTetap = manualAssets
         .filter((a) => a.category === "tetap")
         .reduce((sum, a) => sum + Number(a.amount), 0);
 
@@ -81,7 +101,7 @@ serve(async (req: Request) => {
         .filter((d) => d.term === "jangka_panjang")
         .reduce((sum, d) => sum + Number(d.total_amount), 0);
 
-      const totalAssets = assetsKas + assetsInvestasi + assetsTetap;
+      const totalAssets = assetsKas + accountKas + assetsInvestasi + assetsTetap;
       const totalDebts = debtsPendek + debtsPanjang;
       const netWorth = totalAssets - totalDebts;
 

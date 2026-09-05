@@ -103,7 +103,7 @@ accounts → transactions ← recurring_transactions → budget_items
 - Transfer antar rekening tidak dihitung sebagai pemasukan atau pengeluaran.
 - Saldo rekening menjadi sumber kas utama untuk Net Worth; aset kas manual yang duplikat tidak dihitung ulang.
 - `cashflow_items` hanya dipertahankan untuk kompatibilitas migration lama dan tidak digunakan oleh alur utama.
-- Crypto disimpan sebagai holding sederhana; pilihan coin memakai Top 50 market cap CoinGecko dan valuasi Net Worth tetap dalam IDR.
+- Crypto disimpan sebagai holding sederhana; pilihan coin memakai Top 50 market cap CoinGecko dan valuasi Net Worth tetap dalam IDR. Holding crypto dibaca langsung oleh halaman Net Worth dan Edge Function snapshot.
 - Harga memakai CoinGecko dengan cache 60 detik; jika tersedia `COINMARKETCAP_API_KEY` server, CoinMarketCap menjadi fallback. Jika keduanya gagal, aplikasi mempertahankan harga terakhir yang tersimpan.
 
 ## Setup Development
@@ -205,9 +205,9 @@ dibuka sebagai fallback agar data segera diperbarui.
 Crypto dicatat sebagai holding (coin, jumlah, dan dompet/rekening opsional),
 bukan sebagai transaksi jual-beli. Dropdown mengambil Top 50 coin berdasarkan
 market cap dari CoinGecko. Nilai holding dikonversi ke IDR dan masuk ke Net
-Worth tanpa menggandakan saldo dompet. Harga disegarkan saat halaman Net Worth
-dibuka dan cache API berlaku 60 detik; data harga terakhir tetap dipakai jika
-refresh gagal. Jika `COINMARKETCAP_API_KEY` tersedia di server, CoinMarketCap
+Worth sebagai investasi. Harga disegarkan saat halaman Net Worth dibuka dan
+cache API berlaku 60 detik; data harga terakhir tetap dipakai jika refresh
+gagal. Jika `COINMARKETCAP_API_KEY` tersedia di server, CoinMarketCap
 digunakan sebagai fallback ketika CoinGecko gagal.
 
 Endpoint yang digunakan:
@@ -228,9 +228,14 @@ Snapshot otomatis tiap awal bulan via pg_cron (butuh Supabase Pro plan):
    ```
 2. Jalankan `supabase/migrations/003_cron_snapshot.sql` di SQL Editor
 
+Edge Function snapshot menghitung aset manual, saldo rekening aktif, crypto
+(`quantity × current_price_idr`), dan utang. Perubahan pada
+`supabase/functions/snapshot/index.ts` harus di-deploy ulang agar snapshot
+production memakai alur ini.
+
 ---
 
-## Status Implementasi Terakhir (terverifikasi 2026-09-05)
+## Status Implementasi Terakhir (terverifikasi 2026-09-06)
 
 Arsitektur transaksi terpadu dan perbaikan hasil review sudah terverifikasi:
 
@@ -238,7 +243,7 @@ Arsitektur transaksi terpadu dan perbaikan hasil review sudah terverifikasi:
 2. **Database live** — template transaksi berulang, generator, sinkronisasi budgeting, scheduler, dan hardening RLS sudah diterapkan melalui Supabase MCP.
 3. **Jalur data** — onboarding, Kas Rutin, Arus Kas, Dashboard, Budgeting, Checkup, dan Net Worth mengikuti sumber transaksi yang sama.
 
-4. **Crypto** — holding Top 50, valuasi IDR, refresh harga, dan fallback CoinMarketCap sudah tersedia.
+4. **Crypto** — holding Top 50, valuasi IDR, refresh harga, fallback CoinMarketCap, dan perhitungan snapshot sudah tersedia.
 5. **Deployment** — perubahan yang sudah di-commit dan dipush ke GitHub akan memicu deploy Vercel otomatis.
 6. **Edge function `snapshot`** — tetap digunakan untuk snapshot net worth bulanan.
 7. **Cron snapshot** — job `snapshot-networth-monthly` ada (`0 0 1 * *`), command mengirim header `Authorization` dari vault (secret `service_role_key` + `project_url` ada), histori sukses tiap tanggal 1.
