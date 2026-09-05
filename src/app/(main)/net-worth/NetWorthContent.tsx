@@ -6,7 +6,7 @@ import { Skeleton, KPISkeleton, ChartSkeleton, TableSkeleton } from '@/component
 import { PageHeader } from '@/components/ui/PageHeader';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { formatRupiah, formatRupiahCompact, formatPercent, getLocalDateString } from '@/lib/utils';
-import { calculateNetWorth, calculateGrowth, ASSET_CATEGORY_LABELS } from '@/shared';
+import { calculateNetWorth, calculateGrowth, excludeDuplicatedCashAssets, ASSET_CATEGORY_LABELS } from '@/shared';
 import type { Asset, Debt } from '@/shared';
 import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend,
@@ -70,7 +70,7 @@ export function NetWorthContent() {
       ]);
 
       const accountAssets = accountData.map((a) => ({ ...a, id: `account-${a.id}`, name: `${a.name} (rekening)`, category: 'kas_setara_kas' as const, amount: Number(a.balance), notes: 'Saldo rekening' }));
-      setAssets([...assetData, ...accountAssets]);
+      setAssets([...excludeDuplicatedCashAssets(assetData, accountData.length > 0), ...accountAssets]);
       setDebts(debtData);
       
       if (snapData.length > 0) {

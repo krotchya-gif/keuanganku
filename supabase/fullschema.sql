@@ -16,6 +16,18 @@
 \ir migrations/20260904130039_add_transaction_accounts.sql
 \ir migrations/20260904132915_add_savings_transfer_workflow.sql
 \ir migrations/20260904133352_enforce_account_balances.sql
+\ir migrations/20260905012415_add_recurring_transactions.sql
+\ir migrations/20260905012522_index_recurring_transaction_account.sql
+\ir migrations/20260905012930_migrate_cashflow_items_to_recurring.sql
+\ir migrations/20260905012955_generate_due_recurring_transactions.sql
+\ir migrations/20260905014254_link_recurring_to_budget.sql
+\ir migrations/20260905014411_schedule_recurring_transactions.sql
+\ir migrations/20260905015126_harden_rls_and_functions.sql
+\ir migrations/20260905020417_atomic_savings_transfer.sql
+\ir migrations/20260905020627_atomic_bill_payment.sql
+\ir migrations/20260905020810_link_bill_to_debt.sql
+\ir migrations/20260905021145_harden_savings_consistency.sql
+\ir migrations/20260905021209_recurring_savings_generation.sql
 
 -- Live-only operational objects from migration 003 (pg_cron/pg_net, Vault
 -- secrets, and the snapshot-networth-monthly job) are managed separately.

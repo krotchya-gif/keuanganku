@@ -10,8 +10,9 @@ Mengonversi perhitungan dari 3 file Excel (Financial Checkup, Simulasi KPR, Budg
 Aplikasi tersusun atas **4 pilar** agar tidak membingungkan pengguna:
 
 - **Beranda** — ringkasan kekayaan bersih (hero card + mode privasi), arus kas aktual, progres anggaran, aktivitas pengeluaran, transaksi terbaru
-- **Arus Kas (mencatat)** — satu-satunya tempat pencatatan transaksi: buku besar per tanggal dengan sheet "Catat Transaksi" (kategori + rekening sumber/tujuan + keypad), Riwayat timeline, dan Pembayaran Tagihan otomatis
-- **Anggaran (merencanakan)** — Evaluasi rencana vs realisasi, Dompet anggaran, Kas Rutin Bulanan (dasar Checkup), dan Tabungan & Investasi berbasis transfer antar rekening
+- **Arus Kas (mencatat)** — satu-satunya tempat pencatatan transaksi aktual: buku besar per tanggal dengan sheet "Catat Transaksi" (kategori + rekening sumber/tujuan + keypad), Riwayat timeline, dan Pembayaran Tagihan otomatis
+- **Anggaran (merencanakan)** — target anggaran dibandingkan dengan realisasi transaksi aktual
+- **Kas Rutin (mengotomatisasi)** — template pemasukan/pengeluaran berulang yang dikaitkan ke rekening dan menghasilkan transaksi otomatis
 - **KPR (simulasi)** — kalkulasi amortisasi, bunga tetap + floating tunggal/bertahap, biaya tambahan (BPHTB, PPN, AJB, BBN), tabel 20 baris/halaman
 - **Analisis** — Kekayaan Bersih & snapshot, Checkup 6 rasio (radar chart), Evaluasi Tahunan
 - **PWA** — install prompt (1×/24 jam), offline fallback, service worker cache strategy
@@ -45,8 +46,8 @@ keuangan/
 │   │   │   ├── arus-kas/     # Pilar Arus Kas: buku transaksi
 │   │   │   ├── kalendar/     # Riwayat (timeline)
 │   │   │   ├── pembayaran/   # Ceklis tagihan
-│   │   │   ├── budgeting/    # Pilar Anggaran: evaluasi + dompet
-│   │   │   ├── kas-rutin/    # Kas rutin bulanan (ex-Arus Kas lama)
+│   │   │   ├── budgeting/    # Pilar Anggaran: rencana vs realisasi
+│   │   │   ├── kas-rutin/    # Template transaksi berulang
 │   │   │   ├── tabungan/     # Tabungan & investasi
 │   │   │   ├── kpr/          # Pilar KPR: simulasi
 │   │   │   ├── net-worth/ checkup/ evaluasi/  # Analisis
@@ -63,7 +64,7 @@ keuangan/
 │   ├── lib/
 │   │   ├── utils.ts          # formatRupiah, tanggal lokal, dll
 │   │   ├── export.ts         # exportCSV, exportPDF
-│   │   └── queries/          # assets, debts, cashflow, transactions, dll
+│   │   └── queries/          # assets, debts, recurring, transactions, dll
 │   ├── shared/
 │   │   ├── formulas/         # networth, cashflow, checkup, kpr, budgeting
 │   │   ├── types/            # Semua TypeScript interfaces
@@ -85,6 +86,23 @@ keuangan/
 ```
 
 ---
+
+## Arsitektur Data Terpadu
+
+`transactions` adalah satu-satunya sumber kejadian keuangan aktual.
+
+```text
+accounts → transactions ← recurring_transactions → budget_items
+                         ↓
+          Arus Kas / Dashboard / Budgeting / Checkup / Net Worth
+```
+
+- `accounts` menyimpan saldo rekening/dompet dan diperbarui oleh trigger transaksi.
+- `recurring_transactions` hanya template; template tidak dihitung sebagai realisasi sebelum dibuat menjadi transaksi.
+- `budget_items` menyimpan target, sedangkan realisasi selalu dihitung dari `transactions`.
+- Transfer antar rekening tidak dihitung sebagai pemasukan atau pengeluaran.
+- Saldo rekening menjadi sumber kas utama untuk Net Worth; aset kas manual yang duplikat tidak dihitung ulang.
+- `cashflow_items` hanya dipertahankan untuk kompatibilitas migration lama dan tidak digunakan oleh alur utama.
 
 ## Setup Development
 
@@ -127,6 +145,11 @@ NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY=your-anon-key
    - `supabase/migrations/20260904130039_add_transaction_accounts.sql` — relasi transaksi ke rekening
    - `supabase/migrations/20260904132915_add_savings_transfer_workflow.sql` — transfer tabungan dan target
    - `supabase/migrations/20260904133352_enforce_account_balances.sql` — sinkronisasi saldo rekening otomatis
+   - `supabase/migrations/20260905012415_add_recurring_transactions.sql` — template transaksi berulang
+   - `supabase/migrations/20260905012955_generate_due_recurring_transactions.sql` — generator transaksi jatuh tempo
+   - `supabase/migrations/20260905014254_link_recurring_to_budget.sql` — sinkronisasi template ke budgeting
+   - `supabase/migrations/20260905014411_schedule_recurring_transactions.sql` — scheduler harian
+   - `supabase/migrations/20260905015126_harden_rls_and_functions.sql` — hardening RLS dan privilege function
 
 ### 4. Run
 ```bash
@@ -158,6 +181,14 @@ npm run dev          # http://localhost:3002
 
 ---
 
+## Transaksi Berulang
+
+Job `generate-recurring-transactions-daily` aktif di database live setiap hari
+pukul 00:05 UTC (07:05 WIB). Job memproses template yang sudah jatuh tempo,
+membuat transaksi aktual, memperbarui saldo rekening melalui trigger, dan
+menggeser `next_run_date`. Generator juga dipanggil saat halaman Kas Rutin
+dibuka sebagai fallback agar data segera diperbarui.
+
 ## Auto-Snapshot Net Worth
 
 Snapshot otomatis tiap awal bulan via pg_cron (butuh Supabase Pro plan):
@@ -170,14 +201,18 @@ Snapshot otomatis tiap awal bulan via pg_cron (butuh Supabase Pro plan):
 
 ---
 
-## Status Deploy Terakhir (terverifikasi 2026-09-04)
+## Status Implementasi Terakhir (terverifikasi 2026-09-05)
 
-Redesain UI (IA 4 pilar) dan perbaikan hasil review sudah live di production:
+Arsitektur transaksi terpadu dan perbaikan hasil review sudah terverifikasi:
 
-1. **Push ke GitHub** — selesai, `main` sudah sinkron dengan `origin/main`; deploy Vercel berjalan otomatis.
-2. **Edge function `snapshot`** — sudah redeploy (versi 2, ACTIVE, `verify_jwt: true`, deploy **tanpa** `--no-verify-jwt`). Handler menolak request tanpa `Authorization: Bearer <service_role_key>` dengan 401 sebelum menyentuh database.
-3. **Cron snapshot** — job `snapshot-networth-monthly` ada (`0 0 1 * *`), command mengirim header `Authorization` dari vault (secret `service_role_key` + `project_url` ada), histori sukses tiap tanggal 1.
-4. **Uji handler snapshot** (tanpa menulis data produksi — `cron.run_job` tidak tersedia di versi pg_cron ini, jadi pakai curl):
+1. **Validasi aplikasi** — `npm run type-check`, `npm run lint`, dan `npm run build` lulus.
+2. **Database live** — template transaksi berulang, generator, sinkronisasi budgeting, scheduler, dan hardening RLS sudah diterapkan melalui Supabase MCP.
+3. **Jalur data** — onboarding, Kas Rutin, Arus Kas, Dashboard, Budgeting, Checkup, dan Net Worth mengikuti sumber transaksi yang sama.
+
+4. **Push ke GitHub** — dilakukan sesuai workflow repository; deploy Vercel berjalan otomatis setelah perubahan dipush.
+5. **Edge function `snapshot`** — tetap digunakan untuk snapshot net worth bulanan.
+6. **Cron snapshot** — job `snapshot-networth-monthly` ada (`0 0 1 * *`), command mengirim header `Authorization` dari vault (secret `service_role_key` + `project_url` ada), histori sukses tiap tanggal 1.
+7. **Uji handler snapshot** (tanpa menulis data produksi — `cron.run_job` tidak tersedia di versi pg_cron ini, jadi pakai curl):
    ```bash
    # Tanpa header → 401 dari gateway (platform JWT gate aktif)
    curl -X POST "https://<PROJECT_REF>.supabase.co/functions/v1/snapshot" \

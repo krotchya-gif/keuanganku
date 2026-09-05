@@ -61,11 +61,9 @@ export function PembayaranContent() {
     if (!accountId) { window.alert('Pilih rekening sumber terlebih dahulu.'); return; }
     const userId = await getCurrentUserId();
     if (!userId) return;
-    const { error } = await createClient().from('transactions').insert({
-      user_id: userId,
-      transaction_date: `${year}-${String(month).padStart(2, '0')}-${String(item.due_date || 1).padStart(2, '0')}`,
-      amount: Number(item.amount), category: item.category, subcategory: item.name,
-      description: `Pembayaran ${item.name}`, transaction_type: 'expense', account_id: accountId,
+    const paymentDate = `${year}-${String(month).padStart(2, '0')}-${String(item.due_date || 1).padStart(2, '0')}`;
+    const { error } = await createClient().rpc('record_bill_payment', {
+      p_budget_item_id: item.id, p_account_id: accountId, p_date: paymentDate, p_amount: Number(item.amount),
     });
     if (error) window.alert(error.message); else window.location.reload();
   };
@@ -82,8 +80,8 @@ export function PembayaranContent() {
   const bills = items.filter(i => i.category === 'TAGIHAN');
   const debts = items.filter(i => i.category === 'HUTANG');
 
-  const checkStatus = (itemName: string, target: number) => {
-    const matchedTxs = transactions.filter(t => t.subcategory === itemName);
+  const checkStatus = (itemName: string, target: number, itemId?: string) => {
+    const matchedTxs = transactions.filter(t => itemId ? t.budget_item_id === itemId : t.subcategory === itemName);
     const paid = matchedTxs.reduce((s, t) => s + Number(t.amount), 0);
     // Target 0 (belum diisi) jangan dianggap lunas
     return { paid, isFullyPaid: target > 0 && paid >= target, target };
@@ -97,7 +95,7 @@ export function PembayaranContent() {
     let totalPaid = 0;
     
     const enrichedList = list.map(item => {
-      const s = checkStatus(item.name, Number(item.amount));
+      const s = checkStatus(item.name, Number(item.amount), item.id);
       totalTarget += s.target;
       totalPaid += s.paid;
       return { ...item, ...s };

@@ -3,6 +3,12 @@
 
 import type { Asset, Debt, NetWorthResult } from '../types';
 
+/** Accounts are the source of truth for cash; retain explicitly marked emergency cash. */
+export function excludeDuplicatedCashAssets(assets: Asset[], hasAccounts: boolean): Asset[] {
+  if (!hasAccounts) return assets;
+  return assets.filter((asset) => asset.category !== 'kas_setara_kas' || asset.is_emergency_fund === true || asset.name.toLowerCase().includes('dana darurat'));
+}
+
 export function calculateNetWorth(assets: Asset[], debts: Debt[]): NetWorthResult {
   const kas_setara_kas = assets
     .filter((a) => a.category === 'kas_setara_kas')

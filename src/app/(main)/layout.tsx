@@ -83,7 +83,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     { href: '/dashboard', label: 'Beranda', icon: LayoutDashboard },
     { href: '/arus-kas', label: 'Arus Kas', icon: ArrowLeftRight },
     { href: '/budgeting', label: 'Anggaran', icon: PiggyBank },
-    { href: '/kpr', label: 'KPR', icon: House },
+    { href: '/pembayaran', label: 'Bayar', icon: ReceiptText },
   ];
 
   return (
@@ -128,7 +128,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-card/95 backdrop-blur-lg border-t border-border/70 safe-bottom">
         <div className="grid grid-cols-5 items-center h-16 px-1">
           <NavButton {...bottomItems[0]} active={isActive(bottomItems[0].href)} />
-          <NavButton {...bottomItems[1]} active={isActive(bottomItems[1].href) || isActive('/kalendar') || isActive('/pembayaran')} />
+          <NavButton {...bottomItems[1]} active={isActive(bottomItems[1].href) || isActive('/kalendar')} />
 
           {/* FAB — Catat Transaksi */}
           <div className="flex justify-center relative">

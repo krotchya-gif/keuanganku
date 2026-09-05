@@ -53,3 +53,30 @@ export async function createOnboardingCashflow(userId: string, input: { name: st
   const { error } = await createClient().from('cashflow_items').insert({ user_id: userId, ...input, is_recurring: true });
   if (error) throw new Error(error.message);
 }
+
+/** Seed an onboarding income as the same actual ledger entry used everywhere else. */
+export async function createOnboardingIncomeTransaction(userId: string, input: { name: string; amount: number }) {
+  const { error } = await createClient().from('transactions').insert({
+    user_id: userId,
+    transaction_date: new Date().toISOString().slice(0, 10),
+    amount: input.amount,
+    category: 'PENDAPATAN',
+    transaction_type: 'income',
+    description: input.name,
+  });
+  if (error) throw new Error(error.message);
+}
+
+export async function createOnboardingRecurringExpense(userId: string, input: { name: string; category: CashflowCategory; amount: number }) {
+  const { error } = await createClient().from('recurring_transactions').insert({
+    user_id: userId,
+    name: input.name,
+    direction: 'keluar',
+    category: input.category,
+    amount: input.amount,
+    frequency: 'monthly',
+    day_of_month: 1,
+    next_run_date: new Date().toISOString().slice(0, 10),
+  });
+  if (error) throw new Error(error.message);
+}

@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Check, ChevronLeft, ChevronRight, Loader2, Wallet } from 'lucide-react';
 import { createClient } from '@/utils/supabase/client';
 import { AuthShell } from '@/components/auth/AuthShell';
-import { getOnboardingProfile, saveOnboardingProgress, finishOnboarding, createOnboardingAccount, createOnboardingAsset, createOnboardingDebt, createOnboardingCashflow } from '@/lib/queries/onboarding';
+import { getOnboardingProfile, saveOnboardingProgress, finishOnboarding, createOnboardingAccount, createOnboardingAsset, createOnboardingDebt, createOnboardingIncomeTransaction, createOnboardingRecurringExpense } from '@/lib/queries/onboarding';
 import type { AccountType, AssetCategory, CashflowCategory, DebtTerm } from '@/shared';
 
 const steps = ['Rekening', 'Aset', 'Utang', 'Pendapatan', 'Pengeluaran', 'Prioritas'];
@@ -34,8 +34,8 @@ export function OnboardingWizard() {
     if (step === 1) await createOnboardingAccount(userId, { name: data.name.trim(), type: data.type, balance: amount });
     if (step === 2) await createOnboardingAsset(userId, { name: data.name.trim(), category: data.category, amount });
     if (step === 3) await createOnboardingDebt(userId, { name: data.name.trim(), term: data.term, total_amount: amount, monthly_payment: Number(data.monthly || 0) });
-    if (step === 4) await createOnboardingCashflow(userId, { name: data.name.trim(), direction: 'masuk', category: 'pendapatan', amount });
-    if (step === 5) await createOnboardingCashflow(userId, { name: data.name.trim(), direction: 'keluar', category: data.flowCategory, amount });
+    if (step === 4) await createOnboardingIncomeTransaction(userId, { name: data.name.trim(), amount });
+    if (step === 5) await createOnboardingRecurringExpense(userId, { name: data.name.trim(), category: data.flowCategory, amount });
     setCounts((c) => c.map((n, i) => i === step - 1 ? n + 1 : n)); setData(emptyData); return true;
   }
 

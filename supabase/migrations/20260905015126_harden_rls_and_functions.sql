@@ -1,0 +1,23 @@
+ALTER FUNCTION public.update_updated_at() SET search_path = public;
+REVOKE EXECUTE ON FUNCTION public.handle_new_user() FROM PUBLIC, anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.rls_auto_enable() FROM PUBLIC, anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.seed_default_budget_items() FROM PUBLIC, anon, authenticated;
+
+DROP POLICY IF EXISTS "user_own_data" ON public.users;
+CREATE POLICY "user_own_data" ON public.users FOR ALL TO authenticated USING ((select auth.uid()) = id) WITH CHECK ((select auth.uid()) = id);
+DROP POLICY IF EXISTS "user_own_assets" ON public.assets;
+CREATE POLICY "user_own_assets" ON public.assets FOR ALL TO authenticated USING ((select auth.uid()) = user_id) WITH CHECK ((select auth.uid()) = user_id);
+DROP POLICY IF EXISTS "user_own_debts" ON public.debts;
+CREATE POLICY "user_own_debts" ON public.debts FOR ALL TO authenticated USING ((select auth.uid()) = user_id) WITH CHECK ((select auth.uid()) = user_id);
+DROP POLICY IF EXISTS "user_own_snapshots" ON public.net_worth_snapshots;
+CREATE POLICY "user_own_snapshots" ON public.net_worth_snapshots FOR ALL TO authenticated USING ((select auth.uid()) = user_id) WITH CHECK ((select auth.uid()) = user_id);
+DROP POLICY IF EXISTS "user_own_cashflow" ON public.cashflow_items;
+CREATE POLICY "user_own_cashflow" ON public.cashflow_items FOR ALL TO authenticated USING ((select auth.uid()) = user_id) WITH CHECK ((select auth.uid()) = user_id);
+DROP POLICY IF EXISTS "user_own_kpr" ON public.kpr_simulations;
+CREATE POLICY "user_own_kpr" ON public.kpr_simulations FOR ALL TO authenticated USING ((select auth.uid()) = user_id) WITH CHECK ((select auth.uid()) = user_id);
+DROP POLICY IF EXISTS "user_own_budget_items" ON public.budget_items;
+CREATE POLICY "user_own_budget_items" ON public.budget_items FOR ALL TO authenticated USING ((select auth.uid()) = user_id) WITH CHECK ((select auth.uid()) = user_id);
+DROP POLICY IF EXISTS "user_own_transactions" ON public.transactions;
+CREATE POLICY "user_own_transactions" ON public.transactions FOR ALL TO authenticated USING ((select auth.uid()) = user_id) WITH CHECK ((select auth.uid()) = user_id);
+DROP POLICY IF EXISTS "user_own_savings" ON public.savings_goals;
+CREATE POLICY "user_own_savings" ON public.savings_goals FOR ALL TO authenticated USING ((select auth.uid()) = user_id) WITH CHECK ((select auth.uid()) = user_id);

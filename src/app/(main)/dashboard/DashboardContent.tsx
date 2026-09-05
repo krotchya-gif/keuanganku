@@ -14,6 +14,7 @@ import {
 import { formatRupiahCompact, formatPercent, getLocalDateString, cn } from '@/lib/utils';
 import { getCurrentUserId } from '@/lib/queries/users';
 import { fetchAssets } from '@/lib/queries/assets';
+import { fetchAccounts } from '@/lib/queries/onboarding';
 import { fetchDebts } from '@/lib/queries/debts';
 import { fetchSnapshots } from '@/lib/queries/snapshots';
 import { fetchTransactions } from '@/lib/queries/transactions';
@@ -28,7 +29,7 @@ import { ErrorBanner } from '@/components/ui/ErrorBanner';
 import { ChartTooltip } from '@/components/charts/ChartTooltip';
 import { ChartGradients, chartAxisStyle, formatChartRupiah } from '@/components/charts/ChartTheme';
 import type { SavingsGoal, Transaction } from '@/shared';
-import { calculateNetWorth, calculateGrowth, BUDGET_CATEGORY_LABELS, BUDGET_CATEGORY_COLORS } from '@/shared';
+import { calculateNetWorth, calculateGrowth, excludeDuplicatedCashAssets, BUDGET_CATEGORY_LABELS, BUDGET_CATEGORY_COLORS } from '@/shared';
 import { Skeleton, ChartSkeleton } from '@/components/ui/Skeleton';
 
 const QUICK_ACTIONS = [
@@ -99,25 +100,39 @@ export function DashboardContent() {
         from.setDate(from.getDate() - 59);
         const { startDate, endDate } = { startDate: getLocalDateString(from), endDate: getLocalDateString(now) };
 
-        const [snapData, txData, assetData, debtData, savingData, budgetRows] = await Promise.all([
+        const [snapData, txData, assetData, accountData, debtData, savingData, budgetRows] = await Promise.all([
           fetchSnapshots(userId, 12),
           fetchTransactions(userId, startDate, endDate),
           fetchAssets(userId),
+          fetchAccounts(userId),
           fetchDebts(userId),
           fetchSavingsGoals(userId),
           fetchBudgetItems(userId),
         ]);
 
+        // Rekening/dompet adalah saldo kas aktual dan harus ikut dihitung di seluruh ringkasan.
+        const accountAssets = accountData.map((a) => ({
+          id: `account-${a.id}`,
+          user_id: a.user_id,
+          name: `${a.name} (rekening)`,
+          category: 'kas_setara_kas' as const,
+          amount: Number(a.balance),
+          created_at: a.created_at,
+          updated_at: a.updated_at,
+        }));
+        const currentAssets = [...excludeDuplicatedCashAssets(assetData, accountData.length > 0), ...accountAssets];
+
+        const live = calculateNetWorth(currentAssets, debtData);
         if (snapData.length > 0) {
           const latest = snapData[snapData.length - 1];
           const prev = snapData.length > 1 ? snapData[snapData.length - 2] : latest;
           const prevNW = Number(prev.net_worth);
           setNetWorth({
-            current: Number(latest.net_worth),
+            current: live.netWorth,
             previous: prevNW,
-            growth: calculateGrowth(Number(latest.net_worth), prevNW) ?? 0,
-            totalAssets: Number(latest.total_assets),
-            totalDebts: Number(latest.total_debts),
+            growth: calculateGrowth(live.netWorth, prevNW) ?? 0,
+            totalAssets: live.totalAssets,
+            totalDebts: live.totalDebts,
           });
           setNetWorthHistory(snapData.map((s) => ({
             bulan: new Date(`${s.snapshot_date}T00:00:00`).toLocaleDateString('id-ID', { month: 'short', year: '2-digit' }),
@@ -125,8 +140,7 @@ export function DashboardContent() {
             utang: Number(s.total_debts),
             netWorth: Number(s.net_worth),
           })));
-        } else if (assetData.length > 0 || debtData.length > 0) {
-          const live = calculateNetWorth(assetData, debtData);
+        } else if (currentAssets.length > 0 || debtData.length > 0) {
           setNetWorth({
             current: live.netWorth,
             previous: 0,

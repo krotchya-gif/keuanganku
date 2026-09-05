@@ -12,7 +12,8 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { formatRupiahCompact, formatPercent } from '@/lib/utils';
 import { createClient } from '@/utils/supabase/client';
 import { getCurrentUserId } from '@/lib/queries/users';
-import { fetchCashflowItems } from '@/lib/queries/cashflow';
+import { fetchRecurringTransactions, type RecurringTransaction } from '@/lib/queries/recurring';
+import { fetchAccounts } from '@/lib/queries/onboarding';
 import { calculateCashFlow } from '@/shared';
 import { CASHFLOW_CATEGORY_LABELS, CASHFLOW_CATEGORY_COLORS } from '@/shared';
 import type { CashflowItem, CashflowCategory } from '@/shared';
@@ -29,11 +30,12 @@ const KELUAR_GROUPS: ChipGroup[] = (
 export function KasRutinContent() {
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState('');
-  const [items, setItems] = useState<CashflowItem[]>([]);
+  const [items, setItems] = useState<(CashflowItem & Partial<RecurringTransaction>)[]>([]);
+  const [accounts, setAccounts] = useState<Awaited<ReturnType<typeof fetchAccounts>>>([]);
 
   // Form modal
   const [showModal, setShowModal] = useState(false);
-  const [editingItem, setEditingItem] = useState<CashflowItem | null>(null);
+  const [editingItem, setEditingItem] = useState<(CashflowItem & Partial<RecurringTransaction>) | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [form, setForm] = useState({
     name: '',
@@ -41,6 +43,7 @@ export function KasRutinContent() {
     category: 'kebutuhan_sehari_hari' as CashflowItem['category'],
     amount: 0,
     is_recurring: true,
+    account_id: '',
   });
 
   const fetchData = async () => {
@@ -49,8 +52,12 @@ export function KasRutinContent() {
       const id = await getCurrentUserId();
       if (!id) return;
       setUserId(id);
+      setAccounts(await fetchAccounts(id));
 
-      const data = await fetchCashflowItems(id);
+      // Materialize template yang sudah jatuh tempo menjadi transaksi aktual.
+      const { error: generateError } = await createClient().rpc('generate_due_recurring_transactions');
+      if (generateError) console.error('Gagal membuat transaksi rutin:', generateError);
+      const data = await fetchRecurringTransactions(id);
       setItems(data);
     } catch (err) {
       console.error(err);
@@ -79,11 +86,15 @@ export function KasRutinContent() {
       category: finalCategory,
       amount: form.amount,
       is_recurring: form.is_recurring,
+      frequency: 'monthly',
+      day_of_month: new Date().getDate(),
+      next_run_date: new Date().toISOString().slice(0, 10),
+      account_id: form.account_id || null,
     };
 
     const { error } = editingItem
-      ? await supabase.from('cashflow_items').update(payload).eq('id', editingItem.id)
-      : await supabase.from('cashflow_items').insert({ ...payload, user_id: userId });
+      ? await supabase.from('recurring_transactions').update(payload).eq('id', editingItem.id)
+      : await supabase.from('recurring_transactions').insert({ ...payload, user_id: userId });
 
     if (error) {
       setFormError('Gagal menyimpan data. Periksa koneksi lalu coba lagi.');
@@ -96,7 +107,7 @@ export function KasRutinContent() {
   const handleDelete = async (id: string) => {
     if (!window.confirm('Hapus pos kas rutin ini?')) return;
     const supabase = createClient();
-    const { error } = await supabase.from('cashflow_items').delete().eq('id', id);
+    const { error } = await supabase.from('recurring_transactions').update({ is_active: false }).eq('id', id).eq('user_id', userId);
     if (error) {
       window.alert('Gagal menghapus data. Coba lagi.');
       return;
@@ -113,14 +124,15 @@ export function KasRutinContent() {
       category: direction === 'masuk' ? 'pendapatan' : 'kebutuhan_sehari_hari',
       amount: 0,
       is_recurring: true,
+      account_id: '',
     });
     setShowModal(true);
   };
 
-  const openEditModal = (item: CashflowItem) => {
+  const openEditModal = (item: CashflowItem & Partial<RecurringTransaction>) => {
     setEditingItem(item);
     setFormError(null);
-    setForm({ name: item.name, direction: item.direction, category: item.category, amount: item.amount, is_recurring: item.is_recurring });
+    setForm({ name: item.name, direction: item.direction, category: item.category, amount: item.amount, is_recurring: item.is_recurring, account_id: item.account_id ?? '' });
     setShowModal(true);
   };
 
@@ -332,6 +344,14 @@ export function KasRutinContent() {
               className="input-field"
               placeholder={form.direction === 'masuk' ? 'misal: Gaji Bulanan' : 'misal: Belanja Bulanan'}
             />
+          </div>
+
+          <div>
+            <label htmlFor="kas-account" className="mb-1.5 block text-xs font-medium text-foreground">Rekening terkait</label>
+            <select id="kas-account" value={form.account_id} onChange={(e) => setForm({ ...form, account_id: e.target.value })} className="input-field w-full">
+              <option value="">Tanpa rekening (hanya catatan)</option>
+              {accounts.map((account) => <option key={account.id} value={account.id}>{account.name}</option>)}
+            </select>
           </div>
 
           {form.direction === 'keluar' && (

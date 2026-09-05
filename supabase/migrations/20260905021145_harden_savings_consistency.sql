@@ -1,0 +1,8 @@
+ALTER TABLE public.recurring_transactions ADD COLUMN IF NOT EXISTS transfer_to_account_id UUID REFERENCES public.accounts(id) ON DELETE SET NULL, ADD COLUMN IF NOT EXISTS savings_goal_id UUID REFERENCES public.savings_goals(id) ON DELETE SET NULL, ADD COLUMN IF NOT EXISTS transaction_type TEXT NOT NULL DEFAULT 'expense' CHECK (transaction_type IN ('income','expense','transfer'));
+CREATE INDEX IF NOT EXISTS idx_recurring_transactions_savings_goal ON public.recurring_transactions(savings_goal_id);
+CREATE OR REPLACE FUNCTION public.recalculate_savings_goal(p_goal_id uuid) RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $fn$
+BEGIN UPDATE public.savings_goals g SET current_amount=COALESCE((SELECT SUM(t.amount) FROM public.transactions t WHERE t.savings_goal_id=g.id AND t.transaction_type='transfer' AND t.transfer_to_account_id IS NOT NULL),0) WHERE g.id=p_goal_id; END; $fn$;
+CREATE OR REPLACE FUNCTION public.sync_savings_goal_from_transaction() RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $fn$
+BEGIN IF TG_OP IN ('UPDATE','DELETE') AND OLD.savings_goal_id IS NOT NULL THEN PERFORM public.recalculate_savings_goal(OLD.savings_goal_id); END IF; IF TG_OP IN ('INSERT','UPDATE') AND NEW.savings_goal_id IS NOT NULL THEN PERFORM public.recalculate_savings_goal(NEW.savings_goal_id); END IF; RETURN COALESCE(NEW,OLD); END; $fn$;
+DROP TRIGGER IF EXISTS sync_savings_goal_from_transaction ON public.transactions;
+CREATE TRIGGER sync_savings_goal_from_transaction AFTER INSERT OR UPDATE OR DELETE ON public.transactions FOR EACH ROW EXECUTE FUNCTION public.sync_savings_goal_from_transaction();

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { calculateFinancialCheckup, calculateNetWorth, calculateCashFlow, getDanaDarurat, checkupRadarScore } from '@/shared';
+import { calculateFinancialCheckup, calculateNetWorth, calculateCashFlow, getDanaDarurat, excludeDuplicatedCashAssets, checkupRadarScore } from '@/shared';
 import type { FinancialCheckupItem } from '@/shared';
 import { formatRupiah, formatPercent, getStatusColor, getStatusLabel } from '@/lib/utils';
 import { PageHeader } from '@/components/ui/PageHeader';
@@ -11,7 +11,9 @@ import {
 import { getCurrentUserId } from '@/lib/queries/users';
 import { fetchAssets } from '@/lib/queries/assets';
 import { fetchDebts } from '@/lib/queries/debts';
-import { fetchCashflowItems } from '@/lib/queries/cashflow';
+import { fetchTransactions } from '@/lib/queries/transactions';
+import { fetchAccounts } from '@/lib/queries/onboarding';
+import { getMonthRange } from '@/lib/utils';
 import { Loader2, AlertCircle, ShieldCheck, ShieldAlert, Activity } from 'lucide-react';
 import { Skeleton, KPISkeleton, ChartSkeleton, ListSkeleton } from '@/components/ui/Skeleton';
 
@@ -25,15 +27,22 @@ export function CheckupContent() {
         const userId = await getCurrentUserId();
         if (!userId) return;
 
-        const [assets, debts, cashflows] = await Promise.all([
+        const { startDate, endDate } = getMonthRange(new Date().getFullYear(), new Date().getMonth() + 1);
+        const [assets, debts, accounts, transactions] = await Promise.all([
           fetchAssets(userId),
           fetchDebts(userId),
-          fetchCashflowItems(userId),
+          fetchAccounts(userId),
+          fetchTransactions(userId, startDate, endDate),
         ]);
 
         const danaDarurat = getDanaDarurat(assets);
-        const nw = calculateNetWorth(assets, debts);
-        const cf = calculateCashFlow(cashflows);
+        const nw = calculateNetWorth([...excludeDuplicatedCashAssets(assets, accounts.length > 0), ...accounts.map((a) => ({ ...a, category: 'kas_setara_kas' as const, amount: Number(a.balance) }))], debts);
+        const cf = calculateCashFlow(transactions.map((t) => ({
+          id: t.id, user_id: t.user_id, name: t.description ?? 'Transaksi',
+          direction: t.transaction_type === 'income' || t.category === 'PENDAPATAN' ? 'masuk' : 'keluar',
+          category: t.category === 'PENDAPATAN' ? 'pendapatan' : t.category === 'HUTANG' ? 'kewajiban_cicilan' : t.category === 'TABUNGAN_INVESTASI' ? 'masa_depan_investasi' : 'kebutuhan_sehari_hari',
+          amount: Number(t.amount), is_recurring: false, created_at: t.created_at, updated_at: t.updated_at,
+        })));
 
         const result = calculateFinancialCheckup({
           danaDarurat,

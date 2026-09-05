@@ -54,6 +54,7 @@ export function SettingsContent() {
        const results = await Promise.all([
          supabase.from('transactions').delete().eq('user_id', user.id),
          supabase.from('budget_items').delete().eq('user_id', user.id),
+         supabase.from('recurring_transactions').delete().eq('user_id', user.id),
          supabase.from('cashflow_items').delete().eq('user_id', user.id),
          supabase.from('assets').delete().eq('user_id', user.id),
          supabase.from('debts').delete().eq('user_id', user.id),

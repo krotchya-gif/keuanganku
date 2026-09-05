@@ -115,6 +115,7 @@ export interface BudgetItem {
   due_date?: number;
   is_active: boolean;
   sort_order: number;
+  debt_id?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -126,6 +127,8 @@ export interface Transaction {
   transaction_type?: TransactionType;
   transfer_to_account_id?: string | null;
   savings_goal_id?: string | null;
+  budget_item_id?: string | null;
+  billing_period?: string | null;
   transaction_date: string;
   amount: number;
   category: BudgetCategory;
