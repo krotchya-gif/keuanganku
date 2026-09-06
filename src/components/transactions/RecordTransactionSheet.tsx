@@ -131,6 +131,13 @@ export function RecordTransactionSheet({ open, onClose, onSaved, editTransaction
     if (direction === 'transfer' && !transferToAccountId) { setError('Pilih rekening tujuan transfer.'); return; }
     if (direction === 'transfer' && transferToAccountId === accountId) { setError('Rekening sumber dan tujuan harus berbeda.'); return; }
     if (amount <= 0) { setError('Isi nominal lebih dari nol.'); return; }
+    if (direction === 'transfer') {
+      const sourceAccount = accounts.find((account) => account.id === accountId);
+      if (sourceAccount && amount > Number(sourceAccount.balance)) {
+        setError(`Saldo tidak cukup. Saldo tersedia Rp ${Number(sourceAccount.balance).toLocaleString('id-ID')}.`);
+        return;
+      }
+    }
 
     setSaving(true);
     const supabase = createClient();
@@ -162,8 +169,11 @@ export function RecordTransactionSheet({ open, onClose, onSaved, editTransaction
       }
       onSaved();
       onClose();
-    } catch {
-      setError('Gagal menyimpan transaksi. Periksa koneksi lalu coba lagi.');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : '';
+      setError(message.includes('Saldo rekening sumber tidak mencukupi')
+        ? 'Saldo rekening sumber tidak mencukupi.'
+        : 'Gagal menyimpan transaksi. Periksa koneksi lalu coba lagi.');
     } finally {
       setSaving(false);
     }
