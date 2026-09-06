@@ -48,8 +48,12 @@ export function InstallPrompt() {
     const handler = (e: Event) => {
       e.preventDefault();
       setDeferredPrompt(e as BeforeInstallPromptEvent);
-      // Muncul hanya jika belum di-dismiss dalam 24 jam / belum pernah install
-      if (canShowPrompt()) setShow(true);
+      // Catat sejak pertama kali banner ditampilkan. Event ini dapat dipicu
+      // ulang saat navigasi/refresh sebelum user menekan tombol apa pun.
+      if (canShowPrompt()) {
+        writeStorage({ dismissedAt: Date.now() });
+        setShow(true);
+      }
     };
     const installedHandler = () => {
       writeStorage({ accepted: true });
