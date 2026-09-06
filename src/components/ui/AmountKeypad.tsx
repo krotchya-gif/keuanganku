@@ -45,7 +45,7 @@ export function AmountKeypad({ value, onChange, className, disabled }: AmountKey
         aria-live="polite"
       >
         <span className="mr-1.5 text-lg font-semibold text-muted-foreground">Rp</span>
-        {formatRupiah(value).replace('Rp', '').trim() || '0'}
+        {value === 0 ? '' : formatRupiah(value).replace('Rp', '').trim()}
       </p>
       <div className="grid grid-cols-3 gap-1.5">
         {keys.map((key) => (
