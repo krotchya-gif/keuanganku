@@ -35,7 +35,7 @@ export function PembayaranContent() {
           fetchBudgetItemsByCategory(userId, 'HUTANG'),
         ]);
         setItems([...tagihanItems, ...hutangItems]);
-        const accountData = await fetchAccounts(userId);
+        const accountData = (await fetchAccounts(userId)).filter((account) => account.type !== 'crypto');
         setAccounts(accountData);
         if (!accountId && accountData.length === 1) setAccountId(accountData[0].id);
 

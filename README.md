@@ -101,9 +101,11 @@ accounts → transactions ← recurring_transactions → budget_items
 - `recurring_transactions` hanya template; template tidak dihitung sebagai realisasi sebelum dibuat menjadi transaksi.
 - `budget_items` menyimpan target, sedangkan realisasi selalu dihitung dari `transactions`.
 - Transfer antar rekening tidak dihitung sebagai pemasukan atau pengeluaran.
-- Saldo rekening menjadi sumber kas utama untuk Net Worth; aset kas manual yang duplikat tidak dihitung ulang.
+- Tipe rekening `cash`, `bank`, dan `ewallet` menjadi sumber kas utama untuk Net Worth; rekening `crypto` hanya menjadi lokasi wallet dan tidak dihitung sebagai kas.
+- Aset kas manual yang duplikat tidak dihitung ulang ketika rekening kas aktif tersedia.
 - `cashflow_items` hanya dipertahankan untuk kompatibilitas migration lama dan tidak digunakan oleh alur utama.
 - Crypto disimpan sebagai holding sederhana; pilihan coin memakai Top 50 market cap CoinGecko dan valuasi Net Worth tetap dalam IDR. Holding crypto dibaca langsung oleh halaman Net Worth dan Edge Function snapshot.
+- Wallet crypto dibuat sebagai rekening bertipe `crypto` dari Pengaturan. Rekening ini hanya menghubungkan holding ke lokasi penyimpanan; nilai holding tetap dihitung sebagai Investasi dan saldo rekening tidak otomatis berkurang.
 - Harga memakai CoinGecko dengan cache 60 detik; jika tersedia `COINMARKETCAP_API_KEY` server, CoinMarketCap menjadi fallback. Jika keduanya gagal, aplikasi mempertahankan harga terakhir yang tersimpan.
 
 ## Setup Development
@@ -160,6 +162,9 @@ COINMARKETCAP_API_KEY=your-coinmarketcap-key
    - `supabase/migrations/20260905021145_harden_savings_consistency.sql` — rekalkulasi target tabungan dari transaksi
    - `supabase/migrations/20260905021209_recurring_savings_generation.sql` — generator transfer tabungan berulang
    - `supabase/migrations/20260905022957_add_crypto_holdings.sql` — holding crypto dan RLS per pengguna
+   - `supabase/migrations/20260907010000_harden_financial_integrity.sql` — derived amount dan validasi ownership lintas relasi
+   - `supabase/migrations/20260907010100_fix_savings_transfer_derived_amount.sql` — menghapus increment saldo tabungan manual
+   - `supabase/migrations/20260907011000_add_crypto_account_type.sql` — tipe rekening khusus wallet crypto
 
 ### 4. Run
 ```bash
@@ -202,12 +207,14 @@ dibuka sebagai fallback agar data segera diperbarui.
 
 ## Crypto di Net Worth
 
-Crypto dicatat sebagai holding (coin, jumlah, dan dompet/rekening opsional),
-bukan sebagai transaksi jual-beli. Dropdown mengambil Top 50 coin berdasarkan
-market cap dari CoinGecko. Nilai holding dikonversi ke IDR dan masuk ke Net
-Worth sebagai investasi. Harga disegarkan saat halaman Net Worth dibuka dan
-cache API berlaku 60 detik; data harga terakhir tetap dipakai jika refresh
-gagal. Jika `COINMARKETCAP_API_KEY` tersedia di server, CoinMarketCap
+Crypto dicatat sebagai holding (coin, jumlah, dan wallet crypto opsional),
+bukan sebagai transaksi jual-beli. Buat wallet dari Pengaturan dengan tipe
+`Wallet crypto`, lalu pilih wallet tersebut saat menyimpan holding. Wallet crypto
+tidak muncul sebagai Kas & Setara Kas dan saldonya tidak dimasukkan ke total kas.
+Nilai holding tetap masuk ke Net Worth sebagai Investasi. Dropdown mengambil Top
+50 coin berdasarkan market cap dari CoinGecko. Harga disegarkan saat halaman Net
+Worth dibuka dan cache API berlaku 60 detik; data harga terakhir tetap dipakai
+jika refresh gagal. Jika `COINMARKETCAP_API_KEY` tersedia di server, CoinMarketCap
 digunakan sebagai fallback ketika CoinGecko gagal.
 
 Endpoint yang digunakan:
@@ -235,7 +242,7 @@ production memakai alur ini.
 
 ---
 
-## Status Implementasi Terakhir (terverifikasi 2026-09-06)
+## Status Implementasi Terakhir (terverifikasi 2026-09-07)
 
 Arsitektur transaksi terpadu dan perbaikan hasil review sudah terverifikasi:
 
@@ -244,9 +251,11 @@ Arsitektur transaksi terpadu dan perbaikan hasil review sudah terverifikasi:
 3. **Jalur data** — onboarding, Kas Rutin, Arus Kas, Dashboard, Budgeting, Checkup, dan Net Worth mengikuti sumber transaksi yang sama.
 
 4. **Crypto** — holding Top 50, valuasi IDR, refresh harga, fallback CoinMarketCap, dan perhitungan snapshot sudah tersedia.
-5. **Deployment** — perubahan yang sudah di-commit dan dipush ke GitHub akan memicu deploy Vercel otomatis.
-6. **Edge function `snapshot`** — tetap digunakan untuk snapshot net worth bulanan.
-7. **Cron snapshot** — job `snapshot-networth-monthly` ada (`0 0 1 * *`), command mengirim header `Authorization` dari vault (secret `service_role_key` + `project_url` ada), histori sukses tiap tanggal 1.
+5. **Wallet crypto** — tipe rekening `crypto` tersedia; wallet crypto dikeluarkan dari kas dan ditampilkan sebagai metadata pada crypto holding.
+6. **Integritas data** — saldo target tabungan dihitung dari transaksi, field derived dilindungi, relasi finansial divalidasi per user, dan unique crypto memperlakukan wallet kosong sebagai satu lokasi.
+7. **Deployment** — perubahan yang sudah di-commit dan dipush ke GitHub akan memicu deploy Vercel otomatis.
+8. **Edge function `snapshot`** — tetap digunakan untuk snapshot net worth bulanan dan mengabaikan rekening bertipe `crypto` saat menghitung kas.
+9. **Cron snapshot** — job `snapshot-networth-monthly` ada (`0 0 1 * *`), command mengirim header `Authorization` dari vault (secret `service_role_key` + `project_url` ada), histori sukses tiap tanggal 1.
 8. **Uji handler snapshot** (tanpa menulis data produksi — `cron.run_job` tidak tersedia di versi pg_cron ini, jadi pakai curl):
    ```bash
    # Tanpa header → 401 dari gateway (platform JWT gate aktif)

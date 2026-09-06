@@ -61,7 +61,7 @@ serve(async (req: Request) => {
       // Rekening adalah sumber kebenaran untuk kas. Crypto disimpan terpisah
       // dari assets, jadi masukkan nilai terakhir yang berhasil disimpan.
       const [{ data: accounts, error: accountsErr }, { data: cryptoHoldings, error: cryptoErr }] = await Promise.all([
-        supabase.from("accounts").select("balance").eq("user_id", user.id),
+        supabase.from("accounts").select("balance, type").eq("user_id", user.id).neq("type", "crypto"),
         supabase.from("crypto_holdings").select("quantity, current_price_idr").eq("user_id", user.id),
       ]);
       if (accountsErr || cryptoErr) {

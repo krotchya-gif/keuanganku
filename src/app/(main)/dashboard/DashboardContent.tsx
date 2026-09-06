@@ -113,7 +113,8 @@ export function DashboardContent() {
         ]);
 
         // Rekening/dompet adalah saldo kas aktual dan harus ikut dihitung di seluruh ringkasan.
-        const accountAssets = accountData.map((a) => ({
+        const cashAccounts = accountData.filter((a) => a.type !== 'crypto');
+        const accountAssets = cashAccounts.map((a) => ({
           id: `account-${a.id}`,
           user_id: a.user_id,
           name: `${a.name} (rekening)`,
@@ -122,7 +123,7 @@ export function DashboardContent() {
           created_at: a.created_at,
           updated_at: a.updated_at,
         }));
-        const currentAssets = [...excludeDuplicatedCashAssets(assetData, accountData.length > 0), ...accountAssets];
+        const currentAssets = [...excludeDuplicatedCashAssets(assetData, cashAccounts.length > 0), ...accountAssets];
         const pricedCrypto = await refreshCryptoPrices(cryptoData);
         currentAssets.push(...pricedCrypto.map((h) => ({
           id: `crypto-${h.id}`,

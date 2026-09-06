@@ -7,6 +7,10 @@ import type { Account, AccountType } from '@/shared';
 import { fetchAccounts } from '@/lib/queries/onboarding';
 import { PageHeader } from '@/components/ui/PageHeader';
 
+const ACCOUNT_TYPE_LABELS: Record<AccountType, string> = {
+  cash: 'Tunai', bank: 'Bank', ewallet: 'E-wallet', crypto: 'Wallet crypto', other: 'Lainnya',
+};
+
 export function SettingsContent() {
   const [loading, setLoading] = useState(true);
   const [reseting, setReseting] = useState(false);
@@ -135,9 +139,9 @@ export function SettingsContent() {
       {/* Ganti Sandi */}
       <div className="card-premium p-6">
         <h2 className="text-sm font-bold mb-4 border-b border-border pb-3">Rekening & Dompet</h2>
-        <div className="space-y-2 mb-4">{accounts.map((account) => <div key={account.id} className="flex items-center justify-between rounded-xl border border-border px-3 py-2.5"><div><p className="text-sm font-medium">{account.name}</p><p className="text-xs text-muted-foreground">{account.type} · Rp {Number(account.balance).toLocaleString('id-ID')}</p></div><button onClick={() => deleteAccount(account.id)} aria-label={`Nonaktifkan ${account.name}`} className="text-danger p-2"><Trash2 className="w-4 h-4" /></button></div>)}</div>
+        <div className="space-y-2 mb-4">{accounts.map((account) => <div key={account.id} className="flex items-center justify-between rounded-xl border border-border px-3 py-2.5"><div><p className="text-sm font-medium">{account.name}</p><p className="text-xs text-muted-foreground">{ACCOUNT_TYPE_LABELS[account.type]} · Rp {Number(account.balance).toLocaleString('id-ID')}</p></div><button onClick={() => deleteAccount(account.id)} aria-label={`Nonaktifkan ${account.name}`} className="text-danger p-2"><Trash2 className="w-4 h-4" /></button></div>)}</div>
         <div className="grid grid-cols-[1fr_auto] gap-2"><input className="input-field" placeholder="Nama rekening" value={newAccount.name} onChange={e => setNewAccount({ ...newAccount, name: e.target.value })} /><input className="input-field" type="number" min="0" placeholder="Saldo awal" value={newAccount.balance || ''} onChange={e => setNewAccount({ ...newAccount, balance: Number(e.target.value) })} /></div>
-        <div className="flex gap-2 mt-2"><select className="input-field" value={newAccount.type} onChange={e => setNewAccount({ ...newAccount, type: e.target.value as AccountType })}><option value="cash">Tunai</option><option value="bank">Bank</option><option value="ewallet">E-wallet</option><option value="other">Lainnya</option></select><button onClick={addAccount} className="btn-primary"><Plus className="w-4 h-4" /> Tambah</button></div>
+        <div className="flex gap-2 mt-2"><select className="input-field" value={newAccount.type} onChange={e => setNewAccount({ ...newAccount, type: e.target.value as AccountType })}><option value="cash">Tunai</option><option value="bank">Bank</option><option value="ewallet">E-wallet</option><option value="crypto">Wallet crypto</option><option value="other">Lainnya</option></select><button onClick={addAccount} className="btn-primary"><Plus className="w-4 h-4" /> Tambah</button></div>
       </div>
 
       <div className="card-premium p-6">

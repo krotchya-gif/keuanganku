@@ -9,7 +9,7 @@ import { SegmentedControl } from '@/components/ui/SegmentedControl';
 import { CategoryChipPicker, type ChipGroup } from '@/components/ui/CategoryChipPicker';
 import { AmountKeypad } from '@/components/ui/AmountKeypad';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { formatRupiahCompact, formatPercent } from '@/lib/utils';
+import { formatRupiahCompact, formatPercent, getLocalDateString } from '@/lib/utils';
 import { createClient } from '@/utils/supabase/client';
 import { getCurrentUserId } from '@/lib/queries/users';
 import { fetchRecurringTransactions, type RecurringTransaction } from '@/lib/queries/recurring';
@@ -52,7 +52,7 @@ export function KasRutinContent() {
       const id = await getCurrentUserId();
       if (!id) return;
       setUserId(id);
-      setAccounts(await fetchAccounts(id));
+      setAccounts((await fetchAccounts(id)).filter((account) => account.type !== 'crypto'));
 
       // Materialize template yang sudah jatuh tempo menjadi transaksi aktual.
       const { error: generateError } = await createClient().rpc('generate_due_recurring_transactions');
@@ -80,6 +80,8 @@ export function KasRutinContent() {
     // Kas masuk selalu berkategori pendapatan.
     const finalCategory: CashflowItem['category'] = form.direction === 'masuk' ? 'pendapatan' : form.category;
 
+    const safeRunDate = new Date();
+    safeRunDate.setDate(Math.min(safeRunDate.getDate(), 28));
     const payload = {
       name: form.name.trim(),
       direction: form.direction,
@@ -87,8 +89,8 @@ export function KasRutinContent() {
       amount: form.amount,
       is_recurring: form.is_recurring,
       frequency: 'monthly',
-      day_of_month: new Date().getDate(),
-      next_run_date: new Date().toISOString().slice(0, 10),
+      day_of_month: safeRunDate.getDate(),
+      next_run_date: getLocalDateString(safeRunDate),
       account_id: form.account_id || null,
     };
 

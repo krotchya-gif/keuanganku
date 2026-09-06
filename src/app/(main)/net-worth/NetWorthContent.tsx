@@ -77,12 +77,13 @@ export function NetWorthContent() {
         fetchCryptoHoldings(userId),
       ]);
 
-      const accountAssets = accountData.map((a) => ({ ...a, id: `account-${a.id}`, name: `${a.name} (rekening)`, category: 'kas_setara_kas' as const, amount: Number(a.balance), notes: 'Saldo rekening' }));
+      const cashAccounts = accountData.filter((a) => a.type !== 'crypto');
+      const accountAssets = cashAccounts.map((a) => ({ ...a, id: `account-${a.id}`, name: `${a.name} (rekening)`, category: 'kas_setara_kas' as const, amount: Number(a.balance), notes: 'Saldo rekening' }));
       setAccounts(accountData);
       const pricedCrypto = await refreshCryptoPrices(cryptoData);
       setCryptoHoldings(pricedCrypto);
-      const cryptoAssets = pricedCrypto.map((h) => ({ id: `crypto-${h.id}`, user_id: h.user_id, name: `${h.name} (${h.symbol.toUpperCase()})`, category: 'investasi' as const, amount: Number(h.quantity) * Number(h.current_price_idr), notes: `${h.quantity} ${h.symbol.toUpperCase()} · CoinGecko`, created_at: h.created_at, updated_at: h.updated_at }));
-      setAssets([...excludeDuplicatedCashAssets(assetData, accountData.length > 0), ...accountAssets, ...cryptoAssets]);
+      const cryptoAssets = pricedCrypto.map((h) => ({ id: `crypto-${h.id}`, user_id: h.user_id, name: `${h.name} (${h.symbol.toUpperCase()})`, category: 'investasi' as const, amount: Number(h.quantity) * Number(h.current_price_idr), notes: `${h.quantity} ${h.symbol.toUpperCase()} · ${h.account_id ? `Wallet: ${accountData.find((a) => a.id === h.account_id)?.name ?? 'Wallet crypto'}` : 'Wallet belum dipilih'} · CoinGecko`, created_at: h.created_at, updated_at: h.updated_at }));
+      setAssets([...excludeDuplicatedCashAssets(assetData, cashAccounts.length > 0), ...accountAssets, ...cryptoAssets]);
       setDebts(debtData);
       
       if (snapData.length > 0) {
@@ -455,7 +456,10 @@ export function NetWorthContent() {
                     <div className="space-y-2">
                       {arr.map((asset) => (
                         <div key={asset.id} className="flex items-center justify-between px-3 py-2.5 rounded-xl bg-muted/40 hover:bg-muted group gap-3">
-                          <p className="text-sm text-foreground truncate min-w-0">{asset.name}</p>
+                          <div className="min-w-0">
+                            <p className="text-sm text-foreground truncate">{asset.name}</p>
+                            {asset.id.startsWith('crypto-') && asset.notes && <p className="mt-0.5 truncate text-[11px] text-muted-foreground">{asset.notes}</p>}
+                          </div>
                           <div className="flex items-center gap-3 shrink-0">
                             <p className="text-sm font-numeric font-medium text-foreground whitespace-nowrap">{formatRupiahCompact(asset.amount)}</p>
                             {!asset.id.startsWith('account-') && <div className="flex gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
@@ -563,7 +567,7 @@ export function NetWorthContent() {
         <form onSubmit={saveCrypto} className="space-y-4">
           <div><label className="block text-xs font-medium text-foreground mb-1.5">Coin (Top 50)</label><select required value={cryptoForm.coin_id} onChange={e => setCryptoForm({ ...cryptoForm, coin_id: e.target.value })} className="input-field"><option value="">Pilih coin</option>{cryptoCoins.map(c => <option key={c.id} value={c.id}>{c.name} ({c.symbol.toUpperCase()})</option>)}</select></div>
           <div><label className="block text-xs font-medium text-foreground mb-1.5">Jumlah coin</label><input required min={0} step="any" type="number" value={cryptoForm.quantity || ''} onChange={e => setCryptoForm({ ...cryptoForm, quantity: Number(e.target.value) })} className="input-field font-numeric" /></div>
-          <div><label className="block text-xs font-medium text-foreground mb-1.5">Dompet (opsional)</label><select value={cryptoForm.account_id} onChange={e => setCryptoForm({ ...cryptoForm, account_id: e.target.value })} className="input-field"><option value="">Tidak ditentukan</option>{accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}</select></div>
+          <div><label className="block text-xs font-medium text-foreground mb-1.5">Wallet crypto (opsional)</label><select value={cryptoForm.account_id} onChange={e => setCryptoForm({ ...cryptoForm, account_id: e.target.value })} className="input-field"><option value="">Tidak ditentukan</option>{accounts.filter(a => a.type === 'crypto').map(a => <option key={a.id} value={a.id}>{a.name}</option>)}</select><p className="mt-1 text-[11px] text-muted-foreground">Buat rekening bertipe Wallet crypto di Pengaturan jika belum tersedia.</p></div>
           <button type="submit" className="btn-primary w-full">Simpan Crypto</button>
         </form>
       </BottomSheet>

@@ -9,7 +9,7 @@ export async function fetchSavingsGoals(userId: string): Promise<SavingsGoal[]> 
 }
 
 export async function fetchSavingsAccounts(userId: string): Promise<Account[]> {
-  const { data, error } = await createClient().from('accounts').select('*').eq('user_id', userId).eq('is_active', true).order('created_at');
+  const { data, error } = await createClient().from('accounts').select('*').eq('user_id', userId).eq('is_active', true).neq('type', 'crypto').order('created_at');
   if (error) throw new Error(error.message);
   return (data ?? []) as Account[];
 }

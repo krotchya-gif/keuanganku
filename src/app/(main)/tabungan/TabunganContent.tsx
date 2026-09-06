@@ -107,8 +107,11 @@ export function TabunganContent() {
       monthly_contribution: form.monthly_contribution,
       icon: form.icon,
       color: form.color,
-      initial_amount: form.saved,
-      current_amount: 0,
+      // current_amount is derived from transfer transactions. When editing,
+      // keep that derived portion intact and adjust only the manual opening amount.
+      initial_amount: editing
+        ? Math.max(0, form.saved - Number(editing.current_amount || 0))
+        : form.saved,
     };
     const supabase = createClient();
     const { error } = editing

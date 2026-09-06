@@ -59,7 +59,7 @@ export function RecordTransactionSheet({ open, onClose, onSaved, editTransaction
         const accountRows = await fetchAccounts(user.id);
         if (!cancelled) {
           setWallets(items.length > 0 ? items.map((i) => ({ name: i.name, category: i.category })) : DEFAULT_BUDGET_ITEMS);
-          setAccounts(accountRows);
+          setAccounts(accountRows.filter((account) => account.type !== 'crypto'));
         }
       } catch (err) {
         console.error(err);

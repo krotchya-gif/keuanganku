@@ -36,7 +36,8 @@ export function CheckupContent() {
         ]);
 
         const danaDarurat = getDanaDarurat(assets);
-        const nw = calculateNetWorth([...excludeDuplicatedCashAssets(assets, accounts.length > 0), ...accounts.map((a) => ({ ...a, category: 'kas_setara_kas' as const, amount: Number(a.balance) }))], debts);
+        const cashAccounts = accounts.filter((a) => a.type !== 'crypto');
+        const nw = calculateNetWorth([...excludeDuplicatedCashAssets(assets, cashAccounts.length > 0), ...cashAccounts.map((a) => ({ ...a, category: 'kas_setara_kas' as const, amount: Number(a.balance) }))], debts);
         const cf = calculateCashFlow(transactions.map((t) => ({
           id: t.id, user_id: t.user_id, name: t.description ?? 'Transaksi',
           direction: t.transaction_type === 'income' || t.category === 'PENDAPATAN' ? 'masuk' : 'keluar',
