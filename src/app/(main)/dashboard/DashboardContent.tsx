@@ -20,6 +20,7 @@ import { fetchSnapshots } from '@/lib/queries/snapshots';
 import { fetchTransactions } from '@/lib/queries/transactions';
 import { fetchSavingsGoals } from '@/lib/queries/savings';
 import { fetchBudgetItems } from '@/lib/queries/budget';
+import { fetchCryptoHoldings, refreshCryptoPrices } from '@/lib/queries/crypto';
 import { RecordTransactionSheet } from '@/components/transactions/RecordTransactionSheet';
 import { HeroCard } from '@/components/ui/HeroCard';
 import { QuickActionCircle } from '@/components/ui/QuickActionCircle';
@@ -100,7 +101,7 @@ export function DashboardContent() {
         from.setDate(from.getDate() - 59);
         const { startDate, endDate } = { startDate: getLocalDateString(from), endDate: getLocalDateString(now) };
 
-        const [snapData, txData, assetData, accountData, debtData, savingData, budgetRows] = await Promise.all([
+        const [snapData, txData, assetData, accountData, debtData, savingData, budgetRows, cryptoData] = await Promise.all([
           fetchSnapshots(userId, 12),
           fetchTransactions(userId, startDate, endDate),
           fetchAssets(userId),
@@ -108,6 +109,7 @@ export function DashboardContent() {
           fetchDebts(userId),
           fetchSavingsGoals(userId),
           fetchBudgetItems(userId),
+          fetchCryptoHoldings(userId),
         ]);
 
         // Rekening/dompet adalah saldo kas aktual dan harus ikut dihitung di seluruh ringkasan.
@@ -121,6 +123,17 @@ export function DashboardContent() {
           updated_at: a.updated_at,
         }));
         const currentAssets = [...excludeDuplicatedCashAssets(assetData, accountData.length > 0), ...accountAssets];
+        const pricedCrypto = await refreshCryptoPrices(cryptoData);
+        currentAssets.push(...pricedCrypto.map((h) => ({
+          id: `crypto-${h.id}`,
+          user_id: h.user_id,
+          name: `${h.name} (${h.symbol.toUpperCase()})`,
+          category: 'investasi' as const,
+          amount: Number(h.quantity) * Number(h.current_price_idr),
+          notes: `${h.quantity} ${h.symbol.toUpperCase()} · CoinGecko`,
+          created_at: h.created_at,
+          updated_at: h.updated_at,
+        })));
 
         const live = calculateNetWorth(currentAssets, debtData);
         if (snapData.length > 0) {
